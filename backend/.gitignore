@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# test coverage
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# editor files
+.idea/
+.vscode/
+*.swp
+
+# prisma generated
+.agents
+.claude
+.cursor
+.devin
+*.prisma.*
