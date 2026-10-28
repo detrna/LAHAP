@@ -9,7 +9,19 @@ export const contract = contractFromJson<Contract>(contractJson);
 
 export const createDb = (config: DatabaseConfig) => postgres({ contract, url: config.DATABASE_URL });
 
-export const verifyConnection = async (db: Db): Promise<void> => {
+export const loadDatabase = async (config: DatabaseConfig) => {
+    const db = createDb(config);
+
+    try {
+        await verifyConnection(db);
+        return db;
+    } catch (error) {
+        await db.close();
+        throw error;
+    }
+};
+
+const verifyConnection = async (db: Db): Promise<void> => {
     try {
         const plan = db.raw.sql`SELECT 1 AS ok`.returnsRow({ ok: "pg/int4@1" }).build();
         await db.query(plan);

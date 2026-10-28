@@ -1,18 +1,20 @@
 import { z } from "zod";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config/index.js";
-import { createDb, verifyConnection } from "./infrastructure/database/prisma/db.js";
+import { loadDatabase } from "./infrastructure/database/prisma/db.js";
+import { createInfrastructure } from "./infrastructure/index.js";
 
 async function bootstrap() {
     try {
         const config = loadConfig();
 
-        const db = createDb(config.DATABASE);
-        await verifyConnection(db);
+        const db = await loadDatabase(config.DATABASE);
         console.log("Database connected successfully");
 
-        const app = createApp();
+        const infrastructure = await createInfrastructure(config);
+        console.log("Infrastructure initialized successfully");
 
+        const app = createApp(infrastructure);
         const server = app.listen(config.APP.PORT, () => {
             console.log(`Server is running on port ${config.APP.PORT}`);
         });
