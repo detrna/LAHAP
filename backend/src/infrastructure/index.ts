@@ -1,8 +1,8 @@
 import type { Config } from "../config/index.js";
 import type { ObjectStorage } from "../shared/ports/object-storage/object-storage.js";
 import type { ReceiptExtractor } from "../shared/ports/receipt-extractor/receipt-extractor.js";
-import { loadObjectStorage } from "./object-storage/seaweedfs.js";
-import { QwenReceiptExtractor } from "./receipt-extractor/qwen.js";
+import { loadObjectStorage } from "./object-storage/seaweedfs/seaweedfs.js";
+import { QwenReceiptExtractor } from "./receipt-extractor/qwen/qwen.js";
 
 export interface Infrastructure {
     readonly receiptExtractor: ReceiptExtractor;

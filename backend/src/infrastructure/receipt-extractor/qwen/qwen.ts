@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import type { ReceiptExtractorConfig } from "../../config/receipt-extractor.js";
+import type { ReceiptExtractorConfig } from "../../../config/receipt-extractor.js";
 import { CONFIDENCE_THRESHOLD, MAX_IMAGE_BYTES, SUPPORTED_MIME_TYPES } from "./const.js";
 import {
     InvalidReceiptImageError,
@@ -8,8 +8,8 @@ import {
     NoReceiptItemsFoundError,
     ReceiptExtractionError,
     ReceiptExtractorProviderError,
-} from "../../shared/ports/receipt-extractor/errors.js";
-import type { ReceiptData, ReceiptExtractor } from "../../shared/ports/receipt-extractor/receipt-extractor.js";
+} from "../../../shared/ports/receipt-extractor/errors.js";
+import type { ReceiptData, ReceiptExtractor } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
 
 type NonEmptyArray<T> = [T, ...T[]];
 

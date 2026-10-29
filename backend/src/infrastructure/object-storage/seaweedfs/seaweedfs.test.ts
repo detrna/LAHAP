@@ -9,13 +9,13 @@ import {
 } from "@aws-sdk/client-s3";
 import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
-import type { ObjectStorageConfig } from "../../config/object-storage.js";
-import { AppError } from "../../shared/errors/app-error.js";
+import type { ObjectStorageConfig } from "../../../config/object-storage.js";
+import { AppError } from "../../../shared/errors/app-error.js";
 import {
     InvalidObjectKeyError,
     ObjectNotFoundError,
     StorageFailureError,
-} from "../../shared/ports/object-storage/object-storage.js";
+} from "../../../shared/ports/object-storage/object-storage.js";
 import { loadObjectStorage, SeaweedFsObjectStorage } from "./seaweedfs.js";
 
 const dummyConfig: ObjectStorageConfig = {

@@ -2,8 +2,8 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../../config/index.js";
-import { ReceiptExtractionError } from "../../shared/ports/receipt-extractor/receipt-extractor.js";
+import { loadConfig } from "../../../config/index.js";
+import { ReceiptExtractionError } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import { QwenReceiptExtractor } from "./qwen.js";
 
 const config = loadConfig();

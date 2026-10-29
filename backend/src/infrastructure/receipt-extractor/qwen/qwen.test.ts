@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ReceiptExtractorConfig } from "../../config/receipt-extractor.js";
-import { AppError } from "../../shared/errors/app-error.js";
+import type { ReceiptExtractorConfig } from "../../../config/receipt-extractor.js";
+import { AppError } from "../../../shared/errors/app-error.js";
 import {
     InvalidReceiptImageError,
     ReceiptExtractionError,
-} from "../../shared/ports/receipt-extractor/receipt-extractor.js";
+} from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import { QwenReceiptExtractor } from "./qwen.js";
 
 const UNITS = ["PCS", "KG", "G", "L", "ML", "PACK", "BUNGKUS", "LUSIN", "BOX", "BUAH"] as const;

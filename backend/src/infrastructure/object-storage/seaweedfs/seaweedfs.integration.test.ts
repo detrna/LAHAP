@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { Buffer } from "node:buffer";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { loadConfig } from "../../config/index.js";
-import { ObjectNotFoundError } from "../../shared/ports/object-storage/object-storage.js";
+import { loadConfig } from "../../../config/index.js";
+import { ObjectNotFoundError } from "../../../shared/ports/object-storage/object-storage.js";
 import { loadObjectStorage, type SeaweedFsObjectStorage } from "./seaweedfs.js";
 
 const config = loadConfig();

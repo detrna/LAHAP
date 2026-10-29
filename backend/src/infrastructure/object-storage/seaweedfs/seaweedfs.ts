@@ -9,13 +9,13 @@ import {
     S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl as createPresignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { ObjectStorageConfig } from "../../config/object-storage.js";
+import type { ObjectStorageConfig } from "../../../config/object-storage.js";
 import {
     InvalidObjectKeyError,
     ObjectNotFoundError,
     StorageFailureError,
-} from "../../shared/ports/object-storage/errors.js";
-import type { ObjectStorage, UploadObjectInput } from "../../shared/ports/object-storage/object-storage.js";
+} from "../../../shared/ports/object-storage/errors.js";
+import type { ObjectStorage, UploadObjectInput } from "../../../shared/ports/object-storage/object-storage.js";
 
 function isNotFoundError(err: unknown): boolean {
     if (typeof err !== "object" || err === null) return false;
