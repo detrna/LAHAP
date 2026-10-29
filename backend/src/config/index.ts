@@ -5,6 +5,7 @@ import { dbEnvSchema, toDatabaseConfig, type DatabaseConfig } from "./db.js";
 import { hasherEnvSchema, toHasherConfig, type HasherConfig } from "./hasher.js";
 import { jwtEnvSchema, toJwtConfig, type JwtConfig } from "./jwt.js";
 import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig } from "./object-storage.js";
+import { paymentGatewayEnvSchema, toPaymentGatewayConfig, type PaymentGatewayConfig } from "./payment-gateway.js";
 import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
 
 export interface Config {
@@ -14,6 +15,7 @@ export interface Config {
     readonly HASHER: HasherConfig;
     readonly RECEIPT_EXTRACTOR: ReceiptExtractorConfig;
     readonly OBJECT_STORAGE: ObjectStorageConfig;
+    readonly PAYMENT_GATEWAY: PaymentGatewayConfig;
 }
 
 export const parseEnv = <T>(schema: { parse: (value: unknown) => T }, value: unknown = process.env) => {
@@ -31,6 +33,7 @@ const envSchema = z.object({
     ...hasherEnvSchema.shape,
     ...receiptExtractorEnvSchema.shape,
     ...objectStorageEnvSchema.shape,
+    ...paymentGatewayEnvSchema.shape,
 });
 
 export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
@@ -43,5 +46,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         HASHER: toHasherConfig(parsed),
         RECEIPT_EXTRACTOR: toReceiptExtractorConfig(parsed),
         OBJECT_STORAGE: toObjectStorageConfig(parsed),
+        PAYMENT_GATEWAY: toPaymentGatewayConfig(parsed),
     };
 };

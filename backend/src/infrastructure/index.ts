@@ -1,10 +1,12 @@
 import type { Config } from "../config/index.js";
 import type { Hasher } from "../shared/ports/hasher/hasher.js";
 import type { ObjectStorage } from "../shared/ports/object-storage/object-storage.js";
+import type { PaymentGateway } from "../shared/ports/payment-gateway/payment-gateway.js";
 import type { ReceiptExtractor } from "../shared/ports/receipt-extractor/receipt-extractor.js";
 import type { TokenProvider } from "../shared/ports/token-provider/token-provider.js";
 import { BcryptHasher } from "./hasher/bcrypt/bcrypt.js";
 import { loadObjectStorage } from "./object-storage/seaweedfs/seaweedfs.js";
+import { MidtransPaymentGateway } from "./payment-gateway/midtrans/midtrans.js";
 import { QwenReceiptExtractor } from "./receipt-extractor/qwen/qwen.js";
 import { JwtTokenProvider } from "./token-provider/jwt/jwt.js";
 
@@ -13,6 +15,7 @@ export interface Infrastructure {
     readonly tokenProvider: TokenProvider;
     readonly receiptExtractor: ReceiptExtractor;
     readonly objectStorage: ObjectStorage;
+    readonly paymentGateway: PaymentGateway;
 }
 
 export async function createInfrastructure(config: Config): Promise<Infrastructure> {
@@ -25,5 +28,6 @@ export async function createInfrastructure(config: Config): Promise<Infrastructu
         tokenProvider: new JwtTokenProvider(config.JWT),
         receiptExtractor: new QwenReceiptExtractor(config.RECEIPT_EXTRACTOR),
         objectStorage,
+        paymentGateway: new MidtransPaymentGateway(config.PAYMENT_GATEWAY, config.APP),
     };
 }

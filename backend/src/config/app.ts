@@ -19,3 +19,6 @@ export const toAppConfig = (env: AppEnv): AppConfig => ({
     IS_PRODUCTION: env.IS_PRODUCTION,
     PORT: env.PORT,
 });
+
+export const loadAppConfig = (env: NodeJS.ProcessEnv = process.env): AppConfig =>
+    toAppConfig(appEnvSchema.parse(env));
