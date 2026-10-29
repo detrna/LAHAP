@@ -1,0 +1,38 @@
+{
+    "name": "backend",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "test": "vitest --exclude '**/*.integration.test.ts'",
+        "test:run": "vitest run --exclude '**/*.integration.test.ts'",
+        "test:integration": "vitest run '**/*.integration.test.ts'",
+        "coverage": "vitest run --coverage --exclude '**/*.integration.test.ts'",
+        "postinstall": "prisma skills sync || exit 0",
+        "contract:emit": "prisma contract emit"
+    },
+    "keywords": [],
+    "type": "module",
+    "dependencies": {
+        "@prisma/adapter-pg": "^7.10.1",
+        "@prisma/client": "^7.10.1",
+        "@prisma/orm-postgres": "^8.0.0-rc.20",
+        "dotenv": "^18.0.9",
+        "express": "^5.3.0",
+        "jsonwebtoken": "^9.0.3",
+        "openai": "^7.45.0",
+        "pg": "^8.23.1",
+        "zod": "^4.6.7"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.6",
+        "@types/node": "^26.6.5",
+        "@types/pg": "^8.23.1",
+        "nodemon": "^3.1.14",
+        "prisma": "^8.0.0-rc.27",
+        "tsx": "^4.23.15",
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.5"
+    }
+}
