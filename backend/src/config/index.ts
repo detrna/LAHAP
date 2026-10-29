@@ -2,6 +2,7 @@ import "dotenv/config";
 import z from "zod";
 import { appEnvSchema, toAppConfig, type AppConfig } from "./app.js";
 import { dbEnvSchema, toDatabaseConfig, type DatabaseConfig } from "./db.js";
+import { hasherEnvSchema, toHasherConfig, type HasherConfig } from "./hasher.js";
 import { jwtEnvSchema, toJwtConfig, type JwtConfig } from "./jwt.js";
 import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig } from "./object-storage.js";
 import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
@@ -10,6 +11,7 @@ export interface Config {
     readonly APP: AppConfig;
     readonly DATABASE: DatabaseConfig;
     readonly JWT: JwtConfig;
+    readonly HASHER: HasherConfig;
     readonly RECEIPT_EXTRACTOR: ReceiptExtractorConfig;
     readonly OBJECT_STORAGE: ObjectStorageConfig;
 }
@@ -26,6 +28,7 @@ const envSchema = z.object({
     ...appEnvSchema.shape,
     ...dbEnvSchema.shape,
     ...jwtEnvSchema.shape,
+    ...hasherEnvSchema.shape,
     ...receiptExtractorEnvSchema.shape,
     ...objectStorageEnvSchema.shape,
 });
@@ -37,6 +40,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         APP: toAppConfig(parsed),
         DATABASE: toDatabaseConfig(parsed),
         JWT: toJwtConfig(parsed),
+        HASHER: toHasherConfig(parsed),
         RECEIPT_EXTRACTOR: toReceiptExtractorConfig(parsed),
         OBJECT_STORAGE: toObjectStorageConfig(parsed),
     };
