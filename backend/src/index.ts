@@ -21,7 +21,7 @@ async function bootstrap() {
 
         const shutdown = () => {
             server.close(async () => {
-                await db.close();
+                await Promise.all([db.close(), infrastructure.cache.close()]);
                 process.exit(0);
             });
         };
