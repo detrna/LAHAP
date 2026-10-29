@@ -61,5 +61,3 @@ export class BcryptHasher implements Hasher {
         }
     }
 }
-
-export const createHasher = (config: HasherConfig): BcryptHasher => new BcryptHasher(config);

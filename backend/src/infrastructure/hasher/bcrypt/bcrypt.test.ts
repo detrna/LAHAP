@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HasherConfig } from "../../../config/hasher.js";
 import { AppError } from "../../../shared/errors/app-error.js";
 import { HashingFailureError, InvalidHashInputError } from "../../../shared/ports/hasher/hasher.js";
-import { BcryptHasher, createHasher, MAX_BCRYPT_BYTES } from "./bcrypt.js";
+import { BcryptHasher, MAX_BCRYPT_BYTES } from "./bcrypt.js";
 
 const fastConfig: HasherConfig = {
     SALT_ROUNDS: 4,
@@ -36,9 +36,8 @@ describe("BcryptHasher (unit)", () => {
             );
         });
 
-        it("creates instance with default config or createHasher helper", () => {
+        it("creates instance with default config", () => {
             expect(new BcryptHasher()).toBeInstanceOf(BcryptHasher);
-            expect(createHasher(fastConfig)).toBeInstanceOf(BcryptHasher);
         });
     });
 
