@@ -1,17 +1,10 @@
-import { AppError } from "../errors/app-error.js";
+import { InvalidCoordinatesError } from "./errors.js";
+
+export * from "./errors.js";
 
 export interface Coordinates {
     readonly lat: number;
     readonly lng: number;
-}
-
-export class InvalidCoordinatesError extends AppError {
-    readonly code = "INVALID_COORDINATES";
-    readonly statusCode = 400;
-
-    constructor(public readonly coordinates: Coordinates) {
-        super(`invalid coordinates: lat=${coordinates.lat}, lng=${coordinates.lng}`);
-    }
 }
 
 /** Mean Earth radius (IUGG), in kilometers */

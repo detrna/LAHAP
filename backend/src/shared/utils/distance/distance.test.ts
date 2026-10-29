@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AppError } from "../errors/app-error.js";
+import { AppError } from "../../errors/app-error.js";
 import { getDistanceInKm, InvalidCoordinatesError, type Coordinates } from "./distance.js";
 
 const MONAS: Coordinates = { lat: -6.1754, lng: 106.8272 };
