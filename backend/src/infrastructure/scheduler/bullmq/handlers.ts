@@ -1,4 +1,4 @@
-import type { JobRunRepository } from "../../shared/ports/job-run-repository/job-run-repository.js";
+import type { JobRunRepository } from "../../../shared/ports/job-run-repository/job-run-repository.js";
 import { HEARTBEAT_JOB_NAME } from "./register-schedules.js";
 
 export interface ScheduledCheckJobContext {
@@ -7,9 +7,7 @@ export interface ScheduledCheckJobContext {
     readonly data: Record<string, unknown>;
 }
 
-export type ScheduledJobUseCaseHandler = (
-    data: Record<string, unknown>,
-) => Promise<unknown>;
+export type ScheduledJobUseCaseHandler = (data: Record<string, unknown>) => Promise<unknown>;
 
 export type ScheduledJobHandlerMap = Readonly<Record<string, ScheduledJobUseCaseHandler>>;
 
@@ -36,11 +34,8 @@ export interface HandlerDependencies {
  *
  * Adding a real scheduled check later requires adding one entry here.
  */
-export const createScheduledJobHandlerMap = (
-    deps: HandlerDependencies = {},
-): ScheduledJobHandlerMap => ({
-    [HEARTBEAT_JOB_NAME]: async () =>
-        deps.heartbeatHandler ? deps.heartbeatHandler() : defaultHeartbeatHandler(),
+export const createScheduledJobHandlerMap = (deps: HandlerDependencies = {}): ScheduledJobHandlerMap => ({
+    [HEARTBEAT_JOB_NAME]: async () => (deps.heartbeatHandler ? deps.heartbeatHandler() : defaultHeartbeatHandler()),
 });
 
 const toErrorMessage = (error: unknown): string => {

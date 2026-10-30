@@ -1,12 +1,8 @@
 import { Worker } from "bullmq";
-import type { RedisConfig } from "../../config/redis.js";
-import type { JobRunRepository } from "../../shared/ports/job-run-repository/job-run-repository.js";
+import type { RedisConfig } from "../../../config/redis.js";
+import type { JobRunRepository } from "../../../shared/ports/job-run-repository/job-run-repository.js";
 import { createBullMqConnection } from "./connection.js";
-import {
-    createScheduledCheckProcessor,
-    createScheduledJobHandlerMap,
-    type HandlerDependencies,
-} from "./handlers.js";
+import { createScheduledCheckProcessor, createScheduledJobHandlerMap, type HandlerDependencies } from "./handlers.js";
 import { SCHEDULED_CHECKS_QUEUE_NAME } from "./queues.js";
 
 export interface StartWorkersDependencies {
@@ -31,14 +27,11 @@ export const startWorkers = (deps: StartWorkersDependencies): RunningWorkers => 
 
     const handlerMap = createScheduledJobHandlerMap(deps.handlers);
 
-    const scheduledCheckProcessor = createScheduledCheckProcessor(
-        handlerMap,
-        deps.jobRunRepository,
-    );
+    const scheduledCheckProcessor = createScheduledCheckProcessor(handlerMap, deps.jobRunRepository);
 
     const scheduledChecksWorker = new Worker<Record<string, unknown>, void, string>(
         SCHEDULED_CHECKS_QUEUE_NAME,
-        async (job) => {
+        async job => {
             await scheduledCheckProcessor({
                 id: job.id,
                 name: job.name,
@@ -50,7 +43,7 @@ export const startWorkers = (deps: StartWorkersDependencies): RunningWorkers => 
         },
     );
 
-    scheduledChecksWorker.on("error", (err) => {
+    scheduledChecksWorker.on("error", err => {
         console.error(`[Worker:${SCHEDULED_CHECKS_QUEUE_NAME}] Error:`, err);
     });
 

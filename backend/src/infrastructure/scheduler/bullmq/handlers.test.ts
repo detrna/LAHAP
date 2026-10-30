@@ -1,30 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SchedulerConfig } from "../../config/scheduler.js";
+import type { SchedulerConfig } from "../../../config/scheduler.js";
 import {
     JobRunNotFoundError,
     type JobRunRecord,
     type JobRunRepository,
-} from "../../shared/ports/job-run-repository/job-run-repository.js";
-import type {
-    RecurringJobRegistration,
-    Scheduler,
-} from "../../shared/ports/scheduler/scheduler.js";
-import {
-    createScheduledCheckProcessor,
-    createScheduledJobHandlerMap,
-    defaultHeartbeatHandler,
-} from "./handlers.js";
-import {
-    HEARTBEAT_JOB_NAME,
-    HEARTBEAT_SCHEDULE_ID,
-    registerSchedules,
-} from "./register-schedules.js";
+} from "../../../shared/ports/job-run-repository/job-run-repository.js";
+import type { RecurringJobRegistration, Scheduler } from "../../../shared/ports/scheduler/scheduler.js";
+import { createScheduledCheckProcessor, createScheduledJobHandlerMap, defaultHeartbeatHandler } from "./handlers.js";
+import { HEARTBEAT_JOB_NAME, HEARTBEAT_SCHEDULE_ID, registerSchedules } from "./register-schedules.js";
 
 class InMemoryJobRunRepository implements JobRunRepository {
     readonly runs: JobRunRecord[] = [];
     private nextId = 1;
 
-    async recordStarted(jobName: string, startedAt: Date = new Date("2026-10-29T17:00:00.000Z")): Promise<JobRunRecord> {
+    async recordStarted(
+        jobName: string,
+        startedAt: Date = new Date("2026-10-29T17:00:00.000Z"),
+    ): Promise<JobRunRecord> {
         const record: JobRunRecord = {
             id: `run-${this.nextId++}`,
             jobName,
@@ -38,7 +30,7 @@ class InMemoryJobRunRepository implements JobRunRepository {
     }
 
     async recordSuccess(id: string, finishedAt: Date = new Date("2026-10-29T17:00:01.000Z")): Promise<JobRunRecord> {
-        const index = this.runs.findIndex((r) => r.id === id);
+        const index = this.runs.findIndex(r => r.id === id);
         if (index === -1) {
             throw new JobRunNotFoundError(id);
         }
@@ -57,7 +49,7 @@ class InMemoryJobRunRepository implements JobRunRepository {
         errorMessage: string,
         finishedAt: Date = new Date("2026-10-29T17:00:01.000Z"),
     ): Promise<JobRunRecord> {
-        const index = this.runs.findIndex((r) => r.id === id);
+        const index = this.runs.findIndex(r => r.id === id);
         if (index === -1) {
             throw new JobRunNotFoundError(id);
         }
@@ -141,7 +133,7 @@ describe("Scheduler handlers and schedule registration", () => {
     it("registerSchedules registers the heartbeat recurring schedule with configured cron and timezone", async () => {
         const registered: RecurringJobRegistration[] = [];
         const fakeScheduler: Scheduler = {
-            registerRecurringJob: async (schedule) => {
+            registerRecurringJob: async schedule => {
                 registered.push(schedule);
             },
             enqueue: async () => {},

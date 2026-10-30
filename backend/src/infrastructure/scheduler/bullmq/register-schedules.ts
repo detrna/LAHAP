@@ -1,8 +1,5 @@
-import type { SchedulerConfig } from "../../config/scheduler.js";
-import type {
-    RecurringJobRegistration,
-    Scheduler,
-} from "../../shared/ports/scheduler/scheduler.js";
+import type { SchedulerConfig } from "../../../config/scheduler.js";
+import type { RecurringJobRegistration, Scheduler } from "../../../shared/ports/scheduler/scheduler.js";
 
 export const HEARTBEAT_SCHEDULE_ID = "heartbeat-schedule";
 export const HEARTBEAT_JOB_NAME = "heartbeat";
@@ -13,9 +10,7 @@ export const HEARTBEAT_JOB_NAME = "heartbeat";
  * Adding a real scheduled check later requires appending one entry here
  * (plus its use case in its owning module and one entry in the handler map).
  */
-export const buildScheduleDefinitions = (
-    schedulerConfig: SchedulerConfig,
-): readonly RecurringJobRegistration[] => [
+export const buildScheduleDefinitions = (schedulerConfig: SchedulerConfig): readonly RecurringJobRegistration[] => [
     // TEMPORARY: Placeholder heartbeat job to prove the pipeline end-to-end
     {
         id: HEARTBEAT_SCHEDULE_ID,
@@ -41,4 +36,3 @@ export const registerSchedules = async (
 
     return definitions;
 };
-

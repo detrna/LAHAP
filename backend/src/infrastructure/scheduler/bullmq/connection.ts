@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import type { RedisConfig } from "../../config/redis.js";
+import type { RedisConfig } from "../../../config/redis.js";
 
 /**
  * Creates a dedicated ioredis connection for BullMQ (separate from Cache / PubSub clients).
@@ -17,4 +17,3 @@ export const createBullMqConnection = (config: RedisConfig): Redis => {
         maxRetriesPerRequest: null,
     });
 };
-

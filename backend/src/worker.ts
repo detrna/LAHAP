@@ -2,17 +2,14 @@ import { z } from "zod";
 import { loadConfig } from "./config/index.js";
 import { loadDatabase } from "./infrastructure/database/prisma/db.js";
 import { PrismaJobRunRepository } from "./infrastructure/database/prisma/job-run-repository.js";
-import { createBullMqConnection } from "./infrastructure/scheduler/connection.js";
+import { createBullMqConnection } from "./infrastructure/scheduler/bullmq/connection.js";
 import {
     BullMqScheduler,
     createQueues,
     SCHEDULED_CHECKS_QUEUE_NAME,
-} from "./infrastructure/scheduler/queues.js";
-import {
-    HEARTBEAT_JOB_NAME,
-    registerSchedules,
-} from "./infrastructure/scheduler/register-schedules.js";
-import { startWorkers } from "./infrastructure/scheduler/worker.js";
+} from "./infrastructure/scheduler/bullmq/queues.js";
+import { HEARTBEAT_JOB_NAME, registerSchedules } from "./infrastructure/scheduler/bullmq/register-schedules.js";
+import { startWorkers } from "./infrastructure/scheduler/bullmq/worker.js";
 
 /**
  * Worker Entry Point (`src/worker.ts`)
@@ -35,9 +32,7 @@ async function bootstrapWorker(): Promise<void> {
                 manualTrigger: true,
                 requestedAt: new Date().toISOString(),
             });
-            console.log(
-                `[Worker] Manually enqueued "${HEARTBEAT_JOB_NAME}" on queue "${SCHEDULED_CHECKS_QUEUE_NAME}"`,
-            );
+            console.log(`[Worker] Manually enqueued "${HEARTBEAT_JOB_NAME}" on queue "${SCHEDULED_CHECKS_QUEUE_NAME}"`);
             await queues.closeAll();
             await queueConnection.quit();
             return;
@@ -53,7 +48,7 @@ async function bootstrapWorker(): Promise<void> {
         console.log(
             `[Worker] Registered ${activeSchedulers.length} job scheduler(s):`,
             JSON.stringify(
-                activeSchedulers.map((s) => ({
+                activeSchedulers.map(s => ({
                     key: s.key,
                     name: s.name,
                     pattern: s.pattern,
@@ -68,9 +63,7 @@ async function bootstrapWorker(): Promise<void> {
             jobRunRepository,
         });
 
-        console.log(
-            `[Worker] Worker started for queue "${SCHEDULED_CHECKS_QUEUE_NAME}"`,
-        );
+        console.log(`[Worker] Worker started for queue "${SCHEDULED_CHECKS_QUEUE_NAME}"`);
 
         let isShuttingDown = false;
         const shutdown = async (signal: string) => {

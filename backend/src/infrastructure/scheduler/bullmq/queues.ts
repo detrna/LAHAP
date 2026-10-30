@@ -1,4 +1,4 @@
-import { Queue, type JobsOptions, type JobSchedulerJson } from "bullmq";
+import { Queue, type JobSchedulerJson, type JobsOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import {
     InvalidScheduleError,
@@ -6,7 +6,7 @@ import {
     type EnqueueJobOptions,
     type RecurringJobRegistration,
     type Scheduler,
-} from "../../shared/ports/scheduler/scheduler.js";
+} from "../../../shared/ports/scheduler/scheduler.js";
 
 export const SCHEDULED_CHECKS_QUEUE_NAME = "scheduled-checks";
 
@@ -32,13 +32,10 @@ export interface BullMqQueues {
 }
 
 export const createQueues = (connection: Redis): BullMqQueues => {
-    const scheduledChecksQueue = new Queue<Record<string, unknown>, unknown, string>(
-        SCHEDULED_CHECKS_QUEUE_NAME,
-        {
-            connection,
-            defaultJobOptions: DEFAULT_JOB_OPTIONS,
-        },
-    );
+    const scheduledChecksQueue = new Queue<Record<string, unknown>, unknown, string>(SCHEDULED_CHECKS_QUEUE_NAME, {
+        connection,
+        defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    });
 
     return {
         scheduledChecksQueue,
@@ -49,10 +46,7 @@ export const createQueues = (connection: Redis): BullMqQueues => {
 };
 
 export class BullMqScheduler implements Scheduler {
-    private readonly queuesByName: ReadonlyMap<
-        string,
-        Queue<Record<string, unknown>, unknown, string>
-    >;
+    private readonly queuesByName: ReadonlyMap<string, Queue<Record<string, unknown>, unknown, string>>;
 
     constructor(private readonly queues: BullMqQueues) {
         this.queuesByName = new Map<string, Queue<Record<string, unknown>, unknown, string>>([
