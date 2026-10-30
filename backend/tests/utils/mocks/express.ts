@@ -11,6 +11,7 @@ export interface MockRequestOptions {
     readonly params?: Record<string, string>;
     readonly user?: Request["user"];
     readonly tokenPayload?: Request["tokenPayload"];
+    readonly pagination?: Request["pagination"];
 }
 
 export interface MockResponseOptions {
@@ -55,6 +56,9 @@ export function createMockRequest(options: MockRequestOptions = {}): Request {
     }
     if (options.tokenPayload !== undefined) {
         req.tokenPayload = options.tokenPayload;
+    }
+    if (options.pagination !== undefined) {
+        req.pagination = options.pagination;
     }
 
     return req;

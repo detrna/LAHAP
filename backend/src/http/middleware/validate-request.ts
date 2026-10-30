@@ -14,11 +14,11 @@ export interface RequestValidationSchemas<
     readonly params?: TParams;
 }
 
-function formatZodPath(path: readonly PropertyKey[]): string {
+export function formatZodPath(path: readonly PropertyKey[]): string {
     return path.map(segment => String(segment)).join(".");
 }
 
-function toValidationIssues(target: RequestValidationTarget, error: z.ZodError): ValidationIssue[] {
+export function toValidationIssues(target: RequestValidationTarget, error: z.ZodError): ValidationIssue[] {
     return error.issues.map(issue => ({
         target,
         path: formatZodPath(issue.path),
@@ -27,7 +27,7 @@ function toValidationIssues(target: RequestValidationTarget, error: z.ZodError):
     }));
 }
 
-function assignParsedValue(req: Request, target: RequestValidationTarget, value: unknown): void {
+export function assignParsedValue(req: Request, target: RequestValidationTarget, value: unknown): void {
     const descriptor = Object.getOwnPropertyDescriptor(req, target);
     if (descriptor && descriptor.writable && !descriptor.get) {
         (req as unknown as Record<string, unknown>)[target] = value;
