@@ -1,37 +1,23 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { createTokenProvider } from "../../../tests/utils/factory/jwt/jwt.js";
 import { JwtTokenProvider } from "../../infrastructure/token-provider/jwt/jwt.js";
 import { authenticate } from "./authenticate.js";
 import { authorize, requireRoles } from "./authorize.js";
 import { errorHandler } from "./error-handler.js";
-
-const testJwtConfig = {
-    SECRET: "test-access-secret-32-bytes-long!",
-    EXPIRES_IN: "1h",
-    REFRESH_SECRET: "test-refresh-secret-32-bytes-long!",
-    REFRESH_EXPIRES_IN: "7d",
-    ALGORITHM: "HS256",
-    ISSUER: "gtnic-auth",
-    AUDIENCE: "gtnic-app",
-};
 
 function createTestApp(tokenProvider: JwtTokenProvider) {
     const app = express();
     app.use(express.json());
 
     // Varargs role check
-    app.get(
-        "/admin/reports",
-        authenticate({ tokenProvider }),
-        authorize("ADMIN", "FINANCE"),
-        (req, res) => {
-            res.status(200).json({
-                report: "secret-financial-data",
-                user: req.user,
-            });
-        },
-    );
+    app.get("/admin/reports", authenticate({ tokenProvider }), authorize("ADMIN", "FINANCE"), (req, res) => {
+        res.status(200).json({
+            report: "secret-financial-data",
+            user: req.user,
+        });
+    });
 
     // Array syntax role check using requireRoles alias
     app.delete(
@@ -56,7 +42,7 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
 }
 
 describe("authorize middleware (integration)", () => {
-    const tokenProvider = new JwtTokenProvider(testJwtConfig);
+    const tokenProvider = createTokenProvider();
     const app = createTestApp(tokenProvider);
 
     it("allows access when authenticated user has an authorized role", async () => {
@@ -65,9 +51,7 @@ describe("authorize middleware (integration)", () => {
             role: "ADMIN",
         });
 
-        const res = await request(app)
-            .get("/admin/reports")
-            .set("Authorization", `Bearer ${adminToken}`);
+        const res = await request(app).get("/admin/reports").set("Authorization", `Bearer ${adminToken}`);
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual({
@@ -86,9 +70,7 @@ describe("authorize middleware (integration)", () => {
             role: "USER",
         });
 
-        const res = await request(app)
-            .get("/admin/reports")
-            .set("Authorization", `Bearer ${regularUserToken}`);
+        const res = await request(app).get("/admin/reports").set("Authorization", `Bearer ${regularUserToken}`);
 
         expect(res.status).toBe(403);
         expect(res.body).toEqual({

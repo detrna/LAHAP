@@ -1,6 +1,6 @@
-import type { NextFunction, Request, Response } from "express";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { createMockNext, createMockRequest, createMockResponse } from "../../../tests/utils/mocks/express.js";
 import { AppError } from "../../shared/errors/app-error.js";
 import {
     RequestValidationError,
@@ -9,30 +9,6 @@ import {
     validateQuery,
     validateRequest,
 } from "./validate-request.js";
-
-function createMockRequest(overrides: Partial<Pick<Request, "body" | "query" | "params">> = {}): Request {
-    const rawQuery = overrides.query ?? {};
-    const proto = {
-        get query() {
-            return rawQuery;
-        },
-    };
-
-    const req = Object.create(proto) as Request;
-    req.body = overrides.body ?? {};
-    req.params = (overrides.params ?? {}) as Request["params"];
-
-    return req;
-}
-
-function createMockResponse(): Response {
-    return {} as unknown as Response;
-}
-
-function createMockNext() {
-    const fn = vi.fn<(err?: unknown) => void>();
-    return Object.assign(fn, {} as NextFunction);
-}
 
 describe("validateRequest middleware", () => {
     it("validates and transforms body, query, and params then calls next()", async () => {

@@ -1,55 +1,25 @@
-import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import { describe, expect, it, vi } from "vitest";
-import { JwtTokenProvider } from "../../infrastructure/token-provider/jwt/jwt.js";
-import { AppError } from "../../shared/errors/app-error.js";
+import { describe, expect, it } from "vitest";
 import {
-    InvalidTokenError,
-    TokenExpiredError,
-    type SignTokenPayload,
-} from "../../shared/ports/token-provider/token-provider.js";
+    createExpiredAccessToken,
+    createTokenPayload,
+    createTokenProvider,
+} from "../../../tests/utils/factory/jwt/jwt.js";
+import { createMockNext, createMockRequest, createMockResponse } from "../../../tests/utils/mocks/express.js";
+import { AppError } from "../../shared/errors/app-error.js";
+import { InvalidTokenError, TokenExpiredError } from "../../shared/ports/token-provider/token-provider.js";
 import { authenticate, extractBearerToken } from "./authenticate.js";
 import { InvalidAuthorizationHeaderError, MissingTokenError } from "./errors.js";
 
-const testJwtConfig = {
-    SECRET: "test-access-secret-32-bytes-long!",
-    EXPIRES_IN: "1h",
-    REFRESH_SECRET: "test-refresh-secret-32-bytes-long!",
-    REFRESH_EXPIRES_IN: "7d",
-    ALGORITHM: "HS256",
-    ISSUER: "gtnic-auth",
-    AUDIENCE: "gtnic-app",
-};
-
-const sampleUser: SignTokenPayload = {
+const sampleUser = createTokenPayload({
     sub: {
         userId: "user-42",
         name: "Siti Rahma",
     },
     role: "ADMIN",
-};
-
-function createMockRequest(
-    options: {
-        headers?: Record<string, string | undefined>;
-    } = {},
-): Request {
-    return {
-        headers: options.headers ?? {},
-    } as unknown as Request;
-}
-
-function createMockResponse(): Response {
-    return {} as unknown as Response;
-}
-
-function createMockNext() {
-    const fn = vi.fn<(err?: unknown) => void>();
-    return Object.assign(fn, {} as NextFunction);
-}
+});
 
 describe("Authentication Middleware", () => {
-    const tokenProvider = new JwtTokenProvider(testJwtConfig);
+    const tokenProvider = createTokenProvider();
 
     describe("extractBearerToken", () => {
         it("extracts token from standard Authorization header", () => {
@@ -161,13 +131,7 @@ describe("Authentication Middleware", () => {
         });
 
         it("fails with TokenExpiredError (401) when access token has expired", () => {
-            const expiredToken = jwt.sign({ sub: sampleUser.sub, role: sampleUser.role }, testJwtConfig.SECRET, {
-                algorithm: "HS256",
-                expiresIn: -10, // expired 10 seconds ago
-                issuer: testJwtConfig.ISSUER,
-                audience: testJwtConfig.AUDIENCE,
-                jwtid: "expired-jti-1",
-            });
+            const expiredToken = createExpiredAccessToken({ sub: sampleUser.sub, role: sampleUser.role });
 
             const middleware = authenticate({ tokenProvider });
             const req = createMockRequest({

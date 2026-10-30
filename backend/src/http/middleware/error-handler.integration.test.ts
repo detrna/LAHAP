@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { JwtTokenProvider } from "../../infrastructure/token-provider/jwt/jwt.js";
+import { createTokenProvider } from "../../../tests/utils/factory/jwt/jwt.js";
 import type { Logger } from "../../shared/ports/logger/logger.js";
 import { ObjectNotFoundError } from "../../shared/ports/object-storage/errors.js";
 import { PaymentGatewayProviderError } from "../../shared/ports/payment-gateway/errors.js";
@@ -30,15 +30,7 @@ function createMockLogger(): Logger & {
 }
 
 describe("errorHandler middleware (integration)", () => {
-    const tokenProvider = new JwtTokenProvider({
-        SECRET: "test-access-secret-32-bytes-long!",
-        EXPIRES_IN: "1h",
-        REFRESH_SECRET: "test-refresh-secret-32-bytes-long!",
-        REFRESH_EXPIRES_IN: "7d",
-        ALGORITHM: "HS256",
-        ISSUER: "gtnic-auth",
-        AUDIENCE: "gtnic-app",
-    });
+    const tokenProvider = createTokenProvider();
 
     function createTestApp(logger: Logger) {
         const app = express();
@@ -62,21 +54,17 @@ describe("errorHandler middleware (integration)", () => {
             },
         );
 
-        app.get(
-            "/receipts/:key",
-            validateParams(z.object({ key: z.string().min(3) })),
-            async (req, _res) => {
-                if (req.params.key === "missing") {
-                    throw new ObjectNotFoundError("receipts/missing.jpg");
-                }
-                if (req.params.key === "gateway-down") {
-                    throw new PaymentGatewayProviderError("Upstream payment service unavailable", {
-                        statusCode: 502,
-                    });
-                }
-                throw new Error("db pool exhausted: secret-connection-string");
-            },
-        );
+        app.get("/receipts/:key", validateParams(z.object({ key: z.string().min(3) })), async (req, _res) => {
+            if (req.params.key === "missing") {
+                throw new ObjectNotFoundError("receipts/missing.jpg");
+            }
+            if (req.params.key === "gateway-down") {
+                throw new PaymentGatewayProviderError("Upstream payment service unavailable", {
+                    statusCode: 502,
+                });
+            }
+            throw new Error("db pool exhausted: secret-connection-string");
+        });
 
         app.use(errorHandler({ logger }));
         return app;
@@ -90,13 +78,10 @@ describe("errorHandler middleware (integration)", () => {
             role: "USER",
         });
 
-        const res = await request(app)
-            .post("/orders")
-            .set("Authorization", `Bearer ${token}`)
-            .send({
-                itemId: "550e8400-e29b-41d4-a716-446655440000",
-                quantity: 3,
-            });
+        const res = await request(app).post("/orders").set("Authorization", `Bearer ${token}`).send({
+            itemId: "550e8400-e29b-41d4-a716-446655440000",
+            quantity: 3,
+        });
 
         expect(res.status).toBe(201);
         expect(res.body).toEqual({
@@ -156,13 +141,10 @@ describe("errorHandler middleware (integration)", () => {
             role: "GUEST",
         });
 
-        const res = await request(app)
-            .post("/orders")
-            .set("Authorization", `Bearer ${guestToken}`)
-            .send({
-                itemId: "550e8400-e29b-41d4-a716-446655440000",
-                quantity: 1,
-            });
+        const res = await request(app).post("/orders").set("Authorization", `Bearer ${guestToken}`).send({
+            itemId: "550e8400-e29b-41d4-a716-446655440000",
+            quantity: 1,
+        });
 
         expect(res.status).toBe(403);
         expect(res.body).toEqual({
@@ -182,13 +164,10 @@ describe("errorHandler middleware (integration)", () => {
             role: "USER",
         });
 
-        const res = await request(app)
-            .post("/orders")
-            .set("Authorization", `Bearer ${token}`)
-            .send({
-                itemId: "not-a-uuid",
-                quantity: -5,
-            });
+        const res = await request(app).post("/orders").set("Authorization", `Bearer ${token}`).send({
+            itemId: "not-a-uuid",
+            quantity: -5,
+        });
 
         expect(res.status).toBe(400);
         expect(res.body).toEqual({
@@ -254,4 +233,3 @@ describe("errorHandler middleware (integration)", () => {
         expect(logger.error).toHaveBeenCalledTimes(1);
     });
 });
-

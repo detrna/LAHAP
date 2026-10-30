@@ -1,50 +1,11 @@
-import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
+import { createMockNext, createMockRequest, createMockResponse } from "../../../tests/utils/mocks/express.js";
 import { CacheFailureError } from "../../shared/ports/cache/errors.js";
 import type { Logger } from "../../shared/ports/logger/logger.js";
 import { ObjectNotFoundError } from "../../shared/ports/object-storage/errors.js";
 import { PaymentGatewayProviderError } from "../../shared/ports/payment-gateway/errors.js";
 import { errorHandler } from "./error-handler.js";
-import {
-    ForbiddenError,
-    MissingTokenError,
-    RequestValidationError,
-    type ValidationIssue,
-} from "./errors.js";
-
-function createMockRequest(
-    overrides: {
-        method?: string;
-        path?: string;
-        originalUrl?: string;
-    } = {},
-): Request {
-    return {
-        method: overrides.method ?? "POST",
-        path: overrides.path ?? "/api/orders",
-        originalUrl: overrides.originalUrl ?? overrides.path ?? "/api/orders",
-    } as unknown as Request;
-}
-
-function createMockResponse(options: { headersSent?: boolean } = {}) {
-    const res = {
-        headersSent: options.headersSent ?? false,
-        status: vi.fn(),
-        json: vi.fn(),
-    };
-    res.status.mockReturnValue(res);
-    res.json.mockReturnValue(res);
-
-    return res as unknown as Response & {
-        status: ReturnType<typeof vi.fn>;
-        json: ReturnType<typeof vi.fn>;
-    };
-}
-
-function createMockNext() {
-    const fn = vi.fn<(err?: unknown) => void>();
-    return Object.assign(fn, {} as NextFunction);
-}
+import { ForbiddenError, MissingTokenError, RequestValidationError, type ValidationIssue } from "./errors.js";
 
 function createMockLogger(): Logger & {
     warn: ReturnType<typeof vi.fn>;

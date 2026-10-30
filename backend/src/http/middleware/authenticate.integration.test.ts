@@ -1,29 +1,22 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import {
+    createExpiredAccessToken,
+    createTokenPayload,
+    createTokenProvider,
+} from "../../../tests/utils/factory/jwt/jwt.js";
 import { JwtTokenProvider } from "../../infrastructure/token-provider/jwt/jwt.js";
-import type { SignTokenPayload } from "../../shared/ports/token-provider/token-provider.js";
 import { authenticate } from "./authenticate.js";
 import { errorHandler } from "./error-handler.js";
 
-const testJwtConfig = {
-    SECRET: "test-access-secret-32-bytes-long!",
-    EXPIRES_IN: "1h",
-    REFRESH_SECRET: "test-refresh-secret-32-bytes-long!",
-    REFRESH_EXPIRES_IN: "7d",
-    ALGORITHM: "HS256",
-    ISSUER: "gtnic-auth",
-    AUDIENCE: "gtnic-app",
-};
-
-const sampleAdmin: SignTokenPayload = {
+const sampleAdmin = createTokenPayload({
     sub: {
         userId: "user-42",
         name: "Siti Rahma",
     },
     role: "ADMIN",
-};
+});
 
 function createTestApp(tokenProvider: JwtTokenProvider) {
     const app = express();
@@ -42,15 +35,13 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
 }
 
 describe("authenticate middleware (integration)", () => {
-    const tokenProvider = new JwtTokenProvider(testJwtConfig);
+    const tokenProvider = createTokenProvider();
     const app = createTestApp(tokenProvider);
 
     it("authenticates request with valid Authorization Bearer token and populates req.user and req.tokenPayload", async () => {
         const accessToken = tokenProvider.signAccessToken(sampleAdmin);
 
-        const res = await request(app)
-            .get("/me")
-            .set("Authorization", `Bearer ${accessToken}`);
+        const res = await request(app).get("/me").set("Authorization", `Bearer ${accessToken}`);
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual({
@@ -67,15 +58,11 @@ describe("authenticate middleware (integration)", () => {
     it("supports case-insensitive 'bearer' prefix and x-access-token fallback header", async () => {
         const accessToken = tokenProvider.signAccessToken(sampleAdmin);
 
-        const lowerBearerRes = await request(app)
-            .get("/me")
-            .set("Authorization", `bearer ${accessToken}`);
+        const lowerBearerRes = await request(app).get("/me").set("Authorization", `bearer ${accessToken}`);
         expect(lowerBearerRes.status).toBe(200);
         expect(lowerBearerRes.body.user.userId).toBe("user-42");
 
-        const fallbackHeaderRes = await request(app)
-            .get("/me")
-            .set("x-access-token", accessToken);
+        const fallbackHeaderRes = await request(app).get("/me").set("x-access-token", accessToken);
         expect(fallbackHeaderRes.status).toBe(200);
         expect(fallbackHeaderRes.body.user.userId).toBe("user-42");
     });
@@ -93,9 +80,7 @@ describe("authenticate middleware (integration)", () => {
     });
 
     it("returns 401 INVALID_AUTHORIZATION_HEADER when Authorization header is malformed", async () => {
-        const basicRes = await request(app)
-            .get("/me")
-            .set("Authorization", "Basic dXNlcjpwYXNz");
+        const basicRes = await request(app).get("/me").set("Authorization", "Basic dXNlcjpwYXNz");
 
         expect(basicRes.status).toBe(401);
         expect(basicRes.body).toEqual({
@@ -105,47 +90,29 @@ describe("authenticate middleware (integration)", () => {
             },
         });
 
-        const emptyRes = await request(app)
-            .get("/me")
-            .set("Authorization", "   ");
+        const emptyRes = await request(app).get("/me").set("Authorization", "   ");
 
         expect(emptyRes.status).toBe(401);
         expect(emptyRes.body.error.code).toBe("INVALID_AUTHORIZATION_HEADER");
     });
 
     it("returns 401 INVALID_TOKEN when token signature is invalid or a refresh token is used", async () => {
-        const badSigRes = await request(app)
-            .get("/me")
-            .set("Authorization", "Bearer invalid.jwt.signature");
+        const badSigRes = await request(app).get("/me").set("Authorization", "Bearer invalid.jwt.signature");
 
         expect(badSigRes.status).toBe(401);
         expect(badSigRes.body.error.code).toBe("INVALID_TOKEN");
 
         const refreshToken = tokenProvider.signRefreshToken(sampleAdmin);
-        const refreshAsAccessRes = await request(app)
-            .get("/me")
-            .set("Authorization", `Bearer ${refreshToken}`);
+        const refreshAsAccessRes = await request(app).get("/me").set("Authorization", `Bearer ${refreshToken}`);
 
         expect(refreshAsAccessRes.status).toBe(401);
         expect(refreshAsAccessRes.body.error.code).toBe("INVALID_TOKEN");
     });
 
     it("returns 401 TOKEN_EXPIRED when access token has expired", async () => {
-        const expiredToken = jwt.sign(
-            { sub: sampleAdmin.sub, role: sampleAdmin.role },
-            testJwtConfig.SECRET,
-            {
-                algorithm: "HS256",
-                expiresIn: -10,
-                issuer: testJwtConfig.ISSUER,
-                audience: testJwtConfig.AUDIENCE,
-                jwtid: "expired-jti-1",
-            },
-        );
+        const expiredToken = createExpiredAccessToken({ sub: sampleAdmin.sub, role: sampleAdmin.role });
 
-        const res = await request(app)
-            .get("/me")
-            .set("Authorization", `Bearer ${expiredToken}`);
+        const res = await request(app).get("/me").set("Authorization", `Bearer ${expiredToken}`);
 
         expect(res.status).toBe(401);
         expect(res.body).toEqual({

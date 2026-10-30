@@ -1,22 +1,7 @@
-import type { NextFunction, Request, Response } from "express";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { createMockNext, createMockRequest, createMockResponse } from "../../../tests/utils/mocks/express.js";
 import { authorize, requireRoles } from "./authorize.js";
 import { ForbiddenError, MissingTokenError } from "./errors.js";
-
-function createMockRequest(options: { user?: Request["user"] } = {}): Request {
-    return {
-        user: options.user,
-    } as unknown as Request;
-}
-
-function createMockResponse(): Response {
-    return {} as unknown as Response;
-}
-
-function createMockNext() {
-    const fn = vi.fn<(err?: unknown) => void>();
-    return Object.assign(fn, {} as NextFunction);
-}
 
 describe("authorize middleware (unit)", () => {
     it("fails with MissingTokenError when req.user is not populated", () => {
@@ -104,4 +89,3 @@ describe("authorize middleware (unit)", () => {
         expect(next).toHaveBeenCalledWith();
     });
 });
-
