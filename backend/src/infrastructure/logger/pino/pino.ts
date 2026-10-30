@@ -1,5 +1,5 @@
 import pino, { type DestinationStream, type Logger as PinoInstance } from "pino";
-import { LOG_LEVELS, type LoggerConfig } from "../../../config/logger.js";
+import { DEFAULT_LOGGER_CONFIG, LOG_LEVELS, type LoggerConfig } from "../../../config/logger.js";
 import {
     InvalidLoggerConfigError,
     LoggerFailureError,
@@ -41,7 +41,7 @@ function normalizeLogContext(context: LogContext): Record<string, unknown> {
 export class PinoLogger implements Logger {
     private readonly instance: PinoInstance;
 
-    constructor(config: LoggerConfig, options: PinoLoggerOptions = {}) {
+    constructor(config: LoggerConfig = DEFAULT_LOGGER_CONFIG, options: PinoLoggerOptions = {}) {
         this.instance = PinoLogger.createPinoInstance(config, options);
     }
 

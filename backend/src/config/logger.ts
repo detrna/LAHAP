@@ -9,6 +9,12 @@ export interface LoggerConfig {
     readonly FILE_PATH?: string;
 }
 
+export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
+    LEVEL: "info",
+    SERVICE_NAME: "gtnic-backend",
+    FILE_PATH: "log/log.txt",
+};
+
 export const loggerEnvSchema = z.object({
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
     LOG_SERVICE_NAME: z.string().trim().min(1).default("gtnic-backend"),

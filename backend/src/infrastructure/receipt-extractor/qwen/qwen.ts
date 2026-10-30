@@ -171,7 +171,6 @@ export class QwenReceiptExtractor implements ReceiptExtractor {
         try {
             ({ confidence, data } = parseReceiptData(content, units));
         } catch (cause) {
-            // console.error("raw OCR output:", content);
             throw new ReceiptExtractionError("Receipt extractor output was not valid receipt data", { cause });
         }
 

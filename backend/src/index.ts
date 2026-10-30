@@ -1,22 +1,28 @@
 import { z } from "zod";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config/index.js";
+import { DEFAULT_LOGGER_CONFIG } from "./config/logger.js";
 import { loadDatabase } from "./infrastructure/database/prisma/db.js";
 import { createInfrastructure } from "./infrastructure/index.js";
+import { PinoLogger } from "./infrastructure/logger/pino/pino.js";
+import type { Logger } from "./shared/ports/logger/logger.js";
 
 async function bootstrap() {
+    let logger: Logger = new PinoLogger(DEFAULT_LOGGER_CONFIG);
+
     try {
         const config = loadConfig();
+        const infrastructure = await createInfrastructure(config);
+        logger = infrastructure.logger;
 
         const db = await loadDatabase(config.DATABASE);
-        console.log("Database connected successfully");
+        logger.info("Database connected successfully");
 
-        const infrastructure = await createInfrastructure(config);
-        console.log("Infrastructure initialized successfully");
+        logger.info("Infrastructure initialized successfully");
 
         const app = createApp(infrastructure);
         const server = app.listen(config.APP.PORT, () => {
-            console.log(`Server is running on port ${config.APP.PORT}`);
+            logger.info(`Server is running on port ${config.APP.PORT}`);
         });
 
         const shutdown = () => {
@@ -30,12 +36,12 @@ async function bootstrap() {
         process.on("SIGTERM", shutdown);
     } catch (err) {
         if (err instanceof z.ZodError) {
-            console.error("Invalid configuration:");
+            logger.error({ issues: err.issues }, "Invalid configuration:");
             for (const issue of err.issues) {
-                console.error(`  ${issue.path.join(".")}: ${issue.message}`);
+                logger.error({ path: issue.path.join("."), issue: issue.message }, `  ${issue.path.join(".")}: ${issue.message}`);
             }
         } else {
-            console.error("Startup failed:", err);
+            logger.error({ err }, "Startup failed");
         }
         process.exit(1);
     }
