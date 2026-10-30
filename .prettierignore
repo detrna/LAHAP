@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+coverage
+*.min.js
+package-lock.json
+skills-lock.json
+backend/src/infrastructure/database/prisma/contract.d.ts
+backend/src/infrastructure/database/prisma/contract.json
+backend/src/infrastructure/database/prisma/migrations/
+
