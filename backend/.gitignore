@@ -11,6 +11,7 @@ dist/
 
 # logs
 *.log
+log/
 npm-debug.log*
 
 # TypeScript incremental build info

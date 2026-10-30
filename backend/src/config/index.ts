@@ -4,6 +4,7 @@ import { appEnvSchema, toAppConfig, type AppConfig } from "./app.js";
 import { dbEnvSchema, toDatabaseConfig, type DatabaseConfig } from "./db.js";
 import { hasherEnvSchema, toHasherConfig, type HasherConfig } from "./hasher.js";
 import { jwtEnvSchema, toJwtConfig, type JwtConfig } from "./jwt.js";
+import { loggerEnvSchema, toLoggerConfig, type LoggerConfig } from "./logger.js";
 import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig } from "./object-storage.js";
 import { paymentGatewayEnvSchema, toPaymentGatewayConfig, type PaymentGatewayConfig } from "./payment-gateway.js";
 import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
@@ -15,6 +16,7 @@ export interface Config {
     readonly DATABASE: DatabaseConfig;
     readonly JWT: JwtConfig;
     readonly HASHER: HasherConfig;
+    readonly LOGGER: LoggerConfig;
     readonly RECEIPT_EXTRACTOR: ReceiptExtractorConfig;
     readonly OBJECT_STORAGE: ObjectStorageConfig;
     readonly PAYMENT_GATEWAY: PaymentGatewayConfig;
@@ -35,6 +37,7 @@ const envSchema = z.object({
     ...dbEnvSchema.shape,
     ...jwtEnvSchema.shape,
     ...hasherEnvSchema.shape,
+    ...loggerEnvSchema.shape,
     ...receiptExtractorEnvSchema.shape,
     ...objectStorageEnvSchema.shape,
     ...paymentGatewayEnvSchema.shape,
@@ -50,6 +53,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         DATABASE: toDatabaseConfig(parsed),
         JWT: toJwtConfig(parsed),
         HASHER: toHasherConfig(parsed),
+        LOGGER: toLoggerConfig(parsed),
         RECEIPT_EXTRACTOR: toReceiptExtractorConfig(parsed),
         OBJECT_STORAGE: toObjectStorageConfig(parsed),
         PAYMENT_GATEWAY: toPaymentGatewayConfig(parsed),
