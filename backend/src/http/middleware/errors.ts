@@ -1,15 +1,8 @@
 import { AppError } from "../../shared/errors/app-error.js";
+import type { RequestValidationTarget, ValidationIssue } from "../../shared/response/index.js";
 
 export * from "../../shared/ports/token-provider/errors.js";
-
-export type RequestValidationTarget = "body" | "query" | "params";
-
-export interface ValidationIssue {
-    readonly target: RequestValidationTarget;
-    readonly path: string;
-    readonly message: string;
-    readonly code: string;
-}
+export type { RequestValidationTarget, ValidationIssue } from "../../shared/response/index.js";
 
 export class RequestValidationError extends AppError {
     readonly code = "VALIDATION_ERROR";
