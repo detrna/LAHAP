@@ -1,1 +1,10 @@
 // use prisma-8
+
+model JobRun {
+  id         String             @id @onCreate(uuid())
+  jobName    String
+  status     String
+  startedAt  TimestamptzJsDate  @default(now()) @onCreate(now())
+  finishedAt TimestamptzJsDate?
+  error      String?
+}

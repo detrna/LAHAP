@@ -1,0 +1,51 @@
+[
+  {
+    "id": "table.JobRun",
+    "label": "Create table \"JobRun\"",
+    "summary": "Creates table \"JobRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "JobRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"JobRun\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"JobRun\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"JobRun\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"JobRun\"",
+        "sql": "CREATE TABLE \"public\".\"JobRun\" (\n  \"error\" text,\n  \"finishedAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"jobName\" text NOT NULL,\n  \"startedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"status\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"JobRun\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"JobRun\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"JobRun\""
+        }
+      }
+    ]
+  }
+]

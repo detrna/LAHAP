@@ -8,6 +8,7 @@ import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig
 import { paymentGatewayEnvSchema, toPaymentGatewayConfig, type PaymentGatewayConfig } from "./payment-gateway.js";
 import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
 import { redisEnvSchema, toRedisConfig, type RedisConfig } from "./redis.js";
+import { schedulerEnvSchema, toSchedulerConfig, type SchedulerConfig } from "./scheduler.js";
 
 export interface Config {
     readonly APP: AppConfig;
@@ -18,6 +19,7 @@ export interface Config {
     readonly OBJECT_STORAGE: ObjectStorageConfig;
     readonly PAYMENT_GATEWAY: PaymentGatewayConfig;
     readonly REDIS: RedisConfig;
+    readonly SCHEDULER: SchedulerConfig;
 }
 
 export const parseEnv = <T>(schema: { parse: (value: unknown) => T }, value: unknown = process.env) => {
@@ -37,6 +39,7 @@ const envSchema = z.object({
     ...objectStorageEnvSchema.shape,
     ...paymentGatewayEnvSchema.shape,
     ...redisEnvSchema.shape,
+    ...schedulerEnvSchema.shape,
 });
 
 export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
@@ -51,5 +54,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         OBJECT_STORAGE: toObjectStorageConfig(parsed),
         PAYMENT_GATEWAY: toPaymentGatewayConfig(parsed),
         REDIS: toRedisConfig(parsed),
+        SCHEDULER: toSchedulerConfig(parsed),
     };
 };
