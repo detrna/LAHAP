@@ -37,17 +37,6 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
         });
     });
 
-    app.delete(
-        "/admin/users/:id",
-        authenticate({ tokenProvider, requiredRoles: ["ADMIN", "SUPER_ADMIN"] }),
-        (req, res) => {
-            res.status(200).json({
-                deletedUserId: req.params.id,
-                performedBy: req.user?.userId,
-            });
-        },
-    );
-
     app.use(errorHandler());
     return app;
 }
@@ -164,36 +153,6 @@ describe("authenticate middleware (integration)", () => {
                 code: "TOKEN_EXPIRED",
                 message: expect.any(String),
             },
-        });
-    });
-
-    it("enforces requiredRoles and returns 403 FORBIDDEN for unauthorized roles", async () => {
-        const regularUserToken = tokenProvider.signAccessToken({
-            sub: { userId: "user-99", name: "Regular User" },
-            role: "USER",
-        });
-
-        const forbiddenRes = await request(app)
-            .delete("/admin/users/user-50")
-            .set("Authorization", `Bearer ${regularUserToken}`);
-
-        expect(forbiddenRes.status).toBe(403);
-        expect(forbiddenRes.body).toEqual({
-            error: {
-                code: "FORBIDDEN",
-                message: 'role "USER" is not authorized to access this resource',
-            },
-        });
-
-        const adminToken = tokenProvider.signAccessToken(sampleAdmin);
-        const allowedRes = await request(app)
-            .delete("/admin/users/user-50")
-            .set("Authorization", `Bearer ${adminToken}`);
-
-        expect(allowedRes.status).toBe(200);
-        expect(allowedRes.body).toEqual({
-            deletedUserId: "user-50",
-            performedBy: "user-42",
         });
     });
 });

@@ -4,7 +4,6 @@ import type {
     VerifiedTokenPayload,
 } from "../../shared/ports/token-provider/token-provider.js";
 import {
-    ForbiddenError,
     InvalidAuthorizationHeaderError,
     MissingTokenError,
 } from "./errors.js";
@@ -31,11 +30,6 @@ export interface AuthenticatedRequest extends Request {
 
 export interface AuthenticateOptions {
     readonly tokenProvider: TokenProvider;
-    /**
-     * Optional list of required roles. If provided, requests with other roles
-     * receive a ForbiddenError (403).
-     */
-    readonly requiredRoles?: readonly string[] | undefined;
 }
 
 export function extractBearerToken(req: Request): string | null {
@@ -70,7 +64,6 @@ export function extractBearerToken(req: Request): string | null {
  * - Extracts the token from the standard `Authorization: Bearer <token>` header (or `x-access-token`).
  * - Verifies the access token using the provided `TokenProvider`.
  * - Populates `req.user = { userId, name, role }` and `req.tokenPayload`.
- * - Enforces role-based access if `requiredRoles` is configured, forwarding `ForbiddenError` (403) on mismatch.
  * - On failure (missing, malformed, invalid, or expired token), forwards the error to `next(err)`.
  */
 export function authenticate(options: AuthenticateOptions): RequestHandler {
@@ -83,15 +76,6 @@ export function authenticate(options: AuthenticateOptions): RequestHandler {
             }
 
             const payload = options.tokenProvider.verifyAccessToken(token);
-
-            if (options.requiredRoles && !options.requiredRoles.includes(payload.role)) {
-                next(
-                    new ForbiddenError(
-                        `role "${payload.role}" is not authorized to access this resource`,
-                    ),
-                );
-                return;
-            }
 
             req.user = {
                 userId: payload.sub.userId,

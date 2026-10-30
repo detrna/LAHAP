@@ -7,6 +7,7 @@ import type { Logger } from "../../shared/ports/logger/logger.js";
 import { ObjectNotFoundError } from "../../shared/ports/object-storage/errors.js";
 import { PaymentGatewayProviderError } from "../../shared/ports/payment-gateway/errors.js";
 import { authenticate } from "./authenticate.js";
+import { authorize } from "./authorize.js";
 import { errorHandler } from "./error-handler.js";
 import { validateBody, validateParams } from "./validate-request.js";
 
@@ -45,7 +46,8 @@ describe("errorHandler middleware (integration)", () => {
 
         app.post(
             "/orders",
-            authenticate({ tokenProvider, requiredRoles: ["ADMIN", "USER"] }),
+            authenticate({ tokenProvider }),
+            authorize("ADMIN", "USER"),
             validateBody(
                 z.object({
                     itemId: z.string().uuid("Invalid item UUID"),

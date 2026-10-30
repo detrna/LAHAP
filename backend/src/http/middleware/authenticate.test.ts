@@ -9,7 +9,7 @@ import {
     type SignTokenPayload,
 } from "../../shared/ports/token-provider/token-provider.js";
 import { authenticate, extractBearerToken } from "./authenticate.js";
-import { ForbiddenError, InvalidAuthorizationHeaderError, MissingTokenError } from "./errors.js";
+import { InvalidAuthorizationHeaderError, MissingTokenError } from "./errors.js";
 
 const testJwtConfig = {
     SECRET: "test-access-secret-32-bytes-long!",
@@ -181,52 +181,6 @@ describe("Authentication Middleware", () => {
             const error = next.mock.calls[0]?.[0];
             expect(error).toBeInstanceOf(TokenExpiredError);
             expect((error as TokenExpiredError).statusCode).toBe(401);
-        });
-
-        it("enforces requiredRoles and rejects unauthorized roles with ForbiddenError (403)", () => {
-            const userToken = tokenProvider.signAccessToken({
-                sub: { userId: "user-99", name: "Regular User" },
-                role: "USER",
-            });
-
-            const middleware = authenticate({
-                tokenProvider,
-                requiredRoles: ["ADMIN", "MANAGER"],
-            });
-
-            const req = createMockRequest({
-                headers: { authorization: `Bearer ${userToken}` },
-            });
-            const res = createMockResponse();
-            const next = createMockNext();
-
-            middleware(req, res, next);
-
-            const error = next.mock.calls[0]?.[0];
-            expect(error).toBeInstanceOf(ForbiddenError);
-            expect((error as ForbiddenError).statusCode).toBe(403);
-            expect((error as ForbiddenError).message).toContain('role "USER" is not authorized');
-        });
-
-        it("allows authorized role when requiredRoles matches", () => {
-            const adminToken = tokenProvider.signAccessToken(sampleUser);
-
-            const middleware = authenticate({
-                tokenProvider,
-                requiredRoles: ["ADMIN", "MANAGER"],
-            });
-
-            const req = createMockRequest({
-                headers: { authorization: `Bearer ${adminToken}` },
-            });
-            const res = createMockResponse();
-            const next = createMockNext();
-
-            middleware(req, res, next);
-
-            expect(next).toHaveBeenCalledTimes(1);
-            expect(next).toHaveBeenCalledWith();
-            expect(req.user?.role).toBe("ADMIN");
         });
     });
 });
