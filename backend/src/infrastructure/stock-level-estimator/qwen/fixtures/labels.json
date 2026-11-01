@@ -1,0 +1,431 @@
+[
+  {
+    "file": "scenes/oil_scene_01_5bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 5,
+    "fill_levels_percent": [
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "exact_total_bottles": 5.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 5,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_02_4bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 4,
+    "fill_levels_percent": [
+      100,
+      50,
+      100,
+      100
+    ],
+    "exact_total_bottles": 3.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_03_3bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      100,
+      25,
+      100
+    ],
+    "exact_total_bottles": 2.25,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 3,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_04_3bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      100,
+      50,
+      25
+    ],
+    "exact_total_bottles": 1.75,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 2,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_05_4bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 4,
+    "fill_levels_percent": [
+      100,
+      100,
+      100,
+      100
+    ],
+    "exact_total_bottles": 4.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_06_4bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 4,
+    "fill_levels_percent": [
+      100,
+      50,
+      100,
+      50
+    ],
+    "exact_total_bottles": 3.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 3,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_07_2bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 2,
+    "fill_levels_percent": [
+      50,
+      25
+    ],
+    "exact_total_bottles": 0.75,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 1,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_08_3bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      0,
+      0,
+      100
+    ],
+    "exact_total_bottles": 1.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 1,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_09_3bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      0,
+      0,
+      0
+    ],
+    "exact_total_bottles": 0.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 0,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_10_5bottles.png",
+    "liquid": "oil",
+    "bottles_visible": 5,
+    "fill_levels_percent": [
+      25,
+      100,
+      50,
+      100,
+      75
+    ],
+    "exact_total_bottles": 3.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/oil_scene_3full_1half.png",
+    "liquid": "oil",
+    "bottles_visible": 4,
+    "fill_levels_percent": [
+      100,
+      100,
+      100,
+      50
+    ],
+    "exact_total_bottles": 3.5,
+    "source": "original",
+    "expected_output": {
+      "item": {
+        "name": "Cooking Oil",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_01_5bottles.png",
+    "liquid": "water",
+    "bottles_visible": 5,
+    "fill_levels_percent": [
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "exact_total_bottles": 5.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 5,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_02_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      50,
+      100,
+      100
+    ],
+    "exact_total_bottles": 2.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 3,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_03_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      25,
+      100,
+      100
+    ],
+    "exact_total_bottles": 2.25,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 3,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_04_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      50,
+      75,
+      25
+    ],
+    "exact_total_bottles": 1.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 2,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_05_4bottles.png",
+    "liquid": "water",
+    "bottles_visible": 4,
+    "fill_levels_percent": [
+      100,
+      75,
+      100,
+      100
+    ],
+    "exact_total_bottles": 3.75,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_06_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      50,
+      50,
+      50
+    ],
+    "exact_total_bottles": 1.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 2,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_07_2bottles.png",
+    "liquid": "water",
+    "bottles_visible": 2,
+    "fill_levels_percent": [
+      25,
+      25
+    ],
+    "exact_total_bottles": 0.5,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 1,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_08_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      0,
+      100,
+      0
+    ],
+    "exact_total_bottles": 1.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 1,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_09_3bottles.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      0,
+      0,
+      0
+    ],
+    "exact_total_bottles": 0.0,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 0,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_10_5bottles.png",
+    "liquid": "water",
+    "bottles_visible": 5,
+    "fill_levels_percent": [
+      75,
+      100,
+      0,
+      100,
+      50
+    ],
+    "exact_total_bottles": 3.25,
+    "source": "composited",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 4,
+        "unit": "bottle"
+      }
+    }
+  },
+  {
+    "file": "scenes/water_scene_2full_1quarter.png",
+    "liquid": "water",
+    "bottles_visible": 3,
+    "fill_levels_percent": [
+      100,
+      100,
+      25
+    ],
+    "exact_total_bottles": 2.25,
+    "source": "original",
+    "expected_output": {
+      "item": {
+        "name": "Drinking Water",
+        "quantity": 3,
+        "unit": "bottle"
+      }
+    }
+  }
+]

@@ -1,6 +1,7 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { z } from "zod";
 import type { ReceiptExtractorConfig } from "../../../config/receipt-extractor.js";
+import { createQwenClient, parseAndValidateJson } from "../../qwen/index.js";
 import { CONFIDENCE_THRESHOLD, MAX_IMAGE_BYTES, SUPPORTED_MIME_TYPES } from "./const.js";
 import {
     InvalidReceiptImageError,
@@ -86,8 +87,7 @@ ${JSON.stringify(example, null, 2)}
 
 // The model may wrap JSON in code fences, so strip them before parsing
 function parseReceiptData(text: string, units: NonEmptyArray<string>): { confidence: number; data: ReceiptData } {
-    const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = buildReceiptSchema(units).parse(JSON.parse(cleaned));
+    const parsed = parseAndValidateJson(text, buildReceiptSchema(units));
     return { confidence: parsed.confidence, data: { items: parsed.items } };
 }
 
@@ -104,14 +104,10 @@ export class QwenReceiptExtractor implements ReceiptExtractor {
     private readonly onUsage?: QwenReceiptExtractorOptions["onUsage"];
 
     constructor(config: ReceiptExtractorConfig, options: QwenReceiptExtractorOptions = {}) {
-        if (!config.API_KEY) {
-            throw new Error("DASHSCOPE_API_KEY is not set");
-        }
-
-        this.client = new OpenAI({
+        this.client = createQwenClient({
             apiKey: config.API_KEY,
             baseURL: config.BASE_URL,
-            timeout: config.TIMEOUT_MS,
+            timeoutMs: config.TIMEOUT_MS,
             maxRetries: config.MAX_RETRIES,
         });
         this.model = config.MODEL;

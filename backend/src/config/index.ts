@@ -10,6 +10,11 @@ import { paymentGatewayEnvSchema, toPaymentGatewayConfig, type PaymentGatewayCon
 import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
 import { redisEnvSchema, toRedisConfig, type RedisConfig } from "./redis.js";
 import { schedulerEnvSchema, toSchedulerConfig, type SchedulerConfig } from "./scheduler.js";
+import {
+    stockLevelEstimatorEnvSchema,
+    toStockLevelEstimatorConfig,
+    type StockLevelEstimatorConfig,
+} from "./stock-level-estimator.js";
 
 export interface Config {
     readonly APP: AppConfig;
@@ -18,6 +23,7 @@ export interface Config {
     readonly HASHER: HasherConfig;
     readonly LOGGER: LoggerConfig;
     readonly RECEIPT_EXTRACTOR: ReceiptExtractorConfig;
+    readonly STOCK_LEVEL_ESTIMATOR: StockLevelEstimatorConfig;
     readonly OBJECT_STORAGE: ObjectStorageConfig;
     readonly PAYMENT_GATEWAY: PaymentGatewayConfig;
     readonly REDIS: RedisConfig;
@@ -39,6 +45,7 @@ const envSchema = z.object({
     ...hasherEnvSchema.shape,
     ...loggerEnvSchema.shape,
     ...receiptExtractorEnvSchema.shape,
+    ...stockLevelEstimatorEnvSchema.shape,
     ...objectStorageEnvSchema.shape,
     ...paymentGatewayEnvSchema.shape,
     ...redisEnvSchema.shape,
@@ -55,6 +62,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         HASHER: toHasherConfig(parsed),
         LOGGER: toLoggerConfig(parsed),
         RECEIPT_EXTRACTOR: toReceiptExtractorConfig(parsed),
+        STOCK_LEVEL_ESTIMATOR: toStockLevelEstimatorConfig(parsed),
         OBJECT_STORAGE: toObjectStorageConfig(parsed),
         PAYMENT_GATEWAY: toPaymentGatewayConfig(parsed),
         REDIS: toRedisConfig(parsed),

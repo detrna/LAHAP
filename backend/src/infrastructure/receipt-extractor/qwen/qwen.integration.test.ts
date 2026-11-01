@@ -11,7 +11,7 @@ const config = loadConfig();
 // Integration tests call the real (paid) OCR API.
 // Run with: npm run test:integration
 if (!config.RECEIPT_EXTRACTOR.API_KEY) {
-    throw new Error("DASHSCOPE_API_KEY is required to run integration tests");
+    throw new Error("RECEIPT_EXTRACTOR_API_KEY is required to run integration tests");
 }
 
 const FIXTURES_DIR = join(import.meta.dirname, "fixtures");

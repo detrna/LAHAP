@@ -34,3 +34,6 @@ export class ReceiptExtractorProviderError extends ReceiptExtractionError {
     override readonly statusCode = 502;
 }
 
+// Aliases matching domain terminology
+export { LowConfidenceReceiptError as ErrorLowConfidence, NoReceiptItemsFoundError as ErrorNotReceipt };
+
