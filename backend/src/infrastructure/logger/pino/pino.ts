@@ -1,4 +1,5 @@
 import pino, { type DestinationStream, type Logger as PinoInstance } from "pino";
+import pinoPretty from "pino-pretty";
 import { DEFAULT_LOGGER_CONFIG, LOG_LEVELS, type LoggerConfig } from "../../../config/logger.js";
 import {
     InvalidLoggerConfigError,
@@ -22,8 +23,9 @@ export const DEFAULT_REDACT_PATHS = [
 ] as const;
 
 export interface PinoLoggerOptions {
-    /** Custom destination stream (defaults to stdout). Useful for testing or file streams. */
+    /** Custom destination stream that replaces both the console and FILE_PATH outputs. Useful for testing. */
     readonly destination?: DestinationStream | undefined;
+    readonly consoleDestination?: DestinationStream | undefined;
     /** Additional paths to redact from structured log objects. */
     readonly redactPaths?: readonly string[] | undefined;
 }
@@ -62,15 +64,20 @@ export class PinoLogger implements Logger {
             ? [...new Set([...DEFAULT_REDACT_PATHS, ...options.redactPaths])]
             : [...DEFAULT_REDACT_PATHS];
 
+        const consoleDestination =
+            options.consoleDestination ??
+            (config.PRETTY
+                ? pinoPretty({ sync: true, translateTime: "SYS:HH:MM:ss.l", ignore: "pid,hostname,service" })
+                : process.stdout);
+        const filePath = config.FILE_PATH?.trim();
         const destination =
             options.destination ??
-            (config.FILE_PATH?.trim()
-                ? pino.destination({
-                      dest: config.FILE_PATH.trim(),
-                      mkdir: true,
-                      sync: true,
-                  })
-                : undefined);
+            (filePath
+                ? pino.multistream([
+                      { level: "trace", stream: consoleDestination },
+                      { level: "trace", stream: pino.destination({ dest: filePath, mkdir: true, sync: true }) },
+                  ])
+                : consoleDestination);
 
         try {
             return pino(

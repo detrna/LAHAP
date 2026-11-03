@@ -249,15 +249,15 @@ describe("PinoLogger (unit)", () => {
     });
 
     describe("file destination output", () => {
-        it("outputs logs to FILE_PATH and creates directories automatically", () => {
+        it("outputs logs to FILE_PATH and the console, creating directories automatically", () => {
             const testFilePath = join("test-log-dir", "sub", "test-log.txt");
+            const { destination: consoleDestination, lines: consoleLines } = createCaptureStream();
 
             try {
-                const fileLogger = new PinoLogger({
-                    LEVEL: "info",
-                    SERVICE_NAME: "file-logger-test",
-                    FILE_PATH: testFilePath,
-                });
+                const fileLogger = new PinoLogger(
+                    { LEVEL: "info", SERVICE_NAME: "file-logger-test", FILE_PATH: testFilePath },
+                    { consoleDestination },
+                );
 
                 fileLogger.info({ event: "boot" }, "Application started");
 
@@ -266,9 +266,41 @@ describe("PinoLogger (unit)", () => {
                 expect(fileContent).toContain('"service":"file-logger-test"');
                 expect(fileContent).toContain('"msg":"Application started"');
                 expect(fileContent).toContain('"event":"boot"');
+                expect(consoleLines).toEqual([
+                    expect.objectContaining({ service: "file-logger-test", msg: "Application started", event: "boot" }),
+                ]);
             } finally {
                 rmSync("test-log-dir", { recursive: true, force: true });
             }
+        });
+
+        it("keeps filtering by LEVEL when writing to both outputs", () => {
+            const testFilePath = join("test-log-dir-level", "test-log.txt");
+            const { destination: consoleDestination, lines: consoleLines } = createCaptureStream();
+
+            try {
+                const fileLogger = new PinoLogger(
+                    { LEVEL: "debug", SERVICE_NAME: "file-logger-test", FILE_PATH: testFilePath },
+                    { consoleDestination },
+                );
+
+                fileLogger.trace("hidden");
+                fileLogger.debug("shown");
+
+                expect(consoleLines.map(line => line["msg"])).toEqual(["shown"]);
+                expect(readFileSync(testFilePath, "utf8")).not.toContain("hidden");
+            } finally {
+                rmSync("test-log-dir-level", { recursive: true, force: true });
+            }
+        });
+
+        it("writes only to the console when FILE_PATH is not set", () => {
+            const { destination: consoleDestination, lines: consoleLines } = createCaptureStream();
+            const consoleLogger = new PinoLogger({ LEVEL: "info", SERVICE_NAME: "console-only" }, { consoleDestination });
+
+            consoleLogger.info("hello");
+
+            expect(consoleLines).toEqual([expect.objectContaining({ service: "console-only", msg: "hello" })]);
         });
     });
 });
