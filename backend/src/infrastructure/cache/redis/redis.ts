@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
 import type { RedisConfig } from "../../../config/redis.js";
-import type { Cache, SetCacheOptions } from "../../../shared/ports/cache/cache.js";
+import type { Cache, CacheCounter, IncrementCacheOptions, SetCacheOptions } from "../../../shared/ports/cache/cache.js";
 import {
     CacheFailureError,
     InvalidCacheKeyError,
@@ -82,6 +82,36 @@ export class RedisCache implements Cache {
         } catch (cause) {
             throw new CacheFailureError("exists", cause);
         }
+    }
+
+    async increment(key: string, options: IncrementCacheOptions): Promise<CacheCounter> {
+        const normalizedKey = normalizeCacheKey(key);
+        const ttl = options.ttlSeconds;
+
+        if (!Number.isInteger(ttl) || ttl <= 0) {
+            throw new InvalidCacheTtlError(ttl);
+        }
+
+        let results: [Error | null, unknown][] | null;
+        try {
+            results = await this.client
+                .multi()
+                .set(normalizedKey, "0", "EX", ttl, "NX")
+                .incr(normalizedKey)
+                .ttl(normalizedKey)
+                .exec();
+        } catch (cause) {
+            throw new CacheFailureError("increment", cause);
+        }
+
+        const failure = results?.find(([error]) => error !== null)?.[0];
+        const value = results?.[1]?.[1];
+        const remaining = results?.[2]?.[1];
+        if (results === null || failure || typeof value !== "number" || typeof remaining !== "number") {
+            throw new CacheFailureError("increment", failure ?? new Error("transaction was aborted"));
+        }
+
+        return { value, expiresInSeconds: remaining > 0 ? remaining : ttl };
     }
 
     async delete(key: string): Promise<void> {

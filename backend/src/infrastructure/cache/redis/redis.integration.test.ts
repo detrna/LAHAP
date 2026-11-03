@@ -37,4 +37,30 @@ describe("RedisCache (integration)", () => {
         expect(await cache.exists(key)).toBe(false);
         expect(await cache.get(key)).toBeNull();
     });
+
+    it("increments a counter within one fixed window", async () => {
+        const key = `counter:${randomUUID()}`;
+
+        const first = await cache.increment(key, { ttlSeconds: 60 });
+        const second = await cache.increment(key, { ttlSeconds: 60 });
+
+        expect(first.value).toBe(1);
+        expect(second.value).toBe(2);
+        expect(second.expiresInSeconds).toBeGreaterThan(0);
+        expect(second.expiresInSeconds).toBeLessThanOrEqual(60);
+
+        await cache.delete(key);
+        expect((await cache.increment(key, { ttlSeconds: 60 })).value).toBe(1);
+        await cache.delete(key);
+    });
+
+    it("restarts the counter after the window expires", async () => {
+        const key = `counter:${randomUUID()}`;
+
+        await cache.increment(key, { ttlSeconds: 1 });
+        await new Promise(resolve => setTimeout(resolve, 1_100));
+
+        expect((await cache.increment(key, { ttlSeconds: 1 })).value).toBe(1);
+        await cache.delete(key);
+    });
 });

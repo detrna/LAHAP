@@ -136,6 +136,79 @@ describe("RedisCache (unit)", () => {
         });
     });
 
+    describe("increment", () => {
+        function mockMulti(exec: () => Promise<unknown>) {
+            const chain = {
+                set: vi.fn(() => chain),
+                incr: vi.fn(() => chain),
+                ttl: vi.fn(() => chain),
+                exec: vi.fn(exec),
+            };
+            vi.spyOn(Redis.prototype, "multi").mockReturnValueOnce(chain as never);
+            return chain;
+        }
+
+        it("starts the window with SET NX EX, increments, and returns the value with the remaining TTL", async () => {
+            const chain = mockMulti(async () => [
+                [null, "OK"],
+                [null, 1],
+                [null, 60],
+            ]);
+            const cache = new RedisCache(dummyConfig);
+
+            await expect(cache.increment(" ratelimit:login:1.2.3.4 ", { ttlSeconds: 60 })).resolves.toEqual({
+                value: 1,
+                expiresInSeconds: 60,
+            });
+            expect(chain.set).toHaveBeenCalledWith("ratelimit:login:1.2.3.4", "0", "EX", 60, "NX");
+            expect(chain.incr).toHaveBeenCalledWith("ratelimit:login:1.2.3.4");
+            expect(chain.ttl).toHaveBeenCalledWith("ratelimit:login:1.2.3.4");
+        });
+
+        it("falls back to the window length when Redis reports no TTL", async () => {
+            mockMulti(async () => [
+                [null, null],
+                [null, 4],
+                [null, -1],
+            ]);
+            const cache = new RedisCache(dummyConfig);
+
+            await expect(cache.increment("k", { ttlSeconds: 30 })).resolves.toEqual({ value: 4, expiresInSeconds: 30 });
+        });
+
+        it("throws InvalidCacheTtlError for a missing or invalid window", async () => {
+            const cache = new RedisCache(dummyConfig);
+
+            await expect(cache.increment("k", { ttlSeconds: 0 })).rejects.toThrow(InvalidCacheTtlError);
+            await expect(cache.increment("k", { ttlSeconds: 2.5 })).rejects.toThrow(InvalidCacheTtlError);
+        });
+
+        it("wraps exec rejections, command errors and aborted transactions in CacheFailureError", async () => {
+            const cache = new RedisCache(dummyConfig);
+            const rootCause = new Error("connection lost");
+            const commandError = new Error("WRONGTYPE Operation against a key holding the wrong kind of value");
+
+            mockMulti(async () => {
+                throw rootCause;
+            });
+            await expect(cache.increment("k", { ttlSeconds: 60 })).rejects.toMatchObject({
+                code: "CACHE_FAILURE",
+                operation: "increment",
+                cause: rootCause,
+            });
+
+            mockMulti(async () => [
+                [null, null],
+                [commandError, null],
+                [null, 60],
+            ]);
+            await expect(cache.increment("k", { ttlSeconds: 60 })).rejects.toMatchObject({ cause: commandError });
+
+            mockMulti(async () => null);
+            await expect(cache.increment("k", { ttlSeconds: 60 })).rejects.toThrow(CacheFailureError);
+        });
+    });
+
     describe("verifyConnection, loadRedisCache & close", () => {
         it("verifies connection when Redis responds with PONG", async () => {
             vi.spyOn(Redis.prototype, "ping").mockResolvedValueOnce("PONG");

@@ -5,6 +5,15 @@ export interface SetCacheOptions {
     readonly ttlSeconds?: number | undefined;
 }
 
+export interface IncrementCacheOptions {
+    readonly ttlSeconds: number;
+}
+
+export interface CacheCounter {
+    readonly value: number;
+    readonly expiresInSeconds: number;
+}
+
 export interface Cache {
     /** Stores a string value under the given key, optionally expiring after ttlSeconds. */
     set(key: string, value: string, options?: SetCacheOptions): Promise<void>;
@@ -14,6 +23,8 @@ export interface Cache {
 
     /** Returns true if the key exists, false otherwise. */
     exists(key: string): Promise<boolean>;
+
+    increment(key: string, options: IncrementCacheOptions): Promise<CacheCounter>;
 
     /** Deletes a key. Deleting a non-existent key is not an error. */
     delete(key: string): Promise<void>;
