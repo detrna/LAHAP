@@ -111,6 +111,7 @@ export class UsersController {
 - Tests are colocated next to source. `*.test.ts` are unit tests (mock deps with `vi`, `describe("<Class> (unit)")`). `*.integration.test.ts` hit real services: Supertest against a real Express app, docker-compose Postgres/Redis/SeaweedFS, and real Qwen/Midtrans sandbox keys from `.env`.
 - Commands (from `backend/`): `npm run test:run` (unit), `npm run test:integration`, `npm run coverage`. Start services with `docker compose up -d`.
 - Reuse helpers: `tests/utils/factory/jwt/` (`createAuthHeaders`, `createTokenProvider`, expired tokens…) and `tests/utils/mocks/express.ts` (`createMockRequest/Response/Next`; `req.query` is a getter, as in Express 5).
+- **Module test factories** (decided 2026-11-03): in-memory objects for unit tests, never touching the database. Each module has `src/modules/<module>/test-utils/factory/<module>.factory.ts` with one `build<Type>(overrides: Partial<Type> = {})` per domain type it owns (generated from the `openapi.json` schemas: schema `examples` where given, `null` for nullable, optional fields left out). Use `build`, not `create` (in-memory vs persisted, and no clash with service methods like `createSubscription`). When a module defines its repository record types, add `build<X>Record` factories to the same file. Nested required objects come from the owning module's factory. `src/modules/factories.test.ts` runs every factory once. Don't base factories on the seed data.
 - Every new port/adapter/middleware ships with unit tests. Add integration tests when it touches I/O.
 
 ### Git
