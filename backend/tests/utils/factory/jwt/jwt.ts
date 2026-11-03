@@ -19,7 +19,7 @@ export const DEFAULT_TEST_PAYLOAD: SignTokenPayload = {
         userId: "test-user-id-1",
         name: "Test User",
     },
-    role: "USER",
+    role: "CUSTOMER",
 };
 
 /**

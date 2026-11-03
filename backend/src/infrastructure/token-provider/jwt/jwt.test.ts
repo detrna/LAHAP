@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { JwtConfig } from "../../../config/jwt.js";
 import { AppError } from "../../../shared/errors/app-error.js";
+import type { Role } from "../../../shared/auth/roles.js";
 import {
     InvalidTokenError,
     InvalidTokenPayloadError,
@@ -26,7 +27,7 @@ const validPayload: SignTokenPayload = {
         userId: "user-123",
         name: "Budi Santoso",
     },
-    role: "USER",
+    role: "CUSTOMER",
 };
 
 describe("JwtTokenProvider (unit)", () => {
@@ -113,27 +114,34 @@ describe("JwtTokenProvider (unit)", () => {
             expect(() => provider.verifyRefreshToken(accessToken)).toThrow(InvalidTokenError);
         });
 
-        it("throws InvalidTokenPayloadError when sub.userId, sub.name, role, or supplied jti is empty", () => {
+        it("throws InvalidTokenPayloadError when sub.userId, sub.name, or supplied jti is empty, or role is unknown", () => {
             const provider = new JwtTokenProvider(dummyConfig);
 
             expect(() =>
                 provider.signAccessToken({
                     sub: { userId: "   ", name: "Budi" },
-                    role: "USER",
+                    role: "CUSTOMER",
                 }),
             ).toThrow(InvalidTokenPayloadError);
 
             expect(() =>
                 provider.signAccessToken({
                     sub: { userId: "user-1", name: "" },
-                    role: "USER",
+                    role: "CUSTOMER",
                 }),
             ).toThrow(InvalidTokenPayloadError);
 
             expect(() =>
                 provider.signAccessToken({
                     sub: { userId: "user-1", name: "Budi" },
-                    role: "   ",
+                    role: "   " as Role,
+                }),
+            ).toThrow(InvalidTokenPayloadError);
+
+            expect(() =>
+                provider.signAccessToken({
+                    sub: { userId: "user-1", name: "Budi" },
+                    role: "USER" as Role,
                 }),
             ).toThrow(InvalidTokenPayloadError);
 
@@ -188,7 +196,7 @@ describe("JwtTokenProvider (unit)", () => {
         it("throws InvalidTokenError when token payload shape is missing required fields", () => {
             const provider = new JwtTokenProvider(dummyConfig);
             const malformedPayloadToken = jwt.sign(
-                { sub: { userId: "user-123" }, role: "USER" },
+                { sub: { userId: "user-123" }, role: "CUSTOMER" },
                 dummyConfig.SECRET,
                 {
                     algorithm: "HS256",

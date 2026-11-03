@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import jwt, { type Algorithm, type SignOptions } from "jsonwebtoken";
 import { z } from "zod";
 import type { JwtConfig } from "../../../config/jwt.js";
+import { isRole, ROLES, type Role } from "../../../shared/auth/roles.js";
 import {
     InvalidTokenError,
     InvalidTokenPayloadError,
@@ -22,7 +23,7 @@ const decodedPayloadSchema = z.object({
         userId: z.string().trim().min(1),
         name: z.string().trim().min(1),
     }),
-    role: z.string().trim().min(1),
+    role: z.enum(ROLES),
     jti: z.string().trim().min(1),
     iat: z.number().int(),
     exp: z.number().int(),
@@ -32,7 +33,7 @@ const decodedPayloadSchema = z.object({
 
 function normalizePayload(payload: SignTokenPayload): {
     sub: { userId: string; name: string };
-    role: string;
+    role: Role;
     jwtid: string;
 } {
     const userId = payload.sub?.userId?.trim();
@@ -45,9 +46,9 @@ function normalizePayload(payload: SignTokenPayload): {
         throw new InvalidTokenPayloadError("token payload sub.name must not be empty");
     }
 
-    const role = payload.role?.trim();
-    if (!role) {
-        throw new InvalidTokenPayloadError("token payload role must not be empty");
+    const role = payload.role;
+    if (!isRole(role)) {
+        throw new InvalidTokenPayloadError(`token payload role must be one of ${ROLES.join(", ")}`);
     }
 
     let jwtid: string;

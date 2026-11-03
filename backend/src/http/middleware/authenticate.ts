@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Role } from "../../shared/auth/roles.js";
 import type {
     TokenProvider,
     VerifiedTokenPayload,
@@ -11,7 +12,7 @@ import {
 export interface AuthenticatedUser {
     readonly userId: string;
     readonly name: string;
-    readonly role: string;
+    readonly role: Role;
 }
 
 declare global {

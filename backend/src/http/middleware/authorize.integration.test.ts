@@ -12,7 +12,7 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
     app.use(express.json());
 
     // Varargs role check
-    app.get("/admin/reports", authenticate({ tokenProvider }), authorize("ADMIN", "FINANCE"), (req, res) => {
+    app.get("/admin/reports", authenticate({ tokenProvider }), authorize("ADMIN", "KITCHEN"), (req, res) => {
         res.status(200).json({
             report: "secret-financial-data",
             user: req.user,
@@ -23,7 +23,7 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
     app.delete(
         "/admin/users/:id",
         authenticate({ tokenProvider }),
-        requireRoles(["ADMIN", "SUPER_ADMIN"]),
+        requireRoles(["ADMIN", "COURIER"]),
         (req, res) => {
             res.status(200).json({
                 deletedUserId: req.params.id,
@@ -67,7 +67,7 @@ describe("authorize middleware (integration)", () => {
     it("returns 403 FORBIDDEN when authenticated user does not have an authorized role", async () => {
         const regularUserToken = tokenProvider.signAccessToken({
             sub: { userId: "user-9", name: "Regular User" },
-            role: "USER",
+            role: "CUSTOMER",
         });
 
         const res = await request(app).get("/admin/reports").set("Authorization", `Bearer ${regularUserToken}`);
@@ -76,7 +76,7 @@ describe("authorize middleware (integration)", () => {
         expect(res.body).toEqual({
             error: {
                 code: "FORBIDDEN",
-                message: 'role "USER" is not authorized to access this resource',
+                message: 'role "CUSTOMER" is not authorized to access this resource',
             },
         });
     });
@@ -84,7 +84,7 @@ describe("authorize middleware (integration)", () => {
     it("works with array arguments and requireRoles alias", async () => {
         const superAdminToken = tokenProvider.signAccessToken({
             sub: { userId: "super-1", name: "Super User" },
-            role: "SUPER_ADMIN",
+            role: "COURIER",
         });
 
         const allowedRes = await request(app)
@@ -99,7 +99,7 @@ describe("authorize middleware (integration)", () => {
 
         const financeToken = tokenProvider.signAccessToken({
             sub: { userId: "fin-1", name: "Finance User" },
-            role: "FINANCE",
+            role: "KITCHEN",
         });
 
         const rejectedRes = await request(app)

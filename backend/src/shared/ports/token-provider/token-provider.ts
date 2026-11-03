@@ -1,5 +1,7 @@
 export * from "./errors.js";
 
+import type { Role } from "../../auth/roles.js";
+
 export interface TokenSubject {
     readonly userId: string;
     readonly name: string;
@@ -7,13 +9,13 @@ export interface TokenSubject {
 
 export interface SignTokenPayload {
     readonly sub: TokenSubject;
-    readonly role: string;
+    readonly role: Role;
     readonly jti?: string | undefined;
 }
 
 export interface VerifiedTokenPayload {
     readonly sub: TokenSubject;
-    readonly role: string;
+    readonly role: Role;
     readonly jti: string;
     readonly iat: number;
     readonly exp: number;

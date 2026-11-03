@@ -51,19 +51,19 @@ describe("JWT Factory", () => {
     it("generates signed access token, refresh token, and token pair directly", () => {
         const provider = createTokenProvider();
 
-        const accessToken = createAccessToken({ role: "MANAGER" });
+        const accessToken = createAccessToken({ role: "KITCHEN" });
         const decodedAccess = provider.verifyAccessToken(accessToken);
-        expect(decodedAccess.role).toBe("MANAGER");
+        expect(decodedAccess.role).toBe("KITCHEN");
 
-        const refreshToken = createRefreshToken({ role: "SUPER_ADMIN" });
+        const refreshToken = createRefreshToken({ role: "COURIER" });
         const decodedRefresh = provider.verifyRefreshToken(refreshToken);
-        expect(decodedRefresh.role).toBe("SUPER_ADMIN");
+        expect(decodedRefresh.role).toBe("COURIER");
 
-        const pair = createTokenPair({ role: "EDITOR" });
+        const pair = createTokenPair({ role: "ADMIN" });
         expect(pair.accessToken).toBeTruthy();
         expect(pair.refreshToken).toBeTruthy();
-        expect(provider.verifyAccessToken(pair.accessToken).role).toBe("EDITOR");
-        expect(provider.verifyRefreshToken(pair.refreshToken).role).toBe("EDITOR");
+        expect(provider.verifyAccessToken(pair.accessToken).role).toBe("ADMIN");
+        expect(provider.verifyRefreshToken(pair.refreshToken).role).toBe("ADMIN");
     });
 
     it("generates expired access tokens that fail verification with TokenExpiredError", () => {
@@ -84,7 +84,7 @@ describe("JWT Factory", () => {
         const header = createBearerHeader("xyz-token");
         expect(header).toBe("Bearer xyz-token");
 
-        const auth = createAuthHeaders({ role: "GUEST" });
+        const auth = createAuthHeaders({ role: "COURIER" });
         expect(auth.authorization).toMatch(/^Bearer\s+[\w-]+\.[\w-]+\.[\w-]+$/);
     });
 });

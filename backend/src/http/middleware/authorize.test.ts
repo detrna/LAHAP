@@ -18,9 +18,9 @@ describe("authorize middleware (unit)", () => {
     });
 
     it("fails with ForbiddenError (403) when user role is not authorized", () => {
-        const middleware = authorize("ADMIN", "MANAGER");
+        const middleware = authorize("ADMIN", "KITCHEN");
         const req = createMockRequest({
-            user: { userId: "user-1", name: "Alice", role: "USER" },
+            user: { userId: "user-1", name: "Alice", role: "CUSTOMER" },
         });
         const res = createMockResponse();
         const next = createMockNext();
@@ -30,11 +30,11 @@ describe("authorize middleware (unit)", () => {
         const error = next.mock.calls[0]?.[0];
         expect(error).toBeInstanceOf(ForbiddenError);
         expect((error as ForbiddenError).statusCode).toBe(403);
-        expect((error as ForbiddenError).message).toContain('role "USER" is not authorized');
+        expect((error as ForbiddenError).message).toContain('role "CUSTOMER" is not authorized');
     });
 
     it("allows request when user has one of the allowed roles (rest parameters)", () => {
-        const middleware = authorize("ADMIN", "MANAGER");
+        const middleware = authorize("ADMIN", "KITCHEN");
         const req = createMockRequest({
             user: { userId: "user-1", name: "Alice", role: "ADMIN" },
         });
@@ -48,9 +48,9 @@ describe("authorize middleware (unit)", () => {
     });
 
     it("allows request when user has one of the allowed roles (array parameter)", () => {
-        const middleware = authorize(["ADMIN", "MANAGER"]);
+        const middleware = authorize(["ADMIN", "KITCHEN"]);
         const req = createMockRequest({
-            user: { userId: "user-2", name: "Bob", role: "MANAGER" },
+            user: { userId: "user-2", name: "Bob", role: "KITCHEN" },
         });
         const res = createMockResponse();
         const next = createMockNext();
@@ -64,7 +64,7 @@ describe("authorize middleware (unit)", () => {
     it("allows any authenticated user when no specific roles are specified", () => {
         const middleware = authorize();
         const req = createMockRequest({
-            user: { userId: "user-3", name: "Charlie", role: "GUEST" },
+            user: { userId: "user-3", name: "Charlie", role: "COURIER" },
         });
         const res = createMockResponse();
         const next = createMockNext();

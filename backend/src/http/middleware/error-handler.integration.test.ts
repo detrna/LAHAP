@@ -39,7 +39,7 @@ describe("errorHandler middleware (integration)", () => {
         app.post(
             "/orders",
             authenticate({ tokenProvider }),
-            authorize("ADMIN", "USER"),
+            authorize("ADMIN", "CUSTOMER"),
             validateBody(
                 z.object({
                     itemId: z.string().uuid("Invalid item UUID"),
@@ -75,7 +75,7 @@ describe("errorHandler middleware (integration)", () => {
         const app = createTestApp(logger);
         const token = tokenProvider.signAccessToken({
             sub: { userId: "user-1", name: "Budi" },
-            role: "USER",
+            role: "CUSTOMER",
         });
 
         const res = await request(app).post("/orders").set("Authorization", `Bearer ${token}`).send({
@@ -136,12 +136,12 @@ describe("errorHandler middleware (integration)", () => {
     it("returns 403 FORBIDDEN when authenticate middleware rejects unauthorized role", async () => {
         const logger = createMockLogger();
         const app = createTestApp(logger);
-        const guestToken = tokenProvider.signAccessToken({
-            sub: { userId: "user-2", name: "Guest" },
-            role: "GUEST",
+        const courierToken = tokenProvider.signAccessToken({
+            sub: { userId: "user-2", name: "Kurir" },
+            role: "COURIER",
         });
 
-        const res = await request(app).post("/orders").set("Authorization", `Bearer ${guestToken}`).send({
+        const res = await request(app).post("/orders").set("Authorization", `Bearer ${courierToken}`).send({
             itemId: "550e8400-e29b-41d4-a716-446655440000",
             quantity: 1,
         });
@@ -150,7 +150,7 @@ describe("errorHandler middleware (integration)", () => {
         expect(res.body).toEqual({
             error: {
                 code: "FORBIDDEN",
-                message: 'role "GUEST" is not authorized to access this resource',
+                message: 'role "COURIER" is not authorized to access this resource',
             },
         });
         expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -161,7 +161,7 @@ describe("errorHandler middleware (integration)", () => {
         const app = createTestApp(logger);
         const token = tokenProvider.signAccessToken({
             sub: { userId: "user-1", name: "Budi" },
-            role: "USER",
+            role: "CUSTOMER",
         });
 
         const res = await request(app).post("/orders").set("Authorization", `Bearer ${token}`).send({

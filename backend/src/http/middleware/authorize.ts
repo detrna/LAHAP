@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Role } from "../../shared/auth/roles.js";
 import { ForbiddenError, MissingTokenError } from "./errors.js";
 
 /**
@@ -11,10 +12,10 @@ import { ForbiddenError, MissingTokenError } from "./errors.js";
  *   forwards a `ForbiddenError` (403).
  * - Otherwise, calls `next()`.
  *
- * Supports both rest arguments `authorize("ADMIN", "MANAGER")`
- * and array arguments `authorize(["ADMIN", "MANAGER"])`.
+ * Supports both rest arguments `authorize("ADMIN", "KITCHEN")`
+ * and array arguments `authorize(["ADMIN", "KITCHEN"])`.
  */
-export function authorize(...roles: (string | readonly string[])[]): RequestHandler {
+export function authorize(...roles: (Role | readonly Role[])[]): RequestHandler {
     const allowedRoles = roles.flat();
 
     return (req: Request, _res: Response, next: NextFunction): void => {
