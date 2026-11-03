@@ -7,7 +7,6 @@ export interface UsersRouterDeps {
     readonly tokenProvider: TokenProvider;
 }
 
-/** Routes for `/api/me/*` and `/api/admin/users/*`; each chain is authenticate → authorize(x-roles) → validate → controller handler. */
 export function createUsersRouter(_deps: UsersRouterDeps): Router {
     const router = Router();
     return router;

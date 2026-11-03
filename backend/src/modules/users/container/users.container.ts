@@ -5,7 +5,6 @@ import { UsersController } from "../controller/users.controller.js";
 import { createUsersRouter } from "../routes/users.routes.js";
 import { UsersService } from "../service/users.service.js";
 
-/** Builds the users module. Only wiring here: no business logic, no other module's repositories. */
 export class UsersContainer {
     readonly service: UsersService;
     readonly router: Router;
