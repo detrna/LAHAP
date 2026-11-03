@@ -1,5 +1,8 @@
 // use prisma-8
 
+// =============================================================================
+// Background Worker & System Infrastructure
+// =============================================================================
 model JobRun {
   id         String             @id @onCreate(uuid())
   jobName    String
@@ -7,4 +10,460 @@ model JobRun {
   startedAt  TimestamptzJsDate  @default(now()) @onCreate(now())
   finishedAt TimestamptzJsDate?
   error      String?
+}
+
+// =============================================================================
+// 0. Business Profile & Global Settings
+// =============================================================================
+// Single row for the MVP. Tenant scoping (business_id on other tables) is
+// deferred; see AGENTS.md.
+model Business {
+  id                    VarChar(36)    @id @onCreate(uuid())
+  name                  VarChar(100)
+  whatsappNumber        VarChar(20)    @map("whatsapp_number") // business contact, 62... format; reserved for future features (unused in the MVP)
+  address               String
+  latitude              Numeric(10, 8) // kitchen location, Haversine origin (BR-15)
+  longitude             Numeric(11, 8)
+  deliveryFreeRadius    Numeric(5, 2)  @default(1.00) @map("delivery_free_radius") // km (BR-14)
+  deliveryMaxDistance   Numeric(5, 2)  @default(10.00) @map("delivery_max_distance") // km (BR-14)
+  deliveryPricePerKm    Numeric(10, 2) @default(5000.00) @map("delivery_price_per_km") // Rp (BR-14)
+  paymentTimeoutMinutes Int            @default(15) @map("payment_timeout_minutes") // BR-20
+  createdAt             Timestamp      @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  @@map("business")
+}
+
+// =============================================================================
+// 1. User & Identity Management
+// =============================================================================
+model User {
+  id        VarChar(36)     @id @onCreate(uuid())
+  name      VarChar(100)    // optional at registration (UC-01); the app stores the phone when no name is given
+  email     VarChar(100)?   @unique // optional (UC-01); trimmed + lowercased; NULLs never collide
+  phone     VarChar(20)     @unique // required login id; normalized to digits starting with "62" (e.g. 62812...), wa.me-ready
+  password  VarChar(255)
+  role      VarChar(20)     // "CUSTOMER" | "ADMIN" | "KITCHEN" | "COURIER" (ROLES in src/shared/auth/roles.ts)
+  address   String?
+  latitude  Numeric(10, 8)?
+  longitude Numeric(11, 8)?
+  allergyNote String?       @map("allergy_note") // free-text allergies not in the list (UC-41); non-empty => all slots go to the kitchen special category
+  isActive  Boolean         @default(true) @map("is_active")
+  createdAt Timestamp       @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  membership    Membership?
+  allergies     UserAllergy[]
+  notifications Notification[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  deliveries    Order[]        @relation("CourierDeliveries")
+  statusChanges OrderStatusHistory[]
+  obstacles     DeliveryObstacle[]
+
+  @@index([role])
+  @@map("user")
+}
+
+model Tier {
+  id                       VarChar(36)    @id @onCreate(uuid())
+  name                     VarChar(50)    @unique
+  description              String?
+  requiredSubscriptionDays Int            @unique @map("required_subscription_days") // >= 0; unique so "previous tier" is unambiguous (UC-38)
+  durationDays             Int            @default(30) @map("duration_days")
+  discountPercent          Numeric(5, 2)  @map("discount_percent") // 0..100 (UC-36, app)
+  photoKey                 String?          @map("photo_key") // object-storage key (e.g. "menus/2026/11/<uuid>.webp"); API returns a signed photoUrl
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  memberships   Membership[]
+  subscriptions Subscription[]
+
+  @@map("tier")
+}
+
+// A user's current loyalty tier (0..1 per user). Active while expiresAt > now;
+// re-evaluation updates this row in place (BR-18). Deleting a tier: the app first moves its members
+// to the next lower tier keeping startedAt/expiresAt (or removes the membership if none), UC-38.
+model Membership {
+  id        VarChar(36) @id @onCreate(uuid())
+  userId    VarChar(36) @unique @map("user_id")
+  tierId    VarChar(36) @map("tier_id")
+  startedAt Timestamp   @default(now()) @map("started_at")
+  expiresAt Timestamp   @map("expires_at") // startedAt + tier.durationDays
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier Tier @relation(fields: [tierId], references: [id], onDelete: Restrict)
+
+  @@index([tierId])
+  @@index([expiresAt])
+  @@map("membership")
+}
+
+model Allergy {
+  id   VarChar(36) @id @onCreate(uuid())
+  name VarChar(50) @unique
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  users       UserAllergy[]
+  ingredients IngredientAllergy[]
+
+  @@map("allergy")
+}
+
+model UserAllergy {
+  id        VarChar(36) @id @onCreate(uuid())
+  userId    VarChar(36) @map("user_id")
+  allergyId VarChar(36) @map("allergy_id")
+  createdAt Timestamp   @default(now()) @onCreate(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allergy Allergy @relation(fields: [allergyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, allergyId])
+  @@index([allergyId])
+  @@map("user_allergy")
+}
+
+model Notification {
+  id        VarChar(36)  @id @onCreate(uuid())
+  userId    VarChar(36)  @map("user_id")
+  title     VarChar(150)
+  body      String
+  isRead    Boolean      @default(false) @map("is_read")
+  createdAt Timestamp    @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+// Admin-written WhatsApp follow-up templates for churned customers (UC-29, UC-48).
+// Placeholders are a fixed list in code: src/shared/utils/message-template.
+model MessageTemplate {
+  id        VarChar(36)  @id @onCreate(uuid())
+  name      VarChar(100)
+  body      String
+  createdAt Timestamp    @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp    @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  @@map("message_template")
+}
+
+// =============================================================================
+// 2. Package, Schedule & Menu Catalog
+// =============================================================================
+model PromoCode {
+  id                 VarChar(36)    @id @onCreate(uuid())
+  code               VarChar(50)    @unique
+  discountType       VarChar(10)    @map("discount_type") // "Persen" | "Nominal" (BR-18)
+  discountValue      Numeric(12, 2) @map("discount_value") // percent (0-100) or Rp, per discountType
+  minPurchase        Numeric(12, 2) @default(0.00) @map("min_purchase") // Rp, against the food subtotal
+  allowStackWithTier Boolean        @default(true) @map("allow_stack_with_tier")
+  validUntil         Timestamp      @map("valid_until")
+  quota              Int
+  isActive           Boolean        @default(true) @map("is_active")
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@index([isActive, validUntil])
+  @@map("promo_code")
+}
+
+model Package {
+  id                 VarChar(36)    @id @onCreate(uuid())
+  name               VarChar(100)
+  description        String
+  basePrice          Numeric(12, 2) @map("base_price")
+  periods            String[]       // offered order periods: "Harian" | "Mingguan" | "Bulanan" (BR-03, UC-05); at least one (app)
+  // Delivery overrides: null = use the Business default (BR-14)
+  deliveryFreeRadius  Numeric(5, 2)?  @map("delivery_free_radius")
+  deliveryMaxDistance Numeric(5, 2)?  @map("delivery_max_distance")
+  deliveryPricePerKm  Numeric(10, 2)? @map("delivery_price_per_km")
+  // Admin-entered meal times for this package ("Waktu makan", BR-05), minute precision, e.g. [07:00, 12:00, 18:30].
+  // The Pagi/Siang/Malam label is derived on output (src/shared/utils/meal-time), never stored.
+  deliveryTimes       Time[]          @map("delivery_times")
+  photoKey            String          @map("photo_key") // object-storage key (e.g. "menus/2026/11/<uuid>.webp"); API returns a signed photoUrl
+  startAt             Timestamp       @default(now()) @map("start_at") // BR-03 validity window
+  endAt               Timestamp?      @map("end_at") // null = no expiry; past endAt rejects new orders
+  isActive            Boolean         @default(true) @map("is_active") // manual on/off by admin (UC-22), reversible
+  // Shown status "aktif" (derived, not stored) = isActive && startAt <= now && (endAt == null || now < endAt)
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscriptions Subscription[]
+  schedules     Schedule[]
+  announcements Announcement[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("package")
+}
+
+
+model Schedule {
+  id          VarChar(36) @id @onCreate(uuid())
+  packageId   VarChar(36) @map("package_id")
+  date        Date
+  deliveryTime Time       @map("delivery_time") // one of package.deliveryTimes (checked by the app)
+  isPublished Boolean     @default(false) @map("is_published")
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  package       Package        @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  scheduleMenus ScheduleMenu[]
+  orders        Order[]
+  announcements Announcement[]
+
+  // One schedule per slot: package + date + meal time (BR-07)
+  @@unique([packageId, date, deliveryTime])
+  @@index([date])
+  @@index([isPublished])
+  @@map("schedule")
+}
+
+model Menu {
+  id            VarChar(36) @id @onCreate(uuid())
+  name          VarChar(100)
+  description   String
+  isAlternative Boolean     @default(false) @map("is_alternative")
+  tags          String[]
+  photoKey      String        @map("photo_key") // object-storage key (e.g. "menus/2026/11/<uuid>.webp"); API returns a signed photoUrl
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  scheduleMenus   ScheduleMenu[]
+  menuIngredients MenuIngredient[]
+
+  @@index([name])
+  @@index([isAlternative])
+  @@map("menu")
+}
+
+model ScheduleMenu {
+  id         VarChar(36) @id @onCreate(uuid())
+  scheduleId VarChar(36) @map("schedule_id")
+  menuId     VarChar(36) @map("menu_id")
+  isPrimary  Boolean     @default(true) @map("is_primary")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  menu     Menu     @relation(fields: [menuId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, menuId])
+  // At most 1 primary + 1 alternative per schedule (BR-07); "at least 1 primary" is checked on publish
+  @@unique([scheduleId, isPrimary])
+  @@map("schedule_menu")
+}
+
+// =============================================================================
+// 3. Inventory & Allergens
+// =============================================================================
+model Ingredient {
+  id               VarChar(36)    @id @onCreate(uuid())
+  name             VarChar(100)   @unique
+  unit             VarChar(20)
+  stock            Numeric(10, 2) @default(0.00)
+  minimumThreshold Numeric(10, 2) @default(10.00) @map("minimum_threshold")
+  photoKey         String           @map("photo_key") // object-storage key (e.g. "menus/2026/11/<uuid>.webp"); API returns a signed photoUrl
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  menuIngredients   MenuIngredient[]
+  ingredientAllergy IngredientAllergy[]
+
+  @@index([stock, minimumThreshold])
+  @@map("ingredient")
+}
+
+model MenuIngredient {
+  id                 VarChar(36)    @id @onCreate(uuid())
+  menuId             VarChar(36)    @map("menu_id")
+  ingredientId       VarChar(36)    @map("ingredient_id")
+  quantityPerPortion Numeric(10, 2) @map("quantity_per_portion")
+
+  menu       Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([menuId, ingredientId])
+  @@index([ingredientId])
+  @@map("menu_ingredient")
+}
+
+model IngredientAllergy {
+  id           VarChar(36) @id @onCreate(uuid())
+  ingredientId VarChar(36) @map("ingredient_id")
+  allergyId    VarChar(36) @map("allergy_id")
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  allergy    Allergy    @relation(fields: [allergyId], references: [id], onDelete: Cascade)
+
+  @@unique([ingredientId, allergyId])
+  @@index([allergyId])
+  @@map("ingredient_allergy")
+}
+
+// =============================================================================
+// 4. Subscriptions, Daily Orders & Payments
+// =============================================================================
+model Subscription {
+  id          VarChar(36)    @id @onCreate(uuid())
+  userId      VarChar(36)    @map("user_id")
+  packageId   VarChar(36)    @map("package_id")
+  promoCodeId VarChar(36)?   @map("promo_code_id")
+  status      VarChar(30)    // "Pending" | "Success" | "Expire" | "Dibatalkan" (PRD BR-21)
+  purchaseType VarChar(10)   @map("purchase_type") // "Online" | "Offline" (UC-03); Online orders cannot pay "CASH" (app)
+  period      VarChar(10)    // "Harian" | "Mingguan" | "Bulanan"; must be one of package.periods (UC-05, app)
+  startDate   Date           @map("start_date") // first slot date (drives the BR-09 cut-off)
+  endDate     Date           @map("end_date") // last slot date (derived labels, churn)
+  isDelivery  Boolean        @default(true) @map("is_delivery") // one method for every slot (BR-13); each slot's meal time comes from its Schedule
+  // Recipient & delivery point for this order, snapshotted at checkout (UC-07, UC-08, PRD §6.3).
+  // User.address/latitude/longitude only prefill the form; editing them never changes existing orders.
+  recipientName      VarChar(100)    @map("recipient_name") // required for every order (UC-07)
+  deliveryAddress    String?         @map("delivery_address") // required when isDelivery (app)
+  deliveryLatitude   Numeric(10, 8)? @map("delivery_latitude") // map pin, WGS 84; required when isDelivery (app)
+  deliveryLongitude  Numeric(11, 8)? @map("delivery_longitude")
+  deliveryDistanceKm Int?            @map("delivery_distance_km") // ceil(Haversine km) used for the fee (BR-15)
+  notes       String?
+  // Price breakdown snapshotted at checkout (BR-16, BR-17, UC-09, UC-31, UC-52); later price/rate/tier changes never alter it.
+  // Invariant (app): totalPrice = foodSubtotal - tierDiscount - promoDiscount + deliveryFeeTotal
+  pricePerPortion    Numeric(12, 2) @map("price_per_portion") // package.basePrice at checkout
+  foodSubtotal       Numeric(12, 2) @map("food_subtotal") // slot count x pricePerPortion
+  tierId             VarChar(36)?   @map("tier_id") // tier that granted tierDiscount (UC-35 reporting)
+  tierDiscount       Numeric(12, 2) @default(0.00) @map("tier_discount")
+  promoDiscount      Numeric(12, 2) @default(0.00) @map("promo_discount")
+  deliveryFeePerSlot Numeric(10, 2) @default(0.00) @map("delivery_fee_per_slot") // 0 for pick-up; never discounted
+  deliveryFeeTotal   Numeric(12, 2) @default(0.00) @map("delivery_fee_total") // deliveryFeePerSlot x delivered slots
+  totalPrice  Numeric(12, 2) @map("total_price")
+  needsRefund Boolean        @default(false) @map("needs_refund") // paid then "Dibatalkan"; refund is done manually outside the app (PRD §8.5)
+  createdAt   Timestamp      @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  package   Package    @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  tier      Tier?      @relation(fields: [tierId], references: [id], onDelete: SetNull) // deleting a tier keeps the discount amount
+  orders    Order[]
+  payments  Payment[]
+
+  @@index([userId])
+  @@index([packageId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([needsRefund])
+  @@index([tierId])
+  @@map("subscription")
+}
+
+model Order {
+  id             VarChar(36) @id @onCreate(uuid())
+  subscriptionId VarChar(36) @map("subscription_id")
+  menuScheduleId VarChar(36) @map("menu_schedule_id")
+  courierId      VarChar(36)? @map("courier_id") // assigned per slot by the admin (UC-27); no shift table
+  status         VarChar(30) // "Terjadwal" | "Disiapkan" | "Diantar" | "Siap Diambil" | "Selesai" | "Dilewati" (PRD BR-23)
+  // true = kitchen assigned the schedule's alternative menu (ScheduleMenu.isPrimary = false) for an allergy clash (BR-24)
+  usesAlternativeMenu Boolean @default(false) @map("uses_alternative_menu")
+  skipReason          String?  @map("skip_reason") // optional free text, only when status = "Dilewati" (UC-44)
+  createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  schedule     Schedule     @relation(fields: [menuScheduleId], references: [id], onDelete: Restrict)
+  courier      User?        @relation("CourierDeliveries", fields: [courierId], references: [id], onDelete: SetNull)
+  statusHistory OrderStatusHistory[]
+  obstacles     DeliveryObstacle[]
+
+  // One slot per order per schedule (package + date + meal time), BR-06; also serves lookups by subscriptionId
+  @@unique([subscriptionId, menuScheduleId])
+  @@index([menuScheduleId])
+  @@index([courierId])
+  @@index([status])
+  @@map("order")
+}
+
+// Audit trail of every slot status change (PRD §9.4)
+model OrderStatusHistory {
+  id          VarChar(36)  @id @onCreate(uuid())
+  orderId     VarChar(36)  @map("order_id")
+  changedById VarChar(36)? @map("changed_by_id") // null = system (worker, auto Disiapkan)
+  fromStatus  VarChar(30)? @map("from_status") // null for the initial "Terjadwal"
+  toStatus    VarChar(30)  @map("to_status")
+  adminNote   String?      @map("admin_note") // why an admin corrected the status; required for admin corrections
+  changedAt   Timestamp    @default(now()) @onCreate(now()) @map("changed_at")
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User? @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([orderId, changedAt])
+  @@index([changedById])
+  @@map("order_status_history")
+}
+
+// Courier/admin obstacle notes; not a slot status (BR-23)
+model DeliveryObstacle {
+  id        VarChar(36) @id @onCreate(uuid())
+  orderId   VarChar(36) @map("order_id")
+  authorId  VarChar(36) @map("author_id")
+  note      String
+  photoKey  String?     @map("photo_key") // object-storage key (e.g. "menus/2026/11/<uuid>.webp"); API returns a signed photoUrl
+  createdAt Timestamp   @default(now()) @onCreate(now()) @map("created_at")
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([authorId])
+  @@map("delivery_obstacle")
+}
+
+model Payment {
+  id             VarChar(36)    @id @onCreate(uuid())
+  subscriptionId VarChar(36)    @map("subscription_id")
+  userId         VarChar(36)    @map("user_id")
+  // "CASH" (offline cashier, verified by admin) | "MIDTRANS" (gateway, channel not chosen yet)
+  // | "MIDTRANS_<PAYMENT_TYPE>" from the webhook, e.g. "MIDTRANS_QRIS", "MIDTRANS_BANK_TRANSFER".
+  // API responses add a derived doneOnline = method !== "CASH"; it is not stored.
+  method         VarChar(50)
+  // "SUBSCRIPTION" | "DELIVERY_SERVICE_UPGRADE" (reserved: post-release change-method feature, PRD §7.5; the MVP only creates "SUBSCRIPTION")
+  type           VarChar(30)
+  amount         Numeric(12, 2)
+  status         VarChar(30)    // "Pending" | "Success" | "Expire" (PRD BR-20) | "Refund" (admin confirmed the manual refund)
+  transactionId  VarChar(100)?  @unique @map("transaction_id")
+  paidAt         Timestamp?     @map("paid_at")
+  createdAt      Timestamp      @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([status])
+  @@map("payment")
+}
+
+model Announcement {
+  id             VarChar(36)  @id @onCreate(uuid())
+  packageId      VarChar(36)? @map("package_id")
+  menuScheduleId VarChar(36)? @map("menu_schedule_id")
+  title          VarChar(150)
+  body           String
+  scope          VarChar(20)  // "GLOBAL" | "PACKAGE" (packageId set) | "SCHEDULE" (menuScheduleId set)
+  createdAt      Timestamp    @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  package  Package?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  schedule Schedule? @relation(fields: [menuScheduleId], references: [id], onDelete: SetNull)
+
+  @@index([scope])
+  @@index([packageId])
+  @@index([createdAt])
+  @@map("announcement")
 }
