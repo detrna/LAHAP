@@ -52,3 +52,25 @@ export class ForbiddenError extends AppError {
         super(message, options);
     }
 }
+
+export class PayloadTooLargeError extends AppError {
+    readonly code = "PAYLOAD_TOO_LARGE";
+    readonly statusCode = 413;
+
+    constructor(
+        public readonly maxBytes: number,
+        options?: { cause?: unknown },
+    ) {
+        super("file exceeds the maximum allowed size", options);
+    }
+}
+
+export class UnsupportedMediaTypeError extends AppError {
+    readonly code = "UNSUPPORTED_MEDIA_TYPE";
+    readonly statusCode = 415;
+
+    constructor(message = "file type is not supported", options?: { cause?: unknown }) {
+        super(message, options);
+    }
+}
+
