@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { isNormalizedPhone } from "../../../../shared/utils/phone/phone.js";
 import { ALLERGIES } from "./modules/allergies/allergies.data.js";
 import { BUSINESS } from "./modules/business/business.data.js";
 import { INGREDIENTS } from "./modules/ingredients/ingredients.data.js";
@@ -32,7 +33,7 @@ describe("seed data (unit)", () => {
     it("stores phones normalized to 62… and keeps them unique", () => {
         const phones = USERS.map(u => u.phone);
         expect(new Set(phones).size).toBe(phones.length);
-        for (const phone of phones) expect(phone).toMatch(/^62\d{8,13}$/);
+        for (const phone of phones) expect(isNormalizedPhone(phone)).toBe(true);
     });
 
     it("plans 7 days with one primary menu per package meal time", () => {
