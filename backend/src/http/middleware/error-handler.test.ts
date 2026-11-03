@@ -224,6 +224,16 @@ describe("errorHandler middleware", () => {
         expect(logger.error).toHaveBeenCalledTimes(2);
     });
 
+    it("includes the request id in the log context when requestLogger set one", () => {
+        const logger = createMockLogger();
+        const req = createMockRequest({ originalUrl: "/api/me" });
+        req.id = "req-42";
+
+        errorHandler({ logger })(new MissingTokenError(), req, createMockResponse(), createMockNext());
+
+        expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ requestId: "req-42" }), expect.any(String));
+    });
+
     it("works without a logger provided", () => {
         const middleware = errorHandler();
         const req = createMockRequest();

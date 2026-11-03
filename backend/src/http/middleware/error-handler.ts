@@ -40,6 +40,7 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
         }
 
         const requestContext = {
+            ...(req.id !== undefined ? { requestId: req.id } : {}),
             method: req.method,
             path: req.originalUrl ?? req.path,
         };
