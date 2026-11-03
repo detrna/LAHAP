@@ -114,7 +114,7 @@
           "Auth"
         ],
         "summary": "Register a customer",
-        "description": "**Public** (no token).\n\nCreates a `CUSTOMER` and signs in immediately (UC-01). 409 when the phone or email is taken.",
+        "description": "**Public** (no token).\n\nCreates a `CUSTOMER` and signs in immediately (UC-01). 409 when the phone or email is taken.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -154,6 +154,9 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -169,7 +172,7 @@
           "Auth"
         ],
         "summary": "Log in",
-        "description": "**Public** (no token).\n\nOne login for every role (UC-13); redirect by `user.role`. Inactive accounts get 401 `INVALID_CREDENTIALS`.",
+        "description": "**Public** (no token).\n\nOne login for every role (UC-13); redirect by `user.role`. Inactive accounts get 401 `INVALID_CREDENTIALS`.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -208,6 +211,9 @@
           },
           "401": {
             "$ref": "#/components/responses/InvalidCredentials"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -13340,6 +13346,39 @@
                   "error": {
                     "code": "UNSUPPORTED_MEDIA_TYPE",
                     "message": "file type is not supported"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too many attempts from this client; retry after the number of seconds in `Retry-After`.",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds until the rate-limit window resets.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "examples": [
+                42
+              ]
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponseBody"
+            },
+            "examples": {
+              "TOO_MANY_REQUESTS": {
+                "summary": "TOO_MANY_REQUESTS",
+                "value": {
+                  "error": {
+                    "code": "TOO_MANY_REQUESTS",
+                    "message": "too many requests, try again later"
                   }
                 }
               }

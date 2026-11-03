@@ -74,3 +74,14 @@ export class UnsupportedMediaTypeError extends AppError {
     }
 }
 
+export class TooManyRequestsError extends AppError {
+    readonly code = "TOO_MANY_REQUESTS";
+    readonly statusCode = 429;
+
+    constructor(
+        public readonly retryAfterSeconds: number,
+        options?: { cause?: unknown },
+    ) {
+        super("too many requests, try again later", options);
+    }
+}

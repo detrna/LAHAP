@@ -7,3 +7,4 @@ export * from "./paginate.js";
 export * from "./request-logger.js";
 export * from "./cors-policy.js";
 export * from "./upload-image.js";
+export * from "./rate-limit.js";
