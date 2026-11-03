@@ -3,6 +3,7 @@ import z from "zod";
 import { appEnvSchema, toAppConfig, type AppConfig } from "./app.js";
 import { dbEnvSchema, toDatabaseConfig, type DatabaseConfig } from "./db.js";
 import { hasherEnvSchema, toHasherConfig, type HasherConfig } from "./hasher.js";
+import { httpEnvSchema, toHttpConfig, type HttpConfig } from "./http.js";
 import { jwtEnvSchema, toJwtConfig, type JwtConfig } from "./jwt.js";
 import { loggerEnvSchema, toLoggerConfig, type LoggerConfig } from "./logger.js";
 import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig } from "./object-storage.js";
@@ -18,6 +19,7 @@ import {
 
 export interface Config {
     readonly APP: AppConfig;
+    readonly HTTP: HttpConfig;
     readonly DATABASE: DatabaseConfig;
     readonly JWT: JwtConfig;
     readonly HASHER: HasherConfig;
@@ -40,6 +42,7 @@ export const parseEnv = <T>(schema: { parse: (value: unknown) => T }, value: unk
 
 const envSchema = z.object({
     ...appEnvSchema.shape,
+    ...httpEnvSchema.shape,
     ...dbEnvSchema.shape,
     ...jwtEnvSchema.shape,
     ...hasherEnvSchema.shape,
@@ -57,6 +60,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
 
     return {
         APP: toAppConfig(parsed),
+        HTTP: toHttpConfig(parsed),
         DATABASE: toDatabaseConfig(parsed),
         JWT: toJwtConfig(parsed),
         HASHER: toHasherConfig(parsed),

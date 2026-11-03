@@ -17,7 +17,7 @@ async function bootstrap() {
         logger = adapters.logger;
         logger.info("Adapters and database initialized successfully");
 
-        const app = createApp({ db, adapters });
+        const app = createApp({ db, adapters, http: config.HTTP });
         const server = app.listen(config.APP.PORT, () => {
             logger.info(`Server is running on port ${config.APP.PORT}`);
         });

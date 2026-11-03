@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import helmet from "helmet";
-import { errorHandler, requestLogger } from "./http/middleware/index.js";
+import { corsPolicy, errorHandler, requestLogger } from "./http/middleware/index.js";
 import type { ModuleDeps } from "./modules/module-deps.js";
 import { AuthContainer } from "./modules/auth/container/auth.container.js";
 import { UsersContainer } from "./modules/users/container/users.container.js";
@@ -34,8 +34,10 @@ export function createApp(deps: ModuleDeps): Express {
     const retention = new RetentionContainer(deps);
 
     const app = express();
+    app.set("trust proxy", deps.http.TRUST_PROXY);
     app.use(requestLogger({ logger: deps.adapters.logger }));
     app.use(helmet());
+    app.use(corsPolicy({ origins: deps.http.CORS_ORIGINS }));
     app.use(express.json());
 
     app.get("/health", (_req, res) => res.json({ status: "ok" }));
