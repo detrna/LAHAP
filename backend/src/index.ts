@@ -3,7 +3,7 @@ import { createApp } from "./app.js";
 import { loadConfig } from "./config/index.js";
 import { DEFAULT_LOGGER_CONFIG } from "./config/logger.js";
 import { loadDatabase } from "./infrastructure/database/prisma/db.js";
-import { createInfrastructure } from "./infrastructure/index.js";
+import { createAdapters } from "./infrastructure/index.js";
 import { PinoLogger } from "./infrastructure/logger/pino/pino.js";
 import type { Logger } from "./shared/ports/logger/logger.js";
 
@@ -12,22 +12,19 @@ async function bootstrap() {
 
     try {
         const config = loadConfig();
-        const infrastructure = await createInfrastructure(config);
-        logger = infrastructure.logger;
+        // Independent connections, so connect in parallel. On failure the process exits below.
+        const [adapters, db] = await Promise.all([createAdapters(config), loadDatabase(config.DATABASE)]);
+        logger = adapters.logger;
+        logger.info("Adapters and database initialized successfully");
 
-        const db = await loadDatabase(config.DATABASE);
-        logger.info("Database connected successfully");
-
-        logger.info("Infrastructure initialized successfully");
-
-        const app = createApp(infrastructure);
+        const app = createApp({ db, adapters });
         const server = app.listen(config.APP.PORT, () => {
             logger.info(`Server is running on port ${config.APP.PORT}`);
         });
 
         const shutdown = () => {
             server.close(async () => {
-                await Promise.all([db.close(), infrastructure.cache.close()]);
+                await Promise.all([db.close(), adapters.cache.close()]);
                 process.exit(0);
             });
         };

@@ -16,7 +16,8 @@ import { QwenReceiptExtractor } from "./receipt-extractor/qwen/qwen.js";
 import { QwenStockLevelEstimator } from "./stock-level-estimator/qwen/qwen.js";
 import { JwtTokenProvider } from "./token-provider/jwt/jwt.js";
 
-export interface Infrastructure {
+/** Adapter instances typed by their ports. Built once at boot and handed to module containers. */
+export interface Adapters {
     readonly logger: Logger;
     readonly cache: Cache;
     readonly hasher: Hasher;
@@ -27,7 +28,7 @@ export interface Infrastructure {
     readonly paymentGateway: PaymentGateway;
 }
 
-export async function createInfrastructure(config: Config): Promise<Infrastructure> {
+export async function createAdapters(config: Config): Promise<Adapters> {
     const [cache, objectStorage] = await Promise.all([
         loadRedisCache(config.REDIS),
         loadObjectStorage(config.OBJECT_STORAGE, {
