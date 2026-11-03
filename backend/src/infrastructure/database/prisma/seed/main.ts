@@ -5,6 +5,7 @@ import { loadHasherConfig } from "../../../../config/hasher.js";
 import { DEFAULT_LOGGER_CONFIG, loadLoggerConfig } from "../../../../config/logger.js";
 import { parseEnv } from "../../../../config/index.js";
 import type { Logger } from "../../../../shared/ports/logger/logger.js";
+import { BUSINESS_TIME_ZONE } from "../../../../shared/time/time-zone.js";
 import { BcryptHasher } from "../../../hasher/bcrypt/bcrypt.js";
 import { PinoLogger } from "../../../logger/pino/pino.js";
 import { loadDatabase } from "../db.js";
@@ -21,7 +22,6 @@ import { USERS } from "./modules/users/users.data.js";
 import { seedUsers } from "./modules/users/users.seed.js";
 import { resetDatabase } from "./reset.js";
 import type { SeedModule } from "./seed-context.js";
-import { SEED_TIME_ZONE, Temporal } from "./shared/temporal.js";
 
 export const SEED_PASSWORD = "password123";
 
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     const reset = process.argv.includes("--reset");
     const db = await loadDatabase(toDatabaseConfig(parseEnv(dbEnvSchema)));
     const hasher = new BcryptHasher(loadHasherConfig());
-    const today = Temporal.Now.plainDateISO(SEED_TIME_ZONE);
+    const today = Temporal.Now.plainDateISO(BUSINESS_TIME_ZONE);
 
     const totals: Record<string, number> = {};
     try {

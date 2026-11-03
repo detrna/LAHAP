@@ -8,9 +8,6 @@ import {
     toMealTimeView,
 } from "./meal-time.js";
 
-// Node 26 ships Temporal at runtime, but @types/node does not declare it yet
-declare const Temporal: { readonly PlainTime: { from(time: string): { readonly hour: number; readonly minute: number } } };
-
 describe("getMealTimeRange", () => {
     it.each([
         ["07:00", "Pagi"],

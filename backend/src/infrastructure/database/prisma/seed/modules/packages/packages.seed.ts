@@ -1,5 +1,4 @@
 import type { SeedContext } from "../../seed-context.js";
-import { Temporal } from "../../shared/temporal.js";
 import { PACKAGES, packagePhotoKey } from "./packages.data.js";
 
 export async function seedPackages({ tx, logger, today }: SeedContext): Promise<number> {

@@ -1,7 +1,6 @@
 import { MENUS } from "../menus/menus.data.js";
 import { PACKAGES, type PackageKey } from "../packages/packages.data.js";
 import type { SeedContext } from "../../seed-context.js";
-import { Temporal } from "../../shared/temporal.js";
 import { ALTERNATIVES_BY_MEAL, DRAFT_DAYS, PUBLISHED_DAYS, WEEKLY_PLANS } from "./schedules.data.js";
 
 export async function seedSchedules({ tx, logger, today }: SeedContext): Promise<number> {
