@@ -20,7 +20,7 @@ export function buildSlotStatusEvent(overrides: Partial<SlotStatusEvent> = {}): 
             subscriptionId: "00000000-0000-4000-8000-000000000001",
             fromStatus: null,
             toStatus: "Terjadwal",
-            changedAt: "2026-11-03T00:00:00.000Z",
+            changedAt: "2026-11-03T00:00:00.000+07:00",
         },
         ...overrides,
     };

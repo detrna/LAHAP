@@ -23,8 +23,8 @@ export function buildMessageTemplate(overrides: Partial<MessageTemplate> = {}): 
         id: "00000000-0000-4000-8000-000000000001",
         name: "test name",
         body: "test body",
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

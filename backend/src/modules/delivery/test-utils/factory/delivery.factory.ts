@@ -10,7 +10,7 @@ export function buildDeliveryObstacle(overrides: Partial<DeliveryObstacle> = {})
         note: "Hujan deras, pengantaran terlambat ±20 menit",
         photoKey: null,
         photoUrl: null,
-        createdAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

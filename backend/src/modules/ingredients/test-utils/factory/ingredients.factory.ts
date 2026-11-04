@@ -10,8 +10,8 @@ export function buildIngredient(overrides: Partial<Ingredient> = {}): Ingredient
         isLowStock: false,
         photoKey: "menus/2026/11/3f2b6c1e.webp",
         photoUrl: "https://example.com/photoUrl",
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

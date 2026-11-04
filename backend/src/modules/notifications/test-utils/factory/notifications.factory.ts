@@ -8,8 +8,8 @@ export function buildNotification(overrides: Partial<Notification> = {}): Notifi
         title: "test title",
         body: "test body",
         isRead: false,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -26,8 +26,8 @@ export function buildAnnouncement(overrides: Partial<Announcement> = {}): Announ
         scope: "GLOBAL",
         packageId: null,
         menuScheduleId: null,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

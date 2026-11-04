@@ -33,8 +33,8 @@ export function buildSubscription(overrides: Partial<Subscription> = {}): Subscr
         deliveryFeeTotal: 0,
         totalPrice: 0,
         needsRefund: false,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -47,7 +47,7 @@ export function buildOrderStatusHistory(overrides: Partial<OrderStatusHistory> =
         toStatus: "Terjadwal",
         changedById: null,
         adminNote: null,
-        changedAt: "2026-11-03T00:00:00.000Z",
+        changedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -62,8 +62,8 @@ export function buildOrder(overrides: Partial<Order> = {}): Order {
         usesAlternativeMenu: false,
         skipReason: null,
         completedAt: null,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -101,7 +101,7 @@ export function buildCheckoutPreview(overrides: Partial<CheckoutPreview> = {}): 
         slotCount: 1,
         startDate: "2026-11-03",
         endDate: "2026-11-03",
-        cutoffAt: "2026-11-03T00:00:00.000Z",
+        cutoffAt: "2026-11-03T00:00:00.000+07:00",
         delivery: { available: false, distanceKm: null, maxDistanceKm: 0, feePerSlot: 0 },
         promo: null,
         pricePerPortion: 0,
@@ -131,8 +131,8 @@ export function buildPayment(overrides: Partial<Payment> = {}): Payment {
         status: "Pending",
         transactionId: null,
         paidAt: null,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -141,7 +141,7 @@ export function buildPaymentSession(overrides: Partial<PaymentSession> = {}): Pa
     return {
         snapToken: "test snapToken",
         redirectUrl: "https://example.com/redirectUrl",
-        expiresAt: "2026-11-03T00:00:00.000Z",
+        expiresAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

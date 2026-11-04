@@ -10,8 +10,8 @@ export function buildTier(overrides: Partial<Tier> = {}): Tier {
         discountPercent: 0,
         photoKey: null,
         photoUrl: null,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -19,8 +19,8 @@ export function buildTier(overrides: Partial<Tier> = {}): Tier {
 export function buildMembership(overrides: Partial<Membership> = {}): Membership {
     return {
         tierId: "00000000-0000-4000-8000-000000000001",
-        startedAt: "2026-11-03T00:00:00.000Z",
-        expiresAt: "2026-11-03T00:00:00.000Z",
+        startedAt: "2026-11-03T00:00:00.000+07:00",
+        expiresAt: "2026-11-03T00:00:00.000+07:00",
         isActive: false,
         ...overrides,
     };

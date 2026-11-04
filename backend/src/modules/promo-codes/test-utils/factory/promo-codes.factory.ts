@@ -8,11 +8,11 @@ export function buildPromoCode(overrides: Partial<PromoCode> = {}): PromoCode {
         discountValue: 0,
         minPurchase: 0,
         allowStackWithTier: true,
-        validUntil: "2026-11-03T00:00:00.000Z",
+        validUntil: "2026-11-03T00:00:00.000+07:00",
         quota: 0,
         isActive: true,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }

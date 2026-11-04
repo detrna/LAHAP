@@ -7,8 +7,8 @@ export function buildAllergy(overrides: Partial<Allergy> = {}): Allergy {
     return {
         id: "00000000-0000-4000-8000-000000000001",
         name: "Kacang",
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -26,8 +26,8 @@ export function buildMenu(overrides: Partial<Menu> = {}): Menu {
         tags: ["Pedas", "Tinggi Protein"],
         photoKey: "menus/2026/11/3f2b6c1e.webp",
         photoUrl: "https://example.com/photoUrl",
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -45,12 +45,12 @@ export function buildPackage(overrides: Partial<Package> = {}): Package {
         deliveryPricePerKm: null,
         photoKey: "menus/2026/11/3f2b6c1e.webp",
         photoUrl: "https://example.com/photoUrl",
-        startAt: "2026-11-03T00:00:00.000Z",
+        startAt: "2026-11-03T00:00:00.000+07:00",
         endAt: null,
         isActive: true,
         isAvailable: false,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
@@ -66,8 +66,8 @@ export function buildMenuSchedule(overrides: Partial<MenuSchedule> = {}): MenuSc
         date: "2026-11-03",
         deliveryTime: { time: "07:00", range: "Pagi" },
         isPublished: false,
-        createdAt: "2026-11-03T00:00:00.000Z",
-        updatedAt: "2026-11-03T00:00:00.000Z",
+        createdAt: "2026-11-03T00:00:00.000+07:00",
+        updatedAt: "2026-11-03T00:00:00.000+07:00",
         ...overrides,
     };
 }
