@@ -3,7 +3,7 @@
   "info": {
     "title": "LAHAP API",
     "version": "1.0.0",
-    "description": "LAHAP — SME catering subscription & fulfillment platform. Generated from `contract.prisma` and the decisions in AGENTS.md (2026-11-02).\n\n**Conventions**\n- Base URL ends in `/api`. JSON everywhere except uploads (`multipart/form-data`) and `/realtime/stream` (SSE).\n- Success: `{ \"data\": …, \"meta\"?: … }`. Lists: `{ \"data\": [...], \"meta\": { page, limit, total, totalPages, hasNextPage, hasPrevPage } }` with `?page=&limit=` (max 100).\n- Errors: `{ \"error\": { \"code\", \"message\", \"issues\"? } }`. 400 validation, 401 missing/invalid token, 403 role not allowed, 404 not found (also for other users' resources), 409 uniqueness/still referenced, 422 business rule or state (cut-off passed, wrong slot status, unavailable package).\n- Auth: `Authorization: Bearer <accessToken>`; each operation lists its roles in `x-roles`. Refresh with `/auth/refresh`; `/auth/logout` exists, but the client must still discard both tokens (no server-side revocation).\n- **Terminology:** `Subscription` = PRD \"Pesanan\" (order); `Order` = PRD \"Slot\" (one portion on one schedule); `MenuSchedule` = \"Jadwal Menu\".\n- Status values are Indonesian and case-sensitive (`Siap Diambil` has a space). Derived labels (`displayStatus`, meal-time `range`, `isAvailable`, `doneOnline`) are computed, never stored.\n- Money is Rp as a JSON number with up to 2 decimals. Dates are `YYYY-MM-DD` and times `HH:mm` in Asia/Jakarta; timestamps are ISO 8601.\n- Photos: upload via `POST /files`, send the returned key as `photoKey`; responses add a short-lived signed `photoUrl`."
+    "description": "LAHAP — SME catering subscription & fulfillment platform. Generated from `contract.prisma` and the decisions in AGENTS.md (2026-11-02).\n\n**Conventions**\n- Base URL ends in `/api`. JSON everywhere except uploads (`multipart/form-data`) and `/realtime/stream` (SSE).\n- Success: `{ \"data\": …, \"meta\"?: … }`. Lists: `{ \"data\": [...], \"meta\": { page, limit, total, totalPages, hasNextPage, hasPrevPage } }` with `?page=&limit=` (max 100).\n- Errors: `{ \"error\": { \"code\", \"message\", \"issues\"? } }`. 400 validation, 401 missing/invalid token, 403 role not allowed, 404 not found (also for other users' resources), 409 uniqueness/still referenced, 422 business rule or state (cut-off passed, wrong slot status, unavailable package).\n- Auth: `Authorization: Bearer <accessToken>`; each operation lists its roles in `x-roles`. Refresh with `/auth/refresh` (rotates the refresh token); `/auth/logout` revokes the refresh token. Access tokens are stateless and stay valid until they expire.\n- **Terminology:** `Subscription` = PRD \"Pesanan\" (order); `Order` = PRD \"Slot\" (one portion on one schedule); `MenuSchedule` = \"Jadwal Menu\".\n- Status values are Indonesian and case-sensitive (`Siap Diambil` has a space). Derived labels (`displayStatus`, meal-time `range`, `isAvailable`, `doneOnline`) are computed, never stored.\n- Money is Rp as a JSON number with up to 2 decimals. Dates are `YYYY-MM-DD` and times `HH:mm` in Asia/Jakarta; timestamps are ISO 8601 Asia/Jakarta wall-clock time with its offset and milliseconds (`2026-11-03T08:00:00.000+07:00`).\n- Photos: upload via `POST /files`, send the returned key as `photoKey`; responses add a short-lived signed `photoUrl`."
   },
   "servers": [
     {
@@ -114,7 +114,7 @@
           "Auth"
         ],
         "summary": "Register a customer",
-        "description": "**Public** (no token).\n\nCreates a `CUSTOMER` and signs in immediately (UC-01). 409 when the phone or email is taken.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.",
+        "description": "**Public** (no token).\n\nCreates a `CUSTOMER` and signs in immediately (UC-01). 409 when the phone or email is taken.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.\n\nThe refresh token is also set as the `lahap_refresh` cookie (`HttpOnly`, `Path=/api/auth`, `Max-Age` = `refreshExpiresIn`; `SameSite`/`Secure` from `AUTH_COOKIE_SAME_SITE`/`AUTH_COOKIE_SECURE`). Browsers should rely on the cookie and send requests with `credentials: \"include\"`; `refreshToken` stays in the body for non-browser clients.",
         "requestBody": {
           "required": true,
           "content": {
@@ -149,7 +149,34 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "UNKNOWN_ALLERGY": {
+                    "summary": "UNKNOWN_ALLERGY",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_ALLERGY",
+                        "message": "unknown allergy ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
@@ -172,7 +199,7 @@
           "Auth"
         ],
         "summary": "Log in",
-        "description": "**Public** (no token).\n\nOne login for every role (UC-13); redirect by `user.role`. Inactive accounts get 401 `INVALID_CREDENTIALS`.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.",
+        "description": "**Public** (no token).\n\nOne login for every role (UC-13); redirect by `user.role`. Inactive accounts get 401 `INVALID_CREDENTIALS`.\n\nRate-limited per client IP (default 10 requests per 60 s); over the limit it returns 429 with `Retry-After`.\n\nThe refresh token is also set as the `lahap_refresh` cookie (`HttpOnly`, `Path=/api/auth`, `Max-Age` = `refreshExpiresIn`; `SameSite`/`Secure` from `AUTH_COOKIE_SAME_SITE`/`AUTH_COOKIE_SECURE`). Browsers should rely on the cookie and send requests with `credentials: \"include\"`; `refreshToken` stays in the body for non-browser clients.",
         "requestBody": {
           "required": true,
           "content": {
@@ -230,9 +257,9 @@
           "Auth"
         ],
         "summary": "Refresh the session",
-        "description": "**Public** (no token).\n\nReturns a new token pair. 401 when the refresh token is invalid/expired or the user is gone or inactive.",
+        "description": "**Public** (no token).\n\nReturns a new token pair and sets a new `lahap_refresh` cookie. Reads the refresh token from the body, or from the `lahap_refresh` cookie when the body has none. Refresh tokens are stored server-side and **rotated**: each refresh revokes the presented token, so keep only the newest one. Presenting a token that was already revoked (rotated or logged out) is treated as theft: every refresh token of that user is revoked and the user must sign in again. 401 `MISSING_TOKEN` when neither is sent; 401 `INVALID_TOKEN` when the refresh token is invalid, revoked or unknown, or the user is gone or inactive; 401 `TOKEN_EXPIRED` when it has expired.",
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -285,29 +312,29 @@
           "Auth"
         ],
         "summary": "Log out",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nEnds the session for the client. The MVP has no server-side revocation, so the access and refresh tokens stay valid until they expire: the client must discard both after this call. Always returns 204 for a valid access token.",
-        "x-roles": [
-          "CUSTOMER",
-          "ADMIN",
-          "KITCHEN",
-          "COURIER"
-        ],
+        "description": "**Public** (no token).\n\nRevokes the refresh token and clears the `lahap_refresh` cookie. Reads the refresh token from the body, or from the `lahap_refresh` cookie when the body has none, like `/auth/refresh`. No access token is needed, so logout still works after the access token expired. Access tokens are stateless and stay valid until they expire (`expiresIn`), so the client must discard it. Always returns 204, also without a token or with an invalid, expired or already revoked one.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
-            "description": "Logged out; discard both tokens."
+            "description": "Logged out; the refresh token is revoked. Discard the access token."
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
         },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
+        "security": [],
         "x-apidog-folder": "Auth"
       }
     },
@@ -8268,14 +8295,11 @@
       },
       "RefreshRequest": {
         "type": "object",
-        "description": "Exchange a refresh token for a new token pair. The server re-checks that the user exists and `isActive`.",
-        "required": [
-          "refreshToken"
-        ],
+        "description": "A refresh token, for `/auth/refresh` and `/auth/logout`. The token is read from the body, or from the `lahap_refresh` cookie when the body has none (the body wins when both are sent). On refresh the server re-checks that the user exists and `isActive`.",
         "properties": {
           "refreshToken": {
             "type": "string",
-            "description": "Refresh token from login/register/refresh.",
+            "description": "Refresh token from login/register/refresh. Optional when the `lahap_refresh` cookie is sent.",
             "minLength": 1
           }
         },
@@ -8283,12 +8307,13 @@
       },
       "AuthSession": {
         "type": "object",
-        "description": "Issued session (stateless JWT pair). Logout = discard both tokens; there is no server-side revocation in the MVP.",
+        "description": "Issued session: a JWT pair. The access token is stateless; the refresh token is stored server-side, rotated on every refresh and revoked by logout.",
         "required": [
           "accessToken",
           "refreshToken",
           "tokenType",
           "expiresIn",
+          "refreshExpiresIn",
           "user"
         ],
         "properties": {
@@ -8311,6 +8336,15 @@
             "format": "int32",
             "description": "Access token lifetime in seconds.",
             "minimum": 1
+          },
+          "refreshExpiresIn": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Refresh token lifetime in seconds; also the cookie's `Max-Age`.",
+            "minimum": 1,
+            "examples": [
+              604800
+            ]
           },
           "user": {
             "$ref": "#/components/schemas/User"
