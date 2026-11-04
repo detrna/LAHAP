@@ -9,7 +9,38 @@ describe("loadHttpConfig", () => {
             UPLOAD_MAX_BYTES: 5 * 1024 * 1024,
             AUTH_RATE_LIMIT_MAX: 10,
             AUTH_RATE_LIMIT_WINDOW_SECONDS: 60,
+            AUTH_COOKIE_NAME: "lahap_refresh",
+            AUTH_COOKIE_SAME_SITE: "lax",
+            AUTH_COOKIE_SECURE: false,
         });
+    });
+
+    it("reads the refresh cookie settings for a cross-site deployment", () => {
+        const config = loadHttpConfig({
+            AUTH_COOKIE_NAME: "refresh",
+            AUTH_COOKIE_SAME_SITE: "none",
+            AUTH_COOKIE_SECURE: "true",
+        });
+
+        expect(config).toMatchObject({
+            AUTH_COOKIE_NAME: "refresh",
+            AUTH_COOKIE_SAME_SITE: "none",
+            AUTH_COOKIE_SECURE: true,
+        });
+    });
+
+    it("rejects SameSite=None without Secure, which browsers drop", () => {
+        expect(() => loadHttpConfig({ AUTH_COOKIE_SAME_SITE: "none" })).toThrow(/AUTH_COOKIE_SECURE/);
+    });
+
+    it.each([
+        ["AUTH_COOKIE_SAME_SITE", "None"],
+        ["AUTH_COOKIE_SAME_SITE", "relaxed"],
+        ["AUTH_COOKIE_SECURE", "1"],
+        ["AUTH_COOKIE_SECURE", "yes"],
+        ["AUTH_COOKIE_NAME", "has space"],
+    ])("rejects %s=%j", (key, value) => {
+        expect(() => loadHttpConfig({ [key]: value })).toThrow();
     });
 
     it("splits and trims a comma-separated CORS_ORIGINS list", () => {

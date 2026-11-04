@@ -7,6 +7,7 @@ export interface MockRequestOptions {
     readonly originalUrl?: string;
     readonly headers?: Record<string, string | string[] | undefined>;
     readonly body?: unknown;
+    readonly cookies?: Record<string, string>;
     readonly query?: Record<string, unknown>;
     readonly params?: Record<string, string>;
     readonly user?: Request["user"];
@@ -24,6 +25,8 @@ export type MockResponse = Response & {
     send: ReturnType<typeof vi.fn>;
     setHeader: ReturnType<typeof vi.fn>;
     end: ReturnType<typeof vi.fn>;
+    cookie: ReturnType<typeof vi.fn>;
+    clearCookie: ReturnType<typeof vi.fn>;
 };
 
 export type MockNextFunction = NextFunction & ReturnType<typeof vi.fn<(err?: unknown) => void>>;
@@ -49,6 +52,7 @@ export function createMockRequest(options: MockRequestOptions = {}): Request {
     req.originalUrl = options.originalUrl ?? rawPath;
     req.headers = options.headers ?? {};
     req.body = options.body ?? {};
+    req.cookies = options.cookies ?? {};
     req.params = (options.params ?? {}) as Request["params"];
 
     if (options.user !== undefined) {
@@ -75,6 +79,8 @@ export function createMockResponse(options: MockResponseOptions = {}): MockRespo
         send: vi.fn(),
         setHeader: vi.fn(),
         end: vi.fn(),
+        cookie: vi.fn(),
+        clearCookie: vi.fn(),
     };
 
     res.status.mockReturnValue(res);
@@ -82,6 +88,8 @@ export function createMockResponse(options: MockResponseOptions = {}): MockRespo
     res.send.mockReturnValue(res);
     res.setHeader.mockReturnValue(res);
     res.end.mockReturnValue(res);
+    res.cookie.mockReturnValue(res);
+    res.clearCookie.mockReturnValue(res);
 
     return res as unknown as MockResponse;
 }

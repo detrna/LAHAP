@@ -19,7 +19,7 @@ describe("corsPolicy middleware (integration)", () => {
         expect(response.status).toBe(201);
         expect(response.headers["access-control-allow-origin"]).toBe("https://lahap.id");
         expect(response.headers["access-control-expose-headers"]).toBe("X-Request-Id,Retry-After");
-        expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+        expect(response.headers["access-control-allow-credentials"]).toBe("true");
     });
 
     it("adds no CORS headers for an unknown origin", async () => {

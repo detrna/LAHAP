@@ -1,5 +1,5 @@
 import { AppError } from "../../shared/errors/app-error.js";
-import type { RequestValidationTarget, ValidationIssue } from "../../shared/response/index.js";
+import type { ValidationIssue } from "../../shared/response/index.js";
 
 export * from "../../shared/ports/token-provider/errors.js";
 export type { RequestValidationTarget, ValidationIssue } from "../../shared/response/index.js";

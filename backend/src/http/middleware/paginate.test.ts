@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request } from "express";
 import { describe, expect, it } from "vitest";
 import { createMockNext, createMockRequest, createMockResponse } from "../../../tests/utils/mocks/express.js";
 import { AppError } from "../../shared/errors/app-error.js";

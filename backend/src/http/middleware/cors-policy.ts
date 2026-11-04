@@ -9,7 +9,7 @@ export interface CorsPolicyOptions {
 export function corsPolicy(options: CorsPolicyOptions): RequestHandler {
     return cors({
         origin: [...options.origins],
-        credentials: false,
+        credentials: true,
         exposedHeaders: [REQUEST_ID_HEADER, "Retry-After"],
         maxAge: 600,
     });

@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import { AppError } from "../../shared/errors/app-error.js";
 import type { Logger } from "../../shared/ports/logger/logger.js";
-import { createErrorResponse, type ErrorResponseBody } from "../../shared/response/index.js";
+import { createErrorResponse } from "../../shared/response/index.js";
 import { RequestValidationError } from "./errors.js";
 
 export type { ErrorResponseBody } from "../../shared/response/index.js";
