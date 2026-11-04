@@ -20,3 +20,26 @@ export class UsersRepositoryFailureError extends AppError {
         super(`users repository operation failed: ${operation}`, { cause });
     }
 }
+
+export type UniqueUserField = "phone" | "email";
+
+export class UserAlreadyExistsError extends AppError {
+    readonly code = "CONFLICT";
+    readonly statusCode = 409;
+
+    constructor(
+        public readonly field: UniqueUserField,
+        options?: { cause?: unknown },
+    ) {
+        super(`${field} is already registered`, options);
+    }
+}
+
+export class UnknownAllergyError extends AppError {
+    readonly code = "UNKNOWN_ALLERGY";
+    readonly statusCode = 400;
+
+    constructor(public readonly allergyIds: readonly string[]) {
+        super(`unknown allergy ids: ${allergyIds.join(", ")}`);
+    }
+}
