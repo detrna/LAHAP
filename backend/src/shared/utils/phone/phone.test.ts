@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { AppError } from "../../errors/app-error.js";
-import { InvalidPhoneNumberError, isNormalizedPhone, normalizePhone } from "./phone.js";
+import { InvalidPhoneNumberError, isNormalizedPhone, normalizePhone, phoneSchema } from "./phone.js";
 
 describe("normalizePhone", () => {
     it.each([
@@ -50,5 +51,28 @@ describe("isNormalizedPhone", () => {
         expect(isNormalizedPhone("6281234567890")).toBe(true);
         expect(isNormalizedPhone("081234567890")).toBe(false);
         expect(isNormalizedPhone("+6281234567890")).toBe(false);
+    });
+});
+
+describe("phoneSchema", () => {
+    it("normalizes any accepted form", () => {
+        expect(phoneSchema.parse("0812-3456-7890")).toBe("6281234567890");
+        expect(phoneSchema.parse("+6281234567890")).toBe("6281234567890");
+    });
+
+    it("reports an invalid number as a Zod issue instead of throwing an AppError", () => {
+        const result = z.object({ phone: phoneSchema }).safeParse({ phone: "+14155552671" });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ["phone"],
+                message: "must be an Indonesian number like 0812…, +62812… or 62812…",
+            }),
+        ]);
+    });
+
+    it("rejects non-strings", () => {
+        expect(phoneSchema.safeParse(6281234567890).success).toBe(false);
     });
 });

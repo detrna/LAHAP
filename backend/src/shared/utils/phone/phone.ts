@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { InvalidPhoneNumberError } from "./errors.js";
 
 export * from "./errors.js";
@@ -28,3 +29,12 @@ export function normalizePhone(raw: string): string {
 export function isNormalizedPhone(value: string): boolean {
     return NORMALIZED_PHONE.test(value);
 }
+
+export const phoneSchema = z.string().transform((value, ctx) => {
+    try {
+        return normalizePhone(value);
+    } catch {
+        ctx.addIssue({ code: "custom", message: "must be an Indonesian number like 0812…, +62812… or 62812…" });
+        return z.NEVER;
+    }
+});
