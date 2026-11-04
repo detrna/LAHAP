@@ -37,15 +37,11 @@ describe("JwtTokenProvider (unit)", () => {
 
     describe("constructor validation", () => {
         it("throws when JWT_SECRET is empty", () => {
-            expect(() => new JwtTokenProvider({ ...dummyConfig, SECRET: "   " })).toThrow(
-                "JWT_SECRET is not set",
-            );
+            expect(() => new JwtTokenProvider({ ...dummyConfig, SECRET: "   " })).toThrow("JWT_SECRET is not set");
         });
 
         it("throws when JWT_EXPIRES_IN is empty", () => {
-            expect(() => new JwtTokenProvider({ ...dummyConfig, EXPIRES_IN: "" })).toThrow(
-                "JWT_EXPIRES_IN is not set",
-            );
+            expect(() => new JwtTokenProvider({ ...dummyConfig, EXPIRES_IN: "" })).toThrow("JWT_EXPIRES_IN is not set");
         });
 
         it("throws when JWT_REFRESH_SECRET is empty", () => {
@@ -61,20 +57,66 @@ describe("JwtTokenProvider (unit)", () => {
         });
 
         it("throws when JWT_ISSUER is empty", () => {
-            expect(() => new JwtTokenProvider({ ...dummyConfig, ISSUER: "" })).toThrow(
-                "JWT_ISSUER is not set",
-            );
+            expect(() => new JwtTokenProvider({ ...dummyConfig, ISSUER: "" })).toThrow("JWT_ISSUER is not set");
         });
 
         it("throws when JWT_AUDIENCE is empty", () => {
-            expect(() => new JwtTokenProvider({ ...dummyConfig, AUDIENCE: "" })).toThrow(
-                "JWT_AUDIENCE is not set",
-            );
+            expect(() => new JwtTokenProvider({ ...dummyConfig, AUDIENCE: "" })).toThrow("JWT_AUDIENCE is not set");
         });
 
         it("throws when JWT_ALGORITHM is unsupported", () => {
             expect(() => new JwtTokenProvider({ ...dummyConfig, ALGORITHM: "RS256" })).toThrow(
                 "Unsupported JWT_ALGORITHM: RS256",
+            );
+        });
+    });
+
+    describe("constructor secret separation", () => {
+        it("throws when JWT_SECRET and JWT_REFRESH_SECRET are the same", () => {
+            expect(() => new JwtTokenProvider({ ...dummyConfig, REFRESH_SECRET: dummyConfig.SECRET })).toThrow(
+                "JWT_SECRET and JWT_REFRESH_SECRET must be different",
+            );
+        });
+    });
+
+    describe("token type claim", () => {
+        const signRaw = (claims: Record<string, unknown>, secret: string) =>
+            jwt.sign({ sub: validPayload.sub, role: validPayload.role, ...claims }, secret, {
+                algorithm: "HS256",
+                expiresIn: "1h",
+                issuer: dummyConfig.ISSUER,
+                audience: dummyConfig.AUDIENCE,
+                jwtid: "raw-jti",
+            });
+
+        it("marks access and refresh tokens with their type", () => {
+            const provider = new JwtTokenProvider(dummyConfig);
+            const { accessToken, refreshToken } = provider.signTokenPair(validPayload);
+
+            expect(jwt.decode(accessToken)).toMatchObject({ typ: "access" });
+            expect(jwt.decode(refreshToken)).toMatchObject({ typ: "refresh" });
+        });
+
+        it("rejects a token signed with the refresh secret but typed as access", () => {
+            const provider = new JwtTokenProvider(dummyConfig);
+            const token = signRaw({ typ: "access" }, dummyConfig.REFRESH_SECRET);
+
+            expect(() => provider.verifyRefreshToken(token)).toThrow(InvalidTokenError);
+        });
+
+        it("rejects a token signed with the access secret but typed as refresh", () => {
+            const provider = new JwtTokenProvider(dummyConfig);
+            const token = signRaw({ typ: "refresh" }, dummyConfig.SECRET);
+
+            expect(() => provider.verifyAccessToken(token)).toThrow(InvalidTokenError);
+        });
+
+        it("rejects a token without a type claim", () => {
+            const provider = new JwtTokenProvider(dummyConfig);
+
+            expect(() => provider.verifyAccessToken(signRaw({}, dummyConfig.SECRET))).toThrow(InvalidTokenError);
+            expect(() => provider.verifyRefreshToken(signRaw({}, dummyConfig.REFRESH_SECRET))).toThrow(
+                InvalidTokenError,
             );
         });
     });
@@ -87,9 +129,7 @@ describe("JwtTokenProvider (unit)", () => {
             const decoded = provider.verifyAccessToken(token);
             expect(decoded.sub).toEqual(validPayload.sub);
             expect(decoded.role).toBe(validPayload.role);
-            expect(decoded.jti).toMatch(
-                /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-            );
+            expect(decoded.jti).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
             expect(decoded.iss).toBe(dummyConfig.ISSUER);
             expect(decoded.aud).toBe(dummyConfig.AUDIENCE);
             expect(typeof decoded.iat).toBe("number");
@@ -206,9 +246,7 @@ describe("JwtTokenProvider (unit)", () => {
                 },
             );
 
-            expect(() => provider.verifyAccessToken(malformedPayloadToken)).toThrow(
-                InvalidTokenError,
-            );
+            expect(() => provider.verifyAccessToken(malformedPayloadToken)).toThrow(InvalidTokenError);
         });
 
         it("wraps unexpected jwt.sign failures in TokenProviderFailureError", () => {
@@ -264,6 +302,28 @@ describe("JwtTokenProvider (unit)", () => {
             expect(verifiedAccess.sub).toEqual(validPayload.sub);
             expect(verifiedRefresh.sub).toEqual(validPayload.sub);
             expect(verifiedAccess.jti).not.toBe(verifiedRefresh.jti);
+        });
+
+        it("returns the access token lifetime in seconds as expiresIn", () => {
+            expect(new JwtTokenProvider(dummyConfig).signTokenPair(validPayload).expiresIn).toBe(3600);
+            expect(
+                new JwtTokenProvider({ ...dummyConfig, EXPIRES_IN: "15m" }).signTokenPair(validPayload).expiresIn,
+            ).toBe(900);
+        });
+
+        it("returns the refresh token lifetime in seconds as refreshExpiresIn", () => {
+            expect(new JwtTokenProvider(dummyConfig).signTokenPair(validPayload).refreshExpiresIn).toBe(7 * 24 * 3600);
+            expect(
+                new JwtTokenProvider({ ...dummyConfig, REFRESH_EXPIRES_IN: "1d" }).signTokenPair(validPayload)
+                    .refreshExpiresIn,
+            ).toBe(24 * 3600);
+        });
+
+        it("returns the refresh token's jti as refreshTokenId", () => {
+            const provider = new JwtTokenProvider(dummyConfig);
+            const { refreshToken, refreshTokenId } = provider.signTokenPair(validPayload);
+
+            expect(refreshTokenId).toBe(provider.verifyRefreshToken(refreshToken).jti);
         });
     });
 });

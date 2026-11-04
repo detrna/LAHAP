@@ -101,6 +101,7 @@ export function createExpiredAccessToken(
         {
             sub: payload.sub,
             role: payload.role,
+            typ: "access",
             jti: payload.jti ?? randomUUID(),
         },
         config.SECRET,
@@ -128,6 +129,7 @@ export function createExpiredRefreshToken(
         {
             sub: payload.sub,
             role: payload.role,
+            typ: "refresh",
             jti: payload.jti ?? randomUUID(),
         },
         config.REFRESH_SECRET,

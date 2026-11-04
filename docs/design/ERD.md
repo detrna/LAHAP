@@ -75,6 +75,7 @@ erDiagram
     user |o--o{ order_status_history : "changed_by (r23)"
     order ||--o{ delivery_obstacle : "reports (r24)"
     user ||--o{ delivery_obstacle : "written_by (r25)"
+    user ||--o{ refresh_token : "signs_in_with (r28)"
 
     user {
         VARCHAR_36 id PK
@@ -330,11 +331,20 @@ erDiagram
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
+
+    refresh_token {
+        VARCHAR_36 id PK
+        VARCHAR_36 user_id FK
+        TIMESTAMP expires_at
+        TIMESTAMP revoked_at "nullable"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
 ```
 
 ---
 
-## 3. Entity Data Dictionary (22 Relational Tables)
+## 3. Entity Data Dictionary (23 Relational Tables)
 
 ### 3.1. `user` (`t1`)
 Pusat identitas seluruh pengguna sistem (Pelanggan, Administrator, Koki Dapur, Kurir Pengantar).
@@ -843,7 +853,26 @@ Template pesan WhatsApp follow-up pelanggan churn yang dibuat admin (PRD UC-29, 
 
 ---
 
-## 4. Relationship & Cardinality Matrix (27 Relational Edges)
+### 3.23. `refresh_token` (`t23`)
+Refresh token JWT yang pernah diterbitkan, satu baris per token (`jti`). Access token tetap *stateless* dan tidak disimpan. Setiap `POST /auth/refresh` mencabut token lama dan menerbitkan token baru (*rotation*); token yang sudah dicabut tetapi dipakai lagi dianggap dicuri, sehingga seluruh token aktif pengguna tersebut dicabut (*reuse detection*). `POST /auth/logout` mencabut token yang dikirim.
+- **Primary Key:** `id` (`VARCHAR(36)`)
+- **Foreign Keys:**
+  - `user_id` $\rightarrow$ `user(id)` (ON DELETE CASCADE)
+- **Columns:**
+  | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `id` | `VARCHAR(36)` | No | PK | Klaim `jti` (UUID v4) dari refresh token; diisi aplikasi, bukan dibangkitkan basis data. |
+  | `user_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id` | Pengguna pemilik sesi. |
+  | `expires_at` | `TIMESTAMP` | No | - | Waktu kedaluwarsa token (UTC, = waktu terbit + `JWT_REFRESH_EXPIRES_IN`); kedaluwarsa tetap divalidasi dari klaim `exp` JWT, kolom ini untuk pembersihan baris lama. |
+  | `revoked_at` | `TIMESTAMP` | Yes | - | Waktu token dicabut (rotasi, logout, atau *reuse detection*). `NULL` = masih aktif. |
+  | `created_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu token diterbitkan. |
+  | `updated_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu perubahan terakhir; diperbarui otomatis setiap update (`@onUpdate(now())`). |
+- **Indexes:**
+  - `idx_refresh_token_user` (`user_id`)
+
+---
+
+## 4. Relationship & Cardinality Matrix (28 Relational Edges)
 
 | ID | Parent / From Entity (`Card`) | Child / To Entity (`Card`) | Foreign Key Column | Referential Action | Business Semantics & Invariants |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -874,6 +903,7 @@ Template pesan WhatsApp follow-up pelanggan churn yang dibuat admin (PRD UC-29, 
 | **`r25`**| `user` (`1`) | `delivery_obstacle` (`0..N`) | `delivery_obstacle.author_id` | `ON DELETE RESTRICT` | Kurir/admin penulis catatan kendala. |
 | **`r26`**| `user` (`1`) | `membership` (`0..1`) | `membership.user_id` (UNIQUE) | `ON DELETE CASCADE` | Pengguna memiliki 0 atau 1 keanggotaan tier aktif. |
 | **`r27`**| `tier` (`0..1`) | `subscription` (`0..N`) | `subscription.tier_id` | `ON DELETE SET NULL` | Tier yang memberi diskon pada pesanan. Jika tier dihapus, nominal `tier_discount` tetap tersimpan. |
+| **`r28`**| `user` (`1`) | `refresh_token` (`0..N`) | `refresh_token.user_id` | `ON DELETE CASCADE` | Satu pengguna memiliki banyak refresh token (satu per sesi/perangkat dan per rotasi). |
 
 ---
 
@@ -1217,6 +1247,18 @@ CREATE TABLE IF NOT EXISTS message_template (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 21. Table: refresh_token (t23)
+CREATE TABLE IF NOT EXISTS refresh_token (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON refresh_token(user_id);
 ```
 
 ---
@@ -1288,9 +1330,24 @@ model User {
   deliveries    Order[]        @relation("CourierDeliveries")
   statusChanges OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
+  refreshTokens RefreshToken[]
 
   @@index([role])
   @@map("user")
+}
+
+model RefreshToken {
+  id        VarChar(36) @id
+  userId    VarChar(36) @map("user_id")
+  expiresAt Timestamp   @map("expires_at")
+  revokedAt Timestamp?  @map("revoked_at")
+  createdAt Timestamp   @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp   @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_token")
 }
 
 model Tier {
@@ -1723,6 +1780,7 @@ model Announcement {
 | **BR-23 & PRD §9.4 (Transisi Status & Audit Trail)** | Status slot hanya bergerak maju. Setiap perubahan `order.status` wajib menyisipkan baris `order_status_history` (`from_status`, `to_status`, `changed_by_id`, `changed_at`) dalam transaksi yang sama; koreksi admin (UC-27) wajib menyertakan `admin_note`. Kendala pengantaran dicatat pada `delivery_obstacle`, bukan sebagai status baru. |
 | **BR-24 (Allergen Inheritance)** | Relasi `ingredient_allergy` mengikat alergen pada bahan. Tag alergen menu dikompilasi secara otomatis melalui query `UNION` dari seluruh `ingredient` yang terikat pada `menu_ingredient`. Penugasan Menu Alternatif oleh dapur dicatat sebagai `order.uses_alternative_menu = true` (menu diambil dari `schedule_menu` dengan `is_primary = false`). Alergi di luar daftar dicatat sebagai teks bebas pada `user.allergy_note`; karena tidak dapat dicocokkan otomatis, pelanggan dengan catatan terisi selalu dimasukkan ke kategori khusus dapur (UC-39). |
 | **BR-27 (3-Level Notifications)** | Notifikasi Level Pelanggan disimpan pada `notification.user_id`. Notifikasi Level Paket dan Global dicatat pada `announcement` dengan `scope = 'PACKAGE'` atau `scope = 'GLOBAL'`; pengumuman yang hanya menyasar satu hari jadwal (perubahan menu, BR-26) memakai `scope = 'SCHEDULE'`. |
+| **UC-13 & Logout (Sesi Login)** | Setiap refresh token yang diterbitkan (register, login, refresh) dicatat pada `refresh_token` dengan `id` = klaim `jti`. Refresh hanya berhasil jika baris token masih aktif (`revoked_at IS NULL`); pencabutan memakai `UPDATE ... WHERE revoked_at IS NULL` sehingga dua permintaan bersamaan tidak dapat merotasi token yang sama. Token yang sudah dicabut tetapi dipakai lagi mencabut seluruh token aktif pengguna. Logout mencabut token yang dikirim. `user.is_active = false` tetap menolak refresh. |
 | **BR-28 (Churn Identification)** | Algoritma churn menyeleksi pelanggan di mana `user.role = 'CUSTOMER'` dengan riwayat `subscription.status = 'Success'`, tidak memiliki pesanan `Aktif`, dan `MAX(subscription.end_date) < CURRENT_DATE - INTERVAL '14 days'`. Follow-up memakai `message_template` yang placeholdernya (`{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`) diisi aplikasi lalu dibuka lewat `wa.me` (UC-29, UC-48). |
 
 ---

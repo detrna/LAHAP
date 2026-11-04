@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'bd11cbb126004cf3cdb8b83400d0a40f6b72b645c129559949f4d3fa9cf68ba6'>;
+  StorageHashBase<'161ce6699b6059d266ed6ff9435e298d561f532a61d5e049f8e99ba0b9e3c717'>;
 export type ExecutionHash =
-  ExecutionHashBase<'e53833c3fa7d5d330390a805538aff31aa4b52c06c6feeeafacedb7fc6d9c516'>;
+  ExecutionHashBase<'f1d6c16d23baa2e4d589cda73002417b59117d32bed25e0f4cb7a6f6815afaa7'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -483,6 +483,16 @@ export namespace Models {
     subscriptions: public_Subscription[];
     readonly [RelationKeys]?: 'subscriptions';
   };
+  export type public_RefreshToken = {
+    createdAt: FieldOutputTypes['public']['RefreshToken']['createdAt'];
+    expiresAt: FieldOutputTypes['public']['RefreshToken']['expiresAt'];
+    id: FieldOutputTypes['public']['RefreshToken']['id'];
+    revokedAt: FieldOutputTypes['public']['RefreshToken']['revokedAt'];
+    updatedAt: FieldOutputTypes['public']['RefreshToken']['updatedAt'];
+    userId: FieldOutputTypes['public']['RefreshToken']['userId'];
+    user: public_User;
+    readonly [RelationKeys]?: 'user';
+  };
   export type public_Schedule = {
     createdAt: FieldOutputTypes['public']['Schedule']['createdAt'];
     date: FieldOutputTypes['public']['Schedule']['date'];
@@ -576,6 +586,7 @@ export namespace Models {
     notifications: public_Notification[];
     obstacles: public_DeliveryObstacle[];
     payments: public_Payment[];
+    refreshTokens: public_RefreshToken[];
     statusChanges: public_OrderStatusHistory[];
     subscriptions: public_Subscription[];
     readonly [RelationKeys]?:
@@ -585,6 +596,7 @@ export namespace Models {
       | 'notifications'
       | 'obstacles'
       | 'payments'
+      | 'refreshTokens'
       | 'statusChanges'
       | 'subscriptions';
   };
@@ -618,6 +630,7 @@ export declare const models: {
     Package: Models.public_Package;
     Payment: Models.public_Payment;
     PromoCode: Models.public_PromoCode;
+    RefreshToken: Models.public_RefreshToken;
     Schedule: Models.public_Schedule;
     ScheduleMenu: Models.public_ScheduleMenu;
     Subscription: Models.public_Subscription;
@@ -2149,6 +2162,74 @@ type ContractBase = Omit<
               ];
               foreignKeys: readonly [];
             };
+            readonly refresh_token: {
+              columns: {
+                readonly created_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
+                readonly expires_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly revoked_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly updated_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
+                readonly user_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'refresh_token_user_id_idx_6c952402';
+                  readonly prefix: 'refresh_token_user_id_idx';
+                  readonly columns: readonly ['user_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'refresh_token';
+                    readonly columns: readonly ['user_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly schedule: {
               columns: {
                 readonly created_at: {
@@ -2942,6 +3023,10 @@ type ContractBase = Omit<
     readonly promo_code: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'PromoCode';
+    };
+    readonly refresh_token: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'RefreshToken';
     };
     readonly schedule: { readonly namespace: 'public' & NamespaceId; readonly model: 'Schedule' };
     readonly schedule_menu: {
@@ -4524,6 +4609,77 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly RefreshToken: {
+            readonly fields: {
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly expiresAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'refresh_token';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly createdAt: { readonly column: 'created_at' };
+                readonly expiresAt: { readonly column: 'expires_at' };
+                readonly id: { readonly column: 'id' };
+                readonly revokedAt: { readonly column: 'revoked_at' };
+                readonly updatedAt: { readonly column: 'updated_at' };
+                readonly userId: { readonly column: 'user_id' };
+              };
+            };
+          };
           readonly Schedule: {
             readonly fields: {
               readonly createdAt: {
@@ -5244,6 +5400,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly refreshTokens: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RefreshToken';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
               readonly statusChanges: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -5751,6 +5918,23 @@ type ContractBase = Omit<
           readonly onUpdate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
           readonly ref: {
             readonly entry: 'promo_code';
+            readonly field: 'updated_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'refresh_token';
+            readonly field: 'created_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly onUpdate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'refresh_token';
             readonly field: 'updated_at';
             readonly namespace: 'public';
           };

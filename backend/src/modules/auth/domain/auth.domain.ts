@@ -5,5 +5,6 @@ export interface AuthSession {
     readonly refreshToken: string;
     readonly tokenType: "Bearer";
     readonly expiresIn: number;
+    readonly refreshExpiresIn: number;
     readonly user: User;
 }

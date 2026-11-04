@@ -38,4 +38,3 @@ export class TokenProviderFailureError extends AppError {
         super(`token provider operation failed: ${operation}`, { cause });
     }
 }
-

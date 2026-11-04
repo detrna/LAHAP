@@ -18,8 +18,8 @@ import { DeliveryContainer } from "./modules/delivery/container/delivery.contain
 import { RetentionContainer } from "./modules/retention/container/retention.container.js";
 
 export function createApp(deps: ModuleDeps): Express {
-    const auth = new AuthContainer(deps);
     const users = new UsersContainer(deps);
+    const auth = new AuthContainer({ ...deps, users: users.service });
     const settings = new SettingsContainer(deps);
     const files = new FilesContainer(deps);
     const realtime = new RealtimeContainer(deps);

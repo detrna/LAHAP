@@ -11,9 +11,9 @@ export interface JwtConfig {
 }
 
 export const jwtEnvSchema = z.object({
-    JWT_SECRET: z.string().min(1).default("change-me"),
+    JWT_SECRET: z.string().min(1).default("change-me-access"),
     JWT_EXPIRES_IN: z.string().default("1h"),
-    JWT_REFRESH_SECRET: z.string().default("change-me"),
+    JWT_REFRESH_SECRET: z.string().default("change-me-refresh"),
     JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
     JWT_ALGORITHM: z.string().default("HS256"),
     JWT_ISSUER: z.string().default("gtnic"),

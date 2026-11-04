@@ -26,6 +26,9 @@ export interface VerifiedTokenPayload {
 export interface TokenPair {
     readonly accessToken: string;
     readonly refreshToken: string;
+    readonly refreshTokenId: string;
+    readonly expiresIn: number;
+    readonly refreshExpiresIn: number;
 }
 
 export interface TokenProvider {

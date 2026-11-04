@@ -60,9 +60,24 @@ model User {
   deliveries    Order[]        @relation("CourierDeliveries")
   statusChanges OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
+  refreshTokens RefreshToken[]
 
   @@index([role])
   @@map("user")
+}
+
+model RefreshToken {
+  id        VarChar(36) @id
+  userId    VarChar(36) @map("user_id")
+  expiresAt Timestamp   @map("expires_at")
+  revokedAt Timestamp?  @map("revoked_at")
+  createdAt Timestamp   @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp   @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_token")
 }
 
 model Tier {

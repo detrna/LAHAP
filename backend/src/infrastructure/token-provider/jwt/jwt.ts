@@ -18,12 +18,15 @@ import type {
 
 const SUPPORTED_ALGORITHMS = new Set<Algorithm>(["HS256", "HS384", "HS512"]);
 
+type TokenType = "access" | "refresh";
+
 const decodedPayloadSchema = z.object({
     sub: z.object({
         userId: z.string().trim().min(1),
         name: z.string().trim().min(1),
     }),
     role: z.enum(ROLES),
+    typ: z.enum(["access", "refresh"]),
     jti: z.string().trim().min(1),
     iat: z.number().int(),
     exp: z.number().int(),
@@ -69,6 +72,11 @@ function normalizePayload(payload: SignTokenPayload): {
     };
 }
 
+function readSignedClaims(token: string): { jti: string; lifetimeInSeconds: number } {
+    const { jti, iat, exp } = jwt.decode(token) as { jti: string; iat: number; exp: number };
+    return { jti, lifetimeInSeconds: exp - iat };
+}
+
 export class JwtTokenProvider implements TokenProvider {
     private readonly secret: string;
     private readonly expiresIn: string;
@@ -97,6 +105,9 @@ export class JwtTokenProvider implements TokenProvider {
         if (!config.AUDIENCE.trim()) {
             throw new Error("JWT_AUDIENCE is not set");
         }
+        if (config.SECRET === config.REFRESH_SECRET) {
+            throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different");
+        }
         if (!SUPPORTED_ALGORITHMS.has(config.ALGORITHM as Algorithm)) {
             throw new Error(`Unsupported JWT_ALGORITHM: ${config.ALGORITHM}`);
         }
@@ -112,6 +123,7 @@ export class JwtTokenProvider implements TokenProvider {
 
     private signToken(
         payload: SignTokenPayload,
+        typ: TokenType,
         secret: string,
         expiresIn: string,
         operation: "signAccessToken" | "signRefreshToken",
@@ -119,7 +131,7 @@ export class JwtTokenProvider implements TokenProvider {
         const { sub, role, jwtid } = normalizePayload(payload);
 
         try {
-            return jwt.sign({ sub, role }, secret, {
+            return jwt.sign({ sub, role, typ }, secret, {
                 algorithm: this.algorithm,
                 expiresIn: expiresIn as NonNullable<SignOptions["expiresIn"]>,
                 issuer: this.issuer,
@@ -131,7 +143,7 @@ export class JwtTokenProvider implements TokenProvider {
         }
     }
 
-    private verifyToken(token: string, secret: string): VerifiedTokenPayload {
+    private verifyToken(token: string, secret: string, typ: TokenType): VerifiedTokenPayload {
         const trimmed = token.trim();
         if (!trimmed) {
             throw new InvalidTokenError("token must not be empty");
@@ -155,6 +167,9 @@ export class JwtTokenProvider implements TokenProvider {
         if (!parsed.success) {
             throw new InvalidTokenError("malformed token payload", { cause: parsed.error });
         }
+        if (parsed.data.typ !== typ) {
+            throw new InvalidTokenError(`expected a ${typ} token`);
+        }
 
         return {
             sub: {
@@ -171,30 +186,31 @@ export class JwtTokenProvider implements TokenProvider {
     }
 
     signAccessToken(payload: SignTokenPayload): string {
-        return this.signToken(payload, this.secret, this.expiresIn, "signAccessToken");
+        return this.signToken(payload, "access", this.secret, this.expiresIn, "signAccessToken");
     }
 
     verifyAccessToken(token: string): VerifiedTokenPayload {
-        return this.verifyToken(token, this.secret);
+        return this.verifyToken(token, this.secret, "access");
     }
 
     signRefreshToken(payload: SignTokenPayload): string {
-        return this.signToken(
-            payload,
-            this.refreshSecret,
-            this.refreshExpiresIn,
-            "signRefreshToken",
-        );
+        return this.signToken(payload, "refresh", this.refreshSecret, this.refreshExpiresIn, "signRefreshToken");
     }
 
     verifyRefreshToken(token: string): VerifiedTokenPayload {
-        return this.verifyToken(token, this.refreshSecret);
+        return this.verifyToken(token, this.refreshSecret, "refresh");
     }
 
     signTokenPair(payload: SignTokenPayload): TokenPair {
+        const accessToken = this.signAccessToken(payload);
+        const refreshToken = this.signRefreshToken(payload);
+        const refreshClaims = readSignedClaims(refreshToken);
         return {
-            accessToken: this.signAccessToken(payload),
-            refreshToken: this.signRefreshToken(payload),
+            accessToken,
+            refreshToken,
+            refreshTokenId: refreshClaims.jti,
+            expiresIn: readSignedClaims(accessToken).lifetimeInSeconds,
+            refreshExpiresIn: refreshClaims.lifetimeInSeconds,
         };
     }
 }

@@ -217,6 +217,13 @@ classDiagram
         - updatedAt: Date
     }
 
+    class RefreshToken {
+        - id: String
+        - expiresAt: Date
+        - revokedAt: Date?
+        - createdAt: Date
+    }
+
     %% Relationships
     Notification "0..*" --> "1" User : notifies
     User "1" --> "0..1" Membership : holds
@@ -247,12 +254,13 @@ classDiagram
     OrderStatusHistory "0..*" --> "0..1" User : changed by
     Order "1" *-- "0..*" DeliveryObstacle : reports
     DeliveryObstacle "0..*" --> "1" User : written by
+    User "1" *-- "0..*" RefreshToken : signs in with
     %% Business is a singleton settings entity with no associations (tenant scoping deferred)
 ```
 
 ---
 
-## 3. Entity Data Dictionary (19 Domain Entities)
+## 3. Entity Data Dictionary (20 Domain Entities)
 
 > Mutable entities also carry `createdAt` and `updatedAt` (auto-maintained), omitted from the tables below. Link tables and append-only logs (`OrderStatusHistory`, `DeliveryObstacle`) have no `updatedAt`.
 
@@ -540,11 +548,24 @@ classDiagram
   | `body` | `String` | No | Message text with `{key}` placeholders, filled per customer and URL-encoded into a `wa.me` link. |
   | `updatedAt` | `Date` | No | Last edit time. |
 
+### 3.20 `RefreshToken` (`c_refresh_token`)
+
+- **Stereotype:** `«entity»`
+- **Domain Role:** One issued JWT refresh token (a sign-in session on one device). Access tokens stay stateless and are not stored. Owned by the `auth` module. Every refresh revokes the presented token and issues a new one (rotation); presenting an already revoked token again revokes all of the user's active tokens (reuse detection). Logout revokes the presented token.
+- **Attributes:**
+  | Attribute | Type | Nullable | Description & Invariants |
+  | :--- | :--- | :---: | :--- |
+  | `id` | `String` | No | Primary Key; the token's `jti` claim, set by the app. |
+  | `expiresAt` | `Date` | No | When the token expires (`JWT_REFRESH_EXPIRES_IN` after issue). The JWT `exp` claim is still what rejects expired tokens; this column allows cleaning up old rows. |
+  | `revokedAt` | `Date` | Yes | When the token was revoked (rotation, logout or reuse detection); `null` = still usable. |
+  | `createdAt` | `Date` | No | When the token was issued. |
+  | _(user)_ | `User` | No | The signed-in user. |
+
 ---
 
-## 4. Relationship & Multiplicity Matrix (24 Edges)
+## 4. Relationship & Multiplicity Matrix (25 Edges)
 
-The following matrix documents all 24 edges connecting the 19 entities in the class model:
+The following matrix documents all 25 edges connecting the 20 entities in the class model:
 
 | Edge ID             | Source Node      |  Mult  | Relation Type | Target Node    |  Mult  | Label               | Foreign Key / Cascade Semantics                                                                                                                 |
 | :------------------ | :--------------- | :----: | :-----------: | :------------- | :----: | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -572,6 +593,7 @@ The following matrix documents all 24 edges connecting the 19 entities in the cl
 | `e_hist_user` | `OrderStatusHistory` | `0..*` | `association` | `User` | `0..1` | `changed by` | `OrderStatusHistory.changedById -> User.id` (ON DELETE RESTRICT). `null` = system/worker. |
 | `e_obst_order` | `DeliveryObstacle` | `0..*` | `composition` | `Order` | `1` | `reports` | `DeliveryObstacle.orderId -> Order.id` (ON DELETE CASCADE). Obstacle notes owned by the slot (PRD BR-23). |
 | `e_obst_user` | `DeliveryObstacle` | `0..*` | `association` | `User` | `1` | `written by` | `DeliveryObstacle.authorId -> User.id` (ON DELETE RESTRICT). Courier or admin author. |
+| `e_user_refresh_token` | `User` | `1` | `composition` | `RefreshToken` | `0..*` | `signs in with` | `RefreshToken.userId -> User.id` (ON DELETE CASCADE). One row per issued refresh token, so per session and per rotation. |
 
 ---
 
