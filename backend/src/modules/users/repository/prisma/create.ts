@@ -1,3 +1,4 @@
+import { toNumericOrNull } from "../../../../infrastructure/database/prisma/numeric.js";
 import { getUniqueViolationConstraint } from "../../../../infrastructure/database/prisma/sql-errors.js";
 import type { NewUserRecord, UserRecord } from "../../service/interfaces/users.repository.js";
 import { UserAlreadyExistsError, UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
@@ -17,8 +18,8 @@ export async function create(this: PrismaUsersRepository, user: NewUserRecord): 
                 password: user.passwordHash,
                 role: user.role,
                 address: user.address,
-                latitude: user.latitude === null ? null : String(user.latitude),
-                longitude: user.longitude === null ? null : String(user.longitude),
+                latitude: toNumericOrNull(user.latitude, 8),
+                longitude: toNumericOrNull(user.longitude, 8),
                 allergyNote: user.allergyNote,
             });
             if (user.allergyIds.length > 0) {

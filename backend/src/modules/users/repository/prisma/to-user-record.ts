@@ -1,3 +1,4 @@
+import { fromNumericOrNull } from "../../../../infrastructure/database/prisma/numeric.js";
 import { isRole } from "../../../../shared/auth/roles.js";
 import type { UserRecord } from "../../service/interfaces/users.repository.js";
 
@@ -24,8 +25,6 @@ export interface UserRow {
     readonly allergies: readonly { readonly allergy: AllergyRow }[];
 }
 
-const toNumberOrNull = (value: string | null): number | null => (value === null ? null : Number(value));
-
 export function toUserRecord(row: UserRow): UserRecord {
     if (!isRole(row.role)) {
         throw new Error(`unknown role "${row.role}" on user ${row.id}`);
@@ -38,8 +37,8 @@ export function toUserRecord(row: UserRow): UserRecord {
         phone: row.phone,
         role: row.role,
         address: row.address,
-        latitude: toNumberOrNull(row.latitude),
-        longitude: toNumberOrNull(row.longitude),
+        latitude: fromNumericOrNull(row.latitude),
+        longitude: fromNumericOrNull(row.longitude),
         allergyNote: row.allergyNote,
         isActive: row.isActive,
         createdAt: row.createdAt,
