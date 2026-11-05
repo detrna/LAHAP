@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFixedClock } from "../../../tests/utils/factory/clock/clock.js";
-import { toDbTimestamp, toIsoTimestamp } from "./timestamp.js";
+import { fromIsoTimestamp, toDbTimestamp, toIsoTimestamp } from "./timestamp.js";
 
 describe("toIsoTimestamp", () => {
     it("renders a stored UTC timestamp in Asia/Jakarta with its +07:00 offset and millisecond precision", () => {
@@ -39,5 +39,22 @@ describe("toDbTimestamp", () => {
         const now = createFixedClock("2026-11-09T23:59:59.250+07:00[Asia/Jakarta]").now();
 
         expect(toIsoTimestamp(toDbTimestamp(now))).toBe("2026-11-09T23:59:59.250+07:00");
+    });
+});
+
+describe("fromIsoTimestamp", () => {
+    it("reads +07:00 and Z inputs as the same UTC wall-clock value", () => {
+        expect(fromIsoTimestamp("2026-11-03T08:00:00+07:00").toString()).toBe("2026-11-03T01:00:00");
+        expect(fromIsoTimestamp("2026-11-03T01:00:00Z").toString()).toBe("2026-11-03T01:00:00");
+    });
+
+    it("is the inverse of toIsoTimestamp", () => {
+        const stored = Temporal.PlainDateTime.from("2026-11-03T16:59:59.123");
+
+        expect(fromIsoTimestamp(toIsoTimestamp(stored)).equals(stored)).toBe(true);
+    });
+
+    it("throws for a date-time without an offset", () => {
+        expect(() => fromIsoTimestamp("2026-11-03T08:00:00")).toThrow(RangeError);
     });
 });

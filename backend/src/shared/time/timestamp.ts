@@ -12,3 +12,7 @@ export function toIsoTimestamp(value: Temporal.PlainDateTime): string {
 export function toDbTimestamp(value: Temporal.ZonedDateTime): Temporal.PlainDateTime {
     return value.withTimeZone(STORAGE_TIME_ZONE).toPlainDateTime();
 }
+
+export function fromIsoTimestamp(iso: string): Temporal.PlainDateTime {
+    return Temporal.Instant.from(iso).toZonedDateTimeISO(STORAGE_TIME_ZONE).toPlainDateTime();
+}

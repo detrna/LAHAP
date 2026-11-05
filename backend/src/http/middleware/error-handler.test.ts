@@ -4,6 +4,7 @@ import { CacheFailureError } from "../../shared/ports/cache/errors.js";
 import type { Logger } from "../../shared/ports/logger/logger.js";
 import { ObjectNotFoundError } from "../../shared/ports/object-storage/errors.js";
 import { PaymentGatewayProviderError } from "../../shared/ports/payment-gateway/errors.js";
+import { InvalidDateRangeError } from "../../shared/time/date-range.js";
 import { errorHandler } from "./error-handler.js";
 import { ForbiddenError, MissingTokenError, RequestValidationError, type ValidationIssue } from "./errors.js";
 
@@ -90,6 +91,23 @@ describe("errorHandler middleware", () => {
             validationErr.message,
         );
         expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("formats a ValidationError raised outside request validation with its issues", () => {
+        const middleware = errorHandler({ logger: createMockLogger() });
+        const err = new InvalidDateRangeError("must not be before from");
+        const res = createMockResponse();
+
+        middleware(err, createMockRequest(), res, createMockNext());
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+            error: {
+                code: "VALIDATION_ERROR",
+                message: "request validation failed: query.to: must not be before from",
+                issues: [{ target: "query", path: "to", message: "must not be before from", code: "custom" }],
+            },
+        });
     });
 
     it("formats 4xx AppError subclasses with their statusCode and code and logs at warn", () => {
