@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { latitudeSchema, longitudeSchema, refineCoordinatesTogether } from "../../../shared/schema/coordinates.js";
+import { uniqueArray } from "../../../shared/schema/unique-array.js";
 import { phoneSchema } from "../../../shared/utils/phone/phone.js";
 
 const BCRYPT_MAX_BYTES = 72;
@@ -17,22 +19,16 @@ export const registerSchema = z
         name: z.string().trim().max(100).optional(),
         email: z.string().trim().pipe(z.email().max(100)).optional(),
         address: z.string().trim().optional(),
-        latitude: z.number().min(-90).max(90).optional(),
-        longitude: z.number().min(-180).max(180).optional(),
-        allergyIds: z
-            .array(z.uuid())
-            .refine(ids => new Set(ids).size === ids.length, "must not contain duplicates")
-            .optional(),
+        latitude: latitudeSchema.optional(),
+        longitude: longitudeSchema.optional(),
+        allergyIds: uniqueArray(z.uuid()).optional(),
         allergyNote: z.string().trim().optional(),
     })
     .superRefine((value, ctx) => {
         if (value.confirmPassword !== value.password) {
             ctx.addIssue({ code: "custom", path: ["confirmPassword"], message: "must match password" });
         }
-        if ((value.latitude === undefined) !== (value.longitude === undefined)) {
-            const missing = value.latitude === undefined ? "latitude" : "longitude";
-            ctx.addIssue({ code: "custom", path: [missing], message: "latitude and longitude must be sent together" });
-        }
+        refineCoordinatesTogether(value, ctx);
     })
     .transform(({ confirmPassword: _confirmPassword, ...customer }) => customer);
 
