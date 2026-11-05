@@ -1,8 +1,8 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import { AppError } from "../../shared/errors/app-error.js";
 import type { Logger } from "../../shared/ports/logger/logger.js";
+import { ValidationError } from "../../shared/errors/validation-error.js";
 import { createErrorResponse } from "../../shared/response/index.js";
-import { RequestValidationError } from "./errors.js";
 
 export type { ErrorResponseBody } from "../../shared/response/index.js";
 
@@ -45,7 +45,7 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
             path: req.originalUrl ?? req.path,
         };
 
-        if (err instanceof RequestValidationError) {
+        if (err instanceof ValidationError) {
             logger?.warn(
                 {
                     err,

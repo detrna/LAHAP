@@ -1,27 +1,10 @@
 import { AppError } from "../../shared/errors/app-error.js";
-import type { ValidationIssue } from "../../shared/response/index.js";
+import { ValidationError } from "../../shared/errors/validation-error.js";
 
 export * from "../../shared/ports/token-provider/errors.js";
 export type { RequestValidationTarget, ValidationIssue } from "../../shared/response/index.js";
 
-export class RequestValidationError extends AppError {
-    readonly code = "VALIDATION_ERROR";
-    readonly statusCode = 400;
-
-    constructor(
-        public readonly issues: readonly ValidationIssue[],
-        options?: { cause?: unknown },
-    ) {
-        const summary = issues
-            .map(issue => {
-                const location = issue.path ? `${issue.target}.${issue.path}` : issue.target;
-                return `${location}: ${issue.message}`;
-            })
-            .join("; ");
-
-        super(summary ? `request validation failed: ${summary}` : "request validation failed", options);
-    }
-}
+export class RequestValidationError extends ValidationError {}
 
 export class MissingTokenError extends AppError {
     readonly code = "MISSING_TOKEN";
@@ -36,10 +19,7 @@ export class InvalidAuthorizationHeaderError extends AppError {
     readonly code = "INVALID_AUTHORIZATION_HEADER";
     readonly statusCode = 401;
 
-    constructor(
-        message = "authorization header must be in format 'Bearer <token>'",
-        options?: { cause?: unknown },
-    ) {
+    constructor(message = "authorization header must be in format 'Bearer <token>'", options?: { cause?: unknown }) {
         super(message, options);
     }
 }
