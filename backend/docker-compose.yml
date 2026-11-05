@@ -26,7 +26,7 @@ services:
             AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
             AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
         ports:
-            - "127.0.0.1:8333:8333" # S3 API
+            - "${S3_BIND:-127.0.0.1}:8333:8333" # S3 API
             - "127.0.0.1:9333:9333" # master UI
             - "127.0.0.1:8888:8888" # filer UI (browse buckets and files)
         volumes:
@@ -48,7 +48,7 @@ services:
             retries: 5
 
     api:
-        image: ghcr.io/${IMAGE_NAME:-detrna/gtnic-backend}:${IMAGE_TAG:-local}
+        image: ghcr.io/${IMAGE_NAME:-detrna/lahap-backend}:${IMAGE_TAG:-local}
         build: .
         profiles: ["app"]
         restart: unless-stopped
@@ -60,7 +60,7 @@ services:
             REDIS_URL: redis://redis:6379
             LOG_FILE_PATH: log/api.txt
         ports:
-            - "127.0.0.1:${PORT:-4000}:${PORT:-4000}"
+            - "${API_BIND:-127.0.0.1}:${PORT:-4000}:${PORT:-4000}"
         volumes:
             - app_logs:/app/log
         depends_on:
@@ -84,7 +84,7 @@ services:
             start_period: 15s
 
     worker:
-        image: ghcr.io/${IMAGE_NAME:-detrna/gtnic-backend}:${IMAGE_TAG:-local}
+        image: ghcr.io/${IMAGE_NAME:-detrna/lahap-backend}:${IMAGE_TAG:-local}
         build: .
         profiles: ["app"]
         restart: unless-stopped
