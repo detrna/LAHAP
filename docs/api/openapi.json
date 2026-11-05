@@ -104,9 +104,46 @@
     {
       "name": "Admin · Retention",
       "description": "Churn detection and WhatsApp follow-ups."
+    },
+    {
+      "name": "System",
+      "description": "Operational endpoints outside `/api`, such as the health check."
     }
   ],
   "paths": {
+    "/health": {
+      "servers": [
+        {
+          "url": "http://localhost:3000",
+          "description": "Local development (server root, outside /api)"
+        }
+      ],
+      "get": {
+        "operationId": "getHealth",
+        "tags": [
+          "System"
+        ],
+        "summary": "Health check",
+        "description": "**Public** (no token).\n\nAnswers 200 while the API process is up. It is served at the server root, **not under `/api`**, and its body is **not** wrapped in the `{ data }` envelope. It doesn't check Postgres, Redis or object storage. Used by the Docker healthcheck and the deploy (`docker compose up --wait`), and skipped by the request logger.",
+        "responses": {
+          "200": {
+            "description": "The API is up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                },
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-apidog-folder": "System"
+      }
+    },
     "/auth/register": {
       "post": {
         "operationId": "register",
@@ -710,7 +747,7 @@
           "Me"
         ],
         "summary": "Get my profile",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nIncludes `membership` and `allergies`.",
+        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nIncludes `membership` and `allergies`. 404 when the account was deleted after the token was issued.",
         "x-roles": [
           "CUSTOMER",
           "ADMIN",
@@ -743,6 +780,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -760,7 +800,7 @@
           "Me"
         ],
         "summary": "Update my profile",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nNever changes existing orders' recipient or address (each order keeps its snapshot).",
+        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nNever changes existing orders' recipient or address (each order keeps its snapshot). Send at least one field. `role`, `isActive` and `password` are ignored here. `latitude` and `longitude` are sent together, both `null` to clear them. Returns the profile with `membership`.",
         "x-roles": [
           "CUSTOMER",
           "ADMIN",
@@ -806,6 +846,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
@@ -828,7 +871,7 @@
           "Me"
         ],
         "summary": "Change my password",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\n422 when `currentPassword` is wrong. Existing tokens stay valid until they expire.",
+        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\n422 `INVALID_STATE` when `currentPassword` is wrong; 400 on `newPassword` when it equals the current password. Revokes every refresh token of the user, including this session's, so other sessions are signed out once their access token expires and the client logs in again.",
         "x-roles": [
           "CUSTOMER",
           "ADMIN",
@@ -854,6 +897,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "422": {
             "$ref": "#/components/responses/InvalidState"
@@ -2768,7 +2814,7 @@
           "Admin · Users"
         ],
         "summary": "List users",
-        "description": "**Roles:** `ADMIN`.\n\nName, email, phone and role, with search and role filter; churned customers carry `isChurned` (UC-14). `meta.total` is the user count.",
+        "description": "**Roles:** `ADMIN`.\n\nWith search, role, active and churn filters; each user carries `allergies` and `isChurned` (UC-14), but not `membership` (see the detail). Sorted newest first. `meta.total` is the matching user count.",
         "x-roles": [
           "ADMIN"
         ],
@@ -2783,7 +2829,7 @@
             "name": "search",
             "in": "query",
             "required": false,
-            "description": "Case-insensitive name search.",
+            "description": "Case-insensitive match on name, email or phone. A local number (`0812…`, `+62812…`) also matches the stored `62812…` form.",
             "schema": {
               "type": "string",
               "minLength": 1
@@ -2793,10 +2839,16 @@
             "name": "role",
             "in": "query",
             "required": false,
-            "description": "Role filter.",
+            "description": "One or more roles (`?role=KITCHEN&role=COURIER`).",
             "schema": {
-              "$ref": "#/components/schemas/Role"
-            }
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Role"
+              },
+              "uniqueItems": true
+            },
+            "style": "form",
+            "explode": true
           },
           {
             "name": "isActive",
@@ -2811,7 +2863,7 @@
             "name": "isChurned",
             "in": "query",
             "required": false,
-            "description": "Churned customers only.",
+            "description": "Churned customers (`true`) or everyone else (`false`): a `Success` order whose latest `endDate` is more than 14 days ago (BR-28). Always `false` for staff.",
             "schema": {
               "type": "boolean"
             }
@@ -2869,7 +2921,7 @@
           "Admin · Users"
         ],
         "summary": "Create a user",
-        "description": "**Roles:** `ADMIN`.\n\nSame fields as registration plus `role` (UC-16).",
+        "description": "**Roles:** `ADMIN`.\n\nSame fields as registration plus `role` and `isActive` (default `true`), usually for staff accounts (UC-16).",
         "x-roles": [
           "ADMIN"
         ],
@@ -2998,7 +3050,7 @@
           "Admin · Users"
         ],
         "summary": "Update a user",
-        "description": "**Roles:** `ADMIN`.\n\nSet `isActive = false` to revoke access (UC-18). Users are never deleted, so their orders and payments stay.",
+        "description": "**Roles:** `ADMIN`.\n\nSet `isActive = false` to revoke access (UC-18). Users are never deleted, so their orders and payments stay. A password reset or a deactivation revokes the user's refresh tokens. 422 `INVALID_STATE` when the change would leave no active `ADMIN`. Returns the detail with `membership` and `isChurned`.",
         "x-roles": [
           "ADMIN"
         ],
@@ -3054,6 +3106,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -13195,6 +13250,23 @@
           }
         },
         "x-apidog-folder": "Realtime"
+      },
+      "HealthStatus": {
+        "type": "object",
+        "description": "Health check body. Not wrapped in the `{ data }` envelope.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "examples": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "x-apidog-folder": "Common"
       }
     },
     "responses": {
