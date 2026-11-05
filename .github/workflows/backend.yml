@@ -153,6 +153,9 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 15
         environment: production
+        permissions:
+            contents: read
+            packages: read
         concurrency:
             group: deploy-production
             cancel-in-progress: false
@@ -161,11 +164,11 @@ jobs:
             - name: Copy compose file to server
               uses: appleboy/scp-action@v1.0.0
               with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  key: ${{ secrets.SSH_KEY }}
-                  port: ${{ secrets.SSH_PORT }}
-                  fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USER }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  port: ${{ secrets.VPS_PORT }}
+                  fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
                   source: backend/docker-compose.yml
                   target: ${{ github.event.repository.name }}
                   strip_components: 1
@@ -175,14 +178,14 @@ jobs:
               env:
                   IMAGE_NAME: ${{ github.repository_owner }}/${{ vars.IMAGE_NAME }}
                   IMAGE_TAG: sha-${{ github.sha }}
-                  GHCR_USERNAME: ${{ github.repository_owner }}
-                  GHCR_TOKEN: ${{ secrets.AUTH_GITHUB_TOKEN }}
+                  GHCR_USERNAME: ${{ github.actor }}
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  key: ${{ secrets.SSH_KEY }}
-                  port: ${{ secrets.SSH_PORT }}
-                  fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USER }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  port: ${{ secrets.VPS_PORT }}
+                  fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
                   envs: IMAGE_NAME,IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN
                   script: |
                       set -eu
