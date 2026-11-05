@@ -28,4 +28,3 @@ export const toRedisConfig = (env: RedisEnv): RedisConfig => ({
 
 export const loadRedisConfig = (env: NodeJS.ProcessEnv = process.env): RedisConfig =>
     toRedisConfig(redisEnvSchema.parse(env));
-

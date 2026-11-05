@@ -57,9 +57,7 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
                 err.message,
             );
 
-            res.status(err.statusCode).json(
-                createErrorResponse(err.code, err.message, err.issues),
-            );
+            res.status(err.statusCode).json(createErrorResponse(err.code, err.message, err.issues));
             return;
         }
 
@@ -77,9 +75,7 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
                 logger?.warn(logContext, err.message);
             }
 
-            res.status(err.statusCode).json(
-                createErrorResponse(err.code, err.message),
-            );
+            res.status(err.statusCode).json(createErrorResponse(err.code, err.message));
             return;
         }
 
@@ -95,9 +91,7 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
                 message,
             );
 
-            res.status(400).json(
-                createErrorResponse("INVALID_JSON", message),
-            );
+            res.status(400).json(createErrorResponse("INVALID_JSON", message));
             return;
         }
 
@@ -111,9 +105,6 @@ export function errorHandler(options: ErrorHandlerOptions = {}): ErrorRequestHan
             err instanceof Error ? err.message : "unhandled error",
         );
 
-        res.status(500).json(
-            createErrorResponse("INTERNAL_SERVER_ERROR", "internal server error"),
-        );
+        res.status(500).json(createErrorResponse("INTERNAL_SERVER_ERROR", "internal server error"));
     };
 }
-

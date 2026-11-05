@@ -108,4 +108,3 @@ export function validateQuery<TQuery extends z.ZodType>(schema: TQuery): Request
 export function validateParams<TParams extends z.ZodType>(schema: TParams): RequestHandler {
     return validateRequest({ params: schema });
 }
-

@@ -23,6 +23,5 @@ export const toPaymentGatewayConfig = (env: PaymentGatewayEnv): PaymentGatewayCo
     MAX_RETRIES: env.MIDTRANS_MAX_RETRIES,
 });
 
-export const loadPaymentGatewayConfig = (
-    env: NodeJS.ProcessEnv = process.env,
-): PaymentGatewayConfig => toPaymentGatewayConfig(paymentGatewayEnvSchema.parse(env));
+export const loadPaymentGatewayConfig = (env: NodeJS.ProcessEnv = process.env): PaymentGatewayConfig =>
+    toPaymentGatewayConfig(paymentGatewayEnvSchema.parse(env));

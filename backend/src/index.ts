@@ -35,7 +35,10 @@ async function bootstrap() {
         if (err instanceof z.ZodError) {
             logger.error({ issues: err.issues }, "Invalid configuration:");
             for (const issue of err.issues) {
-                logger.error({ path: issue.path.join("."), issue: issue.message }, `  ${issue.path.join(".")}: ${issue.message}`);
+                logger.error(
+                    { path: issue.path.join("."), issue: issue.message },
+                    `  ${issue.path.join(".")}: ${issue.message}`,
+                );
             }
         } else {
             logger.error({ err }, "Startup failed");

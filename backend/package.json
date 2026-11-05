@@ -12,6 +12,8 @@
         "test:integration": "vitest run integration.test",
         "test:e2e": "vitest run e2e.test",
         "coverage": "vitest run --coverage --exclude '**/*.integration.test.ts' --exclude '**/*.e2e.test.ts'",
+        "format": "prettier --write --ignore-path ../.prettierignore --ignore-path .gitignore .",
+        "format:check": "prettier --check --ignore-path ../.prettierignore --ignore-path .gitignore .",
         "postinstall": "prisma skills sync || exit 0",
         "contract:emit": "prisma contract emit",
         "seed": "tsx src/infrastructure/database/prisma/seed/main.ts"

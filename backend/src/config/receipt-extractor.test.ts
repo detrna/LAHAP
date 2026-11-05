@@ -44,4 +44,3 @@ describe("loadReceiptExtractorConfig", () => {
         expect(config.MAX_RETRIES).toBe(1);
     });
 });
-

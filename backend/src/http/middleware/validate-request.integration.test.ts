@@ -3,12 +3,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { errorHandler } from "./error-handler.js";
-import {
-    validateBody,
-    validateParams,
-    validateQuery,
-    validateRequest,
-} from "./validate-request.js";
+import { validateBody, validateParams, validateQuery, validateRequest } from "./validate-request.js";
 
 function createTestApp() {
     const app = express();
@@ -106,12 +101,10 @@ describe("validateRequest middleware (integration)", () => {
     });
 
     it("aggregates validation errors across params, query, and body into a 400 VALIDATION_ERROR response", async () => {
-        const res = await request(app)
-            .post("/items/not-a-uuid?page=0")
-            .send({
-                email: "invalid-email",
-                name: "A",
-            });
+        const res = await request(app).post("/items/not-a-uuid?page=0").send({
+            email: "invalid-email",
+            name: "A",
+        });
 
         expect(res.status).toBe(400);
         expect(res.body).toEqual({
@@ -198,4 +191,3 @@ describe("validateRequest middleware (integration)", () => {
         expect(okProfileRes.body).toEqual({ bio: "hello world" });
     });
 });
-

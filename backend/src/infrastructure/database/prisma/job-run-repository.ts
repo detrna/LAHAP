@@ -69,11 +69,7 @@ export class PrismaJobRunRepository implements JobRunRepository {
         }
     }
 
-    async recordFailed(
-        id: string,
-        errorMessage: string,
-        finishedAt: Date = new Date(),
-    ): Promise<JobRunRecord> {
+    async recordFailed(id: string, errorMessage: string, finishedAt: Date = new Date()): Promise<JobRunRecord> {
         try {
             const updated = await this.db.orm.public.JobRun.where({ id }).update({
                 status: "FAILED",
@@ -94,4 +90,3 @@ export class PrismaJobRunRepository implements JobRunRepository {
         }
     }
 }
-

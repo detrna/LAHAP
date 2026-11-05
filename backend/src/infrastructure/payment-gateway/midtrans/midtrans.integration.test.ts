@@ -24,9 +24,7 @@ describe("MidtransPaymentGateway (integration)", () => {
 
         expect(result.token).toBeTruthy();
         expect(result.redirectUrl).toMatch(/^https:\/\/app\.sandbox\.midtrans\.com\/snap\//);
-        expect(result.simulatorUrl).toBe(
-            config.APP.IS_PRODUCTION ? undefined : MIDTRANS_BCA_VA_SIMULATOR_URL,
-        );
+        expect(result.simulatorUrl).toBe(config.APP.IS_PRODUCTION ? undefined : MIDTRANS_BCA_VA_SIMULATOR_URL);
     });
 
     it("omits simulatorUrl when IS_PRODUCTION is true", async () => {
@@ -62,4 +60,3 @@ describe("MidtransPaymentGateway (integration)", () => {
         expect(second.redirectUrl).toMatch(/^https:\/\/app\.sandbox\.midtrans\.com\/snap\//);
     });
 });
-

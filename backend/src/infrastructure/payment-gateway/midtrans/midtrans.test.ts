@@ -55,38 +55,38 @@ describe("MidtransPaymentGateway (unit)", () => {
         it("throws InvalidPaymentTransactionInputError when orderId is empty", async () => {
             const gateway = makeGateway();
 
-            await expect(
-                gateway.createTransaction({ orderId: "   ", grossAmount: 25_000 }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: "   ", grossAmount: 25_000 })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
         });
 
         it("throws InvalidPaymentTransactionInputError when orderId exceeds 50 characters", async () => {
             const gateway = makeGateway();
             const longOrderId = "ord-".padEnd(MAX_ORDER_ID_LENGTH + 1, "x");
 
-            await expect(
-                gateway.createTransaction({ orderId: longOrderId, grossAmount: 25_000 }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: longOrderId, grossAmount: 25_000 })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
         });
 
         it("throws InvalidPaymentTransactionInputError when grossAmount is zero, negative, or non-integer", async () => {
             const gateway = makeGateway();
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-1", grossAmount: 0 }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: "order-1", grossAmount: 0 })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-1", grossAmount: -1000 }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: "order-1", grossAmount: -1000 })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-1", grossAmount: 1000.5 }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: "order-1", grossAmount: 1000.5 })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-1", grossAmount: Number.NaN }),
-            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(gateway.createTransaction({ orderId: "order-1", grossAmount: Number.NaN })).rejects.toThrow(
+                InvalidPaymentTransactionInputError,
+            );
         });
     });
 
@@ -192,13 +192,10 @@ describe("MidtransPaymentGateway (unit)", () => {
         });
 
         it("retries on 5xx responses and succeeds if a retry succeeds", async () => {
-            const expectedRedirectUrl =
-                "https://app.sandbox.midtrans.com/snap/v4/redirection/retry-token";
+            const expectedRedirectUrl = "https://app.sandbox.midtrans.com/snap/v4/redirection/retry-token";
             const fetchSpy = vi
                 .spyOn(globalThis, "fetch")
-                .mockResolvedValueOnce(
-                    jsonResponse({ error_messages: ["Internal Server Error"] }, 503),
-                )
+                .mockResolvedValueOnce(jsonResponse({ error_messages: ["Internal Server Error"] }, 503))
                 .mockResolvedValueOnce(
                     jsonResponse({
                         token: "retry-token",
@@ -253,21 +250,19 @@ describe("MidtransPaymentGateway (unit)", () => {
 
             const gateway = new MidtransPaymentGateway(dummyConfig);
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-unauth", grossAmount: 20_000 }),
-            ).rejects.toThrow(PaymentGatewayProviderError);
+            await expect(gateway.createTransaction({ orderId: "order-unauth", grossAmount: 20_000 })).rejects.toThrow(
+                PaymentGatewayProviderError,
+            );
         });
 
         it("throws PaymentGatewayError when 2xx response is missing redirect_url", async () => {
-            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-                jsonResponse({ token: "only-token" }, 201),
-            );
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({ token: "only-token" }, 201));
 
             const gateway = new MidtransPaymentGateway(dummyConfig);
 
-            await expect(
-                gateway.createTransaction({ orderId: "order-bad-json", grossAmount: 20_000 }),
-            ).rejects.toThrow(PaymentGatewayError);
+            await expect(gateway.createTransaction({ orderId: "order-bad-json", grossAmount: 20_000 })).rejects.toThrow(
+                PaymentGatewayError,
+            );
         });
     });
 
@@ -291,12 +286,7 @@ describe("MidtransPaymentGateway (unit)", () => {
             const gross_amount = overrides.gross_amount ?? "50000.00";
             const signature_key =
                 overrides.signature_key ??
-                computeMidtransSignature(
-                    order_id,
-                    status_code,
-                    gross_amount,
-                    dummyConfig.SERVER_KEY,
-                );
+                computeMidtransSignature(order_id, status_code, gross_amount, dummyConfig.SERVER_KEY);
 
             return {
                 order_id,
@@ -361,21 +351,18 @@ describe("MidtransPaymentGateway (unit)", () => {
             ).toBe("PENDING");
 
             expect(
-                gateway.verifyNotification(
-                    buildValidNotification({ transaction_status: "expire", status_code: "407" }),
-                ).status,
+                gateway.verifyNotification(buildValidNotification({ transaction_status: "expire", status_code: "407" }))
+                    .status,
             ).toBe("EXPIRED");
 
             expect(
-                gateway.verifyNotification(
-                    buildValidNotification({ transaction_status: "cancel", status_code: "200" }),
-                ).status,
+                gateway.verifyNotification(buildValidNotification({ transaction_status: "cancel", status_code: "200" }))
+                    .status,
             ).toBe("CANCELED");
 
             expect(
-                gateway.verifyNotification(
-                    buildValidNotification({ transaction_status: "deny", status_code: "202" }),
-                ).status,
+                gateway.verifyNotification(buildValidNotification({ transaction_status: "deny", status_code: "202" }))
+                    .status,
             ).toBe("FAILED");
 
             expect(
@@ -393,32 +380,24 @@ describe("MidtransPaymentGateway (unit)", () => {
                 signature_key: "0".repeat(128),
             });
 
-            expect(() => gateway.verifyNotification(tampered)).toThrow(
-                InvalidPaymentSignatureError,
-            );
+            expect(() => gateway.verifyNotification(tampered)).toThrow(InvalidPaymentSignatureError);
             try {
                 gateway.verifyNotification(tampered);
             } catch (err) {
                 expect(err).toBeInstanceOf(InvalidPaymentSignatureError);
                 expect((err as InvalidPaymentSignatureError).statusCode).toBe(401);
-                expect((err as InvalidPaymentSignatureError).code).toBe(
-                    "INVALID_PAYMENT_SIGNATURE",
-                );
+                expect((err as InvalidPaymentSignatureError).code).toBe("INVALID_PAYMENT_SIGNATURE");
             }
         });
 
         it("throws InvalidPaymentNotificationError when payload is missing required fields", () => {
-            expect(() => gateway.verifyNotification(null)).toThrow(
-                InvalidPaymentNotificationError,
-            );
+            expect(() => gateway.verifyNotification(null)).toThrow(InvalidPaymentNotificationError);
             expect(() => gateway.verifyNotification({ order_id: "order-123" })).toThrow(
                 InvalidPaymentNotificationError,
             );
-            expect(() =>
-                gateway.verifyNotification(
-                    buildValidNotification({ gross_amount: "not-a-number" }),
-                ),
-            ).toThrow(InvalidPaymentNotificationError);
+            expect(() => gateway.verifyNotification(buildValidNotification({ gross_amount: "not-a-number" }))).toThrow(
+                InvalidPaymentNotificationError,
+            );
         });
     });
 });

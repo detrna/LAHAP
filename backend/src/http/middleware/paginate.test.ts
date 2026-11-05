@@ -226,4 +226,3 @@ describe("paginate middleware", () => {
         expect(next.mock.calls[0]?.[0]).toBeInstanceOf(Error);
     });
 });
-

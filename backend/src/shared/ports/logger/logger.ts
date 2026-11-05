@@ -35,4 +35,3 @@ export interface Logger {
     /** Returns true if the given level is enabled and will be written. */
     isLevelEnabled(level: Exclude<LogLevel, "silent">): boolean;
 }
-

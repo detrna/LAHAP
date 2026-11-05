@@ -28,4 +28,3 @@ export function sumFills(fills: number[]): number {
     const sum = fills.reduce((acc, fill) => acc + Math.max(0, fill), 0);
     return Math.round(sum * 10_000) / 10_000;
 }
-

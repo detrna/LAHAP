@@ -32,4 +32,3 @@ export interface Cache {
     /** Closes the underlying cache connection. */
     close(): Promise<void>;
 }
-

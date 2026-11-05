@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import {
-    executeWithParseRetry,
-    parseAndValidateJson,
-    stripCodeFences,
-} from "./json-parser.js";
+import { executeWithParseRetry, parseAndValidateJson, stripCodeFences } from "./json-parser.js";
 
 describe("stripCodeFences", () => {
     it("strips standard ```json ... ``` fences", () => {
@@ -28,7 +24,8 @@ describe("stripCodeFences", () => {
     });
 
     it("extracts json from embedded markdown fences surrounded by conversational text", () => {
-        const input = 'Here is the estimation you requested:\n```json\n{"fills":[0.5],"confidence":"medium"}\n```\nHope that helps!';
+        const input =
+            'Here is the estimation you requested:\n```json\n{"fills":[0.5],"confidence":"medium"}\n```\nHope that helps!';
         expect(stripCodeFences(input)).toBe('{"fills":[0.5],"confidence":"medium"}');
     });
 });
@@ -46,7 +43,7 @@ describe("parseAndValidateJson", () => {
     });
 
     it("throws on malformed JSON syntax", () => {
-        const input = '```json\n{fills:[1, 0.5]\n```';
+        const input = "```json\n{fills:[1, 0.5]\n```";
         expect(() => parseAndValidateJson(input, testSchema)).toThrow(SyntaxError);
     });
 
@@ -102,10 +99,7 @@ describe("executeWithParseRetry", () => {
     });
 
     it("throws when both the first and second attempts fail", async () => {
-        const callModel = vi
-            .fn()
-            .mockResolvedValueOnce("broken 1")
-            .mockResolvedValueOnce("broken 2");
+        const callModel = vi.fn().mockResolvedValueOnce("broken 1").mockResolvedValueOnce("broken 2");
         const onParseFailure = vi.fn();
 
         await expect(executeWithParseRetry(callModel, testSchema, { onParseFailure })).rejects.toThrow();

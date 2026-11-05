@@ -20,8 +20,7 @@ import type {
 
 /** Midtrans Snap enforces a maximum order_id length of 50 characters. */
 export const MAX_ORDER_ID_LENGTH = 50;
-export const MIDTRANS_BCA_VA_SIMULATOR_URL =
-    "https://simulator.sandbox.midtrans.com/bca/va/index";
+export const MIDTRANS_BCA_VA_SIMULATOR_URL = "https://simulator.sandbox.midtrans.com/bca/va/index";
 
 const midtransSnapResponseSchema = z.object({
     token: z.string().trim().min(1),
@@ -95,9 +94,7 @@ export function computeMidtransSignature(
     grossAmount: string,
     serverKey: string,
 ): string {
-    return createHash("sha512")
-        .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
-        .digest("hex");
+    return createHash("sha512").update(`${orderId}${statusCode}${grossAmount}${serverKey}`).digest("hex");
 }
 
 function isDuplicateOrderId(status: number, messages: readonly string[]): boolean {
@@ -122,9 +119,7 @@ function normalizeInput(input: CreatePaymentTransactionInput): {
         throw new InvalidPaymentTransactionInputError("orderId must not be empty");
     }
     if (orderId.length > MAX_ORDER_ID_LENGTH) {
-        throw new InvalidPaymentTransactionInputError(
-            `orderId must not exceed ${MAX_ORDER_ID_LENGTH} characters`,
-        );
+        throw new InvalidPaymentTransactionInputError(`orderId must not exceed ${MAX_ORDER_ID_LENGTH} characters`);
     }
     if (!Number.isInteger(input.grossAmount) || input.grossAmount <= 0) {
         throw new InvalidPaymentTransactionInputError("grossAmount must be a positive integer");
@@ -163,9 +158,7 @@ export class MidtransPaymentGateway implements PaymentGateway {
         this.includeSimulatorUrl = !appConfig.IS_PRODUCTION;
     }
 
-    async createTransaction(
-        input: CreatePaymentTransactionInput,
-    ): Promise<PaymentTransactionResult> {
+    async createTransaction(input: CreatePaymentTransactionInput): Promise<PaymentTransactionResult> {
         const { orderId, grossAmount } = normalizeInput(input);
 
         const body = JSON.stringify({
@@ -198,10 +191,9 @@ export class MidtransPaymentGateway implements PaymentGateway {
             } catch (cause) {
                 lastCause = cause;
                 if (attempt === this.maxRetries) {
-                    throw new PaymentGatewayProviderError(
-                        "Midtrans payment gateway request failed",
-                        { cause: lastCause },
-                    );
+                    throw new PaymentGatewayProviderError("Midtrans payment gateway request failed", {
+                        cause: lastCause,
+                    });
                 }
             }
         }
@@ -217,10 +209,9 @@ export class MidtransPaymentGateway implements PaymentGateway {
             rawJson = await response.json();
         } catch (cause) {
             if (!response.ok) {
-                throw new PaymentGatewayProviderError(
-                    `Midtrans returned HTTP ${response.status} with non-JSON body`,
-                    { cause },
-                );
+                throw new PaymentGatewayProviderError(`Midtrans returned HTTP ${response.status} with non-JSON body`, {
+                    cause,
+                });
             }
             throw new PaymentGatewayError("Midtrans response was not valid JSON", { cause });
         }
@@ -233,19 +224,15 @@ export class MidtransPaymentGateway implements PaymentGateway {
                 throw new DuplicatePaymentOrderIdError(orderId);
             }
 
-            const detail =
-                errorMessages.length > 0 ? `: ${errorMessages.join("; ")}` : "";
-            throw new PaymentGatewayProviderError(
-                `Midtrans request failed with status ${response.status}${detail}`,
-            );
+            const detail = errorMessages.length > 0 ? `: ${errorMessages.join("; ")}` : "";
+            throw new PaymentGatewayProviderError(`Midtrans request failed with status ${response.status}${detail}`);
         }
 
         const parsed = midtransSnapResponseSchema.safeParse(rawJson);
         if (!parsed.success) {
-            throw new PaymentGatewayError(
-                "Midtrans response did not contain a valid token and redirect_url",
-                { cause: parsed.error },
-            );
+            throw new PaymentGatewayError("Midtrans response did not contain a valid token and redirect_url", {
+                cause: parsed.error,
+            });
         }
 
         return {
@@ -258,10 +245,9 @@ export class MidtransPaymentGateway implements PaymentGateway {
     verifyNotification(payload: unknown): VerifiedPaymentNotification {
         const parsed = midtransNotificationSchema.safeParse(payload);
         if (!parsed.success) {
-            throw new InvalidPaymentNotificationError(
-                "Malformed Midtrans webhook notification payload",
-                { cause: parsed.error },
-            );
+            throw new InvalidPaymentNotificationError("Malformed Midtrans webhook notification payload", {
+                cause: parsed.error,
+            });
         }
 
         const {
@@ -275,12 +261,7 @@ export class MidtransPaymentGateway implements PaymentGateway {
             payment_type,
         } = parsed.data;
 
-        const expectedSignature = computeMidtransSignature(
-            order_id,
-            status_code,
-            gross_amount,
-            this.serverKey,
-        );
+        const expectedSignature = computeMidtransSignature(order_id, status_code, gross_amount, this.serverKey);
 
         const actualBuf = Buffer.from(signature_key.toLowerCase(), "utf8");
         const expectedBuf = Buffer.from(expectedSignature.toLowerCase(), "utf8");

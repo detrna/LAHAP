@@ -1,13 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { Role } from "../../shared/auth/roles.js";
-import type {
-    TokenProvider,
-    VerifiedTokenPayload,
-} from "../../shared/ports/token-provider/token-provider.js";
-import {
-    InvalidAuthorizationHeaderError,
-    MissingTokenError,
-} from "./errors.js";
+import type { TokenProvider, VerifiedTokenPayload } from "../../shared/ports/token-provider/token-provider.js";
+import { InvalidAuthorizationHeaderError, MissingTokenError } from "./errors.js";
 
 export interface AuthenticatedUser {
     readonly userId: string;
@@ -43,9 +37,7 @@ export function extractBearerToken(req: Request): string | null {
 
         const match = /^Bearer\s+(\S+)$/i.exec(trimmed);
         if (!match || !match[1]) {
-            throw new InvalidAuthorizationHeaderError(
-                "authorization header must be in format 'Bearer <token>'",
-            );
+            throw new InvalidAuthorizationHeaderError("authorization header must be in format 'Bearer <token>'");
         }
 
         return match[1];

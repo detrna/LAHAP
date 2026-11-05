@@ -81,12 +81,7 @@ describe("pagination", () => {
         });
 
         it("calculates offset/skip and take respecting custom PaginationOptions", () => {
-            expect(
-                toPaginationParams(
-                    {},
-                    { defaultPage: 2, defaultLimit: 5, maxLimit: 25 },
-                ),
-            ).toEqual({
+            expect(toPaginationParams({}, { defaultPage: 2, defaultLimit: 5, maxLimit: 25 })).toEqual({
                 page: 2,
                 limit: 5,
                 offset: 5,
@@ -152,4 +147,3 @@ describe("pagination", () => {
         });
     });
 });
-

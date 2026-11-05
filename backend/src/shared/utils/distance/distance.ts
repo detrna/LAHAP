@@ -34,4 +34,3 @@ export function getDistanceInKm(from: Coordinates, to: Coordinates): number {
 
     return EARTH_RADIUS_KM * c;
 }
-

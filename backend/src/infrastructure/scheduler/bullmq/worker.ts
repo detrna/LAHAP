@@ -55,7 +55,10 @@ export const startWorkers = (deps: StartWorkersDependencies): RunningWorkers => 
     );
 
     scheduledChecksWorker.on("error", err => {
-        logger.error({ err, queue: SCHEDULED_CHECKS_QUEUE_NAME }, `[Worker:${SCHEDULED_CHECKS_QUEUE_NAME}] Worker error`);
+        logger.error(
+            { err, queue: SCHEDULED_CHECKS_QUEUE_NAME },
+            `[Worker:${SCHEDULED_CHECKS_QUEUE_NAME}] Worker error`,
+        );
     });
 
     return {

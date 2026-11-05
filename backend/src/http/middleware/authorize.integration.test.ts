@@ -20,17 +20,12 @@ function createTestApp(tokenProvider: JwtTokenProvider) {
     });
 
     // Array syntax role check using requireRoles alias
-    app.delete(
-        "/admin/users/:id",
-        authenticate({ tokenProvider }),
-        requireRoles(["ADMIN", "COURIER"]),
-        (req, res) => {
-            res.status(200).json({
-                deletedUserId: req.params.id,
-                performedBy: req.user?.userId,
-            });
-        },
-    );
+    app.delete("/admin/users/:id", authenticate({ tokenProvider }), requireRoles(["ADMIN", "COURIER"]), (req, res) => {
+        res.status(200).json({
+            deletedUserId: req.params.id,
+            performedBy: req.user?.userId,
+        });
+    });
 
     // Endpoint with authorize without authenticate first (misconfiguration guard)
     app.get("/unprotected-guard", authorize("ADMIN"), (_req, res) => {

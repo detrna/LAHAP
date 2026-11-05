@@ -50,8 +50,6 @@ describe("QwenReceiptExtractor (unit)", () => {
     });
 
     it("throws when API_KEY is missing", () => {
-        expect(() => new QwenReceiptExtractor({ ...dummyConfig, API_KEY: "" })).toThrow(
-            "DASHSCOPE_API_KEY is not set",
-        );
+        expect(() => new QwenReceiptExtractor({ ...dummyConfig, API_KEY: "" })).toThrow("DASHSCOPE_API_KEY is not set");
     });
 });

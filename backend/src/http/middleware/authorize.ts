@@ -25,11 +25,7 @@ export function authorize(...roles: (Role | readonly Role[])[]): RequestHandler 
         }
 
         if (allowedRoles.length > 0 && !allowedRoles.includes(req.user.role)) {
-            next(
-                new ForbiddenError(
-                    `role "${req.user.role}" is not authorized to access this resource`,
-                ),
-            );
+            next(new ForbiddenError(`role "${req.user.role}" is not authorized to access this resource`));
             return;
         }
 
@@ -38,4 +34,3 @@ export function authorize(...roles: (Role | readonly Role[])[]): RequestHandler 
 }
 
 export const requireRoles = authorize;
-

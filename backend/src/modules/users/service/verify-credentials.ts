@@ -20,7 +20,11 @@ async function findCredentials(this: UsersService, identifier: string): Promise<
     return this.usersRepository.findCredentialsByPhone(phone);
 }
 
-export async function verifyCredentials(this: UsersService, identifier: string, password: string): Promise<User | null> {
+export async function verifyCredentials(
+    this: UsersService,
+    identifier: string,
+    password: string,
+): Promise<User | null> {
     const credentials = await findCredentials.call(this, identifier);
     if (credentials === null) {
         this.dummyPasswordHash ??= this.hasher.hash(randomUUID());

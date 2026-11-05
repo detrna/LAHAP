@@ -1,11 +1,7 @@
 import { Redis } from "ioredis";
 import type { RedisConfig } from "../../../config/redis.js";
 import type { Cache, CacheCounter, IncrementCacheOptions, SetCacheOptions } from "../../../shared/ports/cache/cache.js";
-import {
-    CacheFailureError,
-    InvalidCacheKeyError,
-    InvalidCacheTtlError,
-} from "../../../shared/ports/cache/errors.js";
+import { CacheFailureError, InvalidCacheKeyError, InvalidCacheTtlError } from "../../../shared/ports/cache/errors.js";
 
 export function normalizeCacheKey(rawKey: string): string {
     const trimmed = rawKey.trim();
@@ -146,4 +142,3 @@ export const loadRedisCache = async (config: RedisConfig): Promise<RedisCache> =
         throw error;
     }
 };
-

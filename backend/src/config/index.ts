@@ -8,7 +8,11 @@ import { jwtEnvSchema, toJwtConfig, type JwtConfig } from "./jwt.js";
 import { loggerEnvSchema, toLoggerConfig, type LoggerConfig } from "./logger.js";
 import { objectStorageEnvSchema, toObjectStorageConfig, type ObjectStorageConfig } from "./object-storage.js";
 import { paymentGatewayEnvSchema, toPaymentGatewayConfig, type PaymentGatewayConfig } from "./payment-gateway.js";
-import { receiptExtractorEnvSchema, toReceiptExtractorConfig, type ReceiptExtractorConfig } from "./receipt-extractor.js";
+import {
+    receiptExtractorEnvSchema,
+    toReceiptExtractorConfig,
+    type ReceiptExtractorConfig,
+} from "./receipt-extractor.js";
 import { redisEnvSchema, toRedisConfig, type RedisConfig } from "./redis.js";
 import { schedulerEnvSchema, toSchedulerConfig, type SchedulerConfig } from "./scheduler.js";
 import {

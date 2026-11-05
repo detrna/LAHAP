@@ -18,8 +18,22 @@ function buildRow(overrides: Partial<UserRow> = {}): UserRow {
         createdAt: at("2026-11-03T01:00:00"),
         updatedAt: at("2026-11-03T02:00:00"),
         allergies: [
-            { allergy: { id: "a-2", name: "Seafood", createdAt: at("2026-11-01T00:00:00"), updatedAt: at("2026-11-01T00:00:00") } },
-            { allergy: { id: "a-1", name: "Kacang", createdAt: at("2026-11-01T00:00:00"), updatedAt: at("2026-11-01T00:00:00") } },
+            {
+                allergy: {
+                    id: "a-2",
+                    name: "Seafood",
+                    createdAt: at("2026-11-01T00:00:00"),
+                    updatedAt: at("2026-11-01T00:00:00"),
+                },
+            },
+            {
+                allergy: {
+                    id: "a-1",
+                    name: "Kacang",
+                    createdAt: at("2026-11-01T00:00:00"),
+                    updatedAt: at("2026-11-01T00:00:00"),
+                },
+            },
         ],
         ...overrides,
     };

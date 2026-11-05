@@ -4,10 +4,7 @@ export class StockLevelEstimationError extends AppError {
     readonly code: string = "STOCK_LEVEL_ESTIMATION_FAILED";
     readonly statusCode: number = 400;
 
-    constructor(
-        message: string,
-        options?: { cause?: unknown; code?: string; statusCode?: number },
-    ) {
+    constructor(message: string, options?: { cause?: unknown; code?: string; statusCode?: number }) {
         super(message, { cause: options?.cause });
         if (options?.code) this.code = options.code;
         if (options?.statusCode) this.statusCode = options.statusCode;

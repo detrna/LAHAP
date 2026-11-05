@@ -52,9 +52,7 @@ describe("SeaweedFsObjectStorage (unit)", () => {
         });
 
         it("throws when S3_BUCKET is missing", () => {
-            expect(() => new SeaweedFsObjectStorage({ ...dummyConfig, BUCKET: "" })).toThrow(
-                "S3_BUCKET is not set",
-            );
+            expect(() => new SeaweedFsObjectStorage({ ...dummyConfig, BUCKET: "" })).toThrow("S3_BUCKET is not set");
         });
 
         it("throws when S3_ENDPOINT is missing", () => {

@@ -2,11 +2,7 @@ import { Redis } from "ioredis";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RedisConfig } from "../../../config/redis.js";
 import { AppError } from "../../../shared/errors/app-error.js";
-import {
-    CacheFailureError,
-    InvalidCacheKeyError,
-    InvalidCacheTtlError,
-} from "../../../shared/ports/cache/cache.js";
+import { CacheFailureError, InvalidCacheKeyError, InvalidCacheTtlError } from "../../../shared/ports/cache/cache.js";
 import { loadRedisCache, normalizeCacheKey, RedisCache } from "./redis.js";
 
 const dummyConfig: RedisConfig = {
@@ -24,9 +20,7 @@ describe("RedisCache (unit)", () => {
 
     describe("constructor & key validation", () => {
         it("throws when REDIS_URL is empty", () => {
-            expect(() => new RedisCache({ ...dummyConfig, URL: "   " })).toThrow(
-                "REDIS_URL is not set",
-            );
+            expect(() => new RedisCache({ ...dummyConfig, URL: "   " })).toThrow("REDIS_URL is not set");
         });
 
         it("normalizes valid keys and rejects empty or null-byte keys", () => {
@@ -58,15 +52,9 @@ describe("RedisCache (unit)", () => {
         it("throws InvalidCacheTtlError when ttlSeconds is zero, negative, or non-integer", async () => {
             const cache = new RedisCache(dummyConfig);
 
-            await expect(cache.set("k", "v", { ttlSeconds: 0 })).rejects.toThrow(
-                InvalidCacheTtlError,
-            );
-            await expect(cache.set("k", "v", { ttlSeconds: -10 })).rejects.toThrow(
-                InvalidCacheTtlError,
-            );
-            await expect(cache.set("k", "v", { ttlSeconds: 1.5 })).rejects.toThrow(
-                InvalidCacheTtlError,
-            );
+            await expect(cache.set("k", "v", { ttlSeconds: 0 })).rejects.toThrow(InvalidCacheTtlError);
+            await expect(cache.set("k", "v", { ttlSeconds: -10 })).rejects.toThrow(InvalidCacheTtlError);
+            await expect(cache.set("k", "v", { ttlSeconds: 1.5 })).rejects.toThrow(InvalidCacheTtlError);
         });
 
         it("wraps underlying Redis set failures in CacheFailureError", async () => {
@@ -105,9 +93,7 @@ describe("RedisCache (unit)", () => {
         });
 
         it("returns boolean from exists based on Redis key count", async () => {
-            vi.spyOn(Redis.prototype, "exists")
-                .mockResolvedValueOnce(1)
-                .mockResolvedValueOnce(0);
+            vi.spyOn(Redis.prototype, "exists").mockResolvedValueOnce(1).mockResolvedValueOnce(0);
             const cache = new RedisCache(dummyConfig);
 
             await expect(cache.exists("item:1")).resolves.toBe(true);
@@ -219,9 +205,7 @@ describe("RedisCache (unit)", () => {
 
         it("throws CacheFailureError and closes client when PING fails during loadRedisCache", async () => {
             vi.spyOn(Redis.prototype, "ping").mockRejectedValueOnce(new Error("ECONNREFUSED"));
-            const disconnectSpy = vi
-                .spyOn(Redis.prototype, "disconnect")
-                .mockImplementation(() => undefined);
+            const disconnectSpy = vi.spyOn(Redis.prototype, "disconnect").mockImplementation(() => undefined);
 
             await expect(loadRedisCache(dummyConfig)).rejects.toThrow(CacheFailureError);
             expect(disconnectSpy).toHaveBeenCalled();

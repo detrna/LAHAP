@@ -35,4 +35,3 @@ export class CacheFailureError extends AppError {
         super(`cache operation failed: ${operation}`, { cause });
     }
 }
-

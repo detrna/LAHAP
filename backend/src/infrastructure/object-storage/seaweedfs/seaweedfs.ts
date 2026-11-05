@@ -99,17 +99,11 @@ export class SeaweedFsObjectStorage implements ObjectStorage {
 
     async verifyBucket(options: { autoCreate?: boolean | undefined } = {}): Promise<void> {
         try {
-            await this.client.send(
-                new HeadBucketCommand({ Bucket: this.bucket }),
-                this.requestOptions(),
-            );
+            await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }), this.requestOptions());
         } catch (cause) {
             if (options.autoCreate && isNotFoundError(cause)) {
                 try {
-                    await this.client.send(
-                        new CreateBucketCommand({ Bucket: this.bucket }),
-                        this.requestOptions(),
-                    );
+                    await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }), this.requestOptions());
                     return;
                 } catch (createCause) {
                     throw new StorageFailureError("createBucket", createCause);

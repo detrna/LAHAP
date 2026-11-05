@@ -1,20 +1,20 @@
 ---
 name: vitest
 description: >-
-  Vitest is a test runner for JavaScript and TypeScript built on Vite, with a
-  Jest-compatible API, built-in mocking, snapshots and code coverage. Use when
-  a user asks to set up or run unit tests in a Vite or Node project, write
-  tests with describe/it/expect, mock modules with vi.mock, add coverage
-  thresholds, configure vitest.config.ts or test projects, migrate from Jest,
-  or upgrade to Vitest 5.
+    Vitest is a test runner for JavaScript and TypeScript built on Vite, with a
+    Jest-compatible API, built-in mocking, snapshots and code coverage. Use when
+    a user asks to set up or run unit tests in a Vite or Node project, write
+    tests with describe/it/expect, mock modules with vi.mock, add coverage
+    thresholds, configure vitest.config.ts or test projects, migrate from Jest,
+    or upgrade to Vitest 5.
 license: Apache-2.0
 compatibility: "Node.js 22.12+ and Vite 6.4+ (Vitest 5)"
 metadata:
-  author: terminal-skills
-  version: 1.1.0
-  category: development
-  repository: https://github.com/vitest-dev/vitest
-  tags: "testing, vite, typescript, mocking, coverage"
+    author: terminal-skills
+    version: 1.1.0
+    category: development
+    repository: https://github.com/vitest-dev/vitest
+    tags: "testing, vite, typescript, mocking, coverage"
 ---
 
 # Vitest — Blazing Fast Unit Testing
@@ -44,28 +44,28 @@ import { describe, it, expect } from "vitest";
 import { calculateDiscount, formatPrice } from "./pricing";
 
 describe("calculateDiscount", () => {
-  it("applies percentage discount", () => {
-    expect(calculateDiscount(100, 20)).toBe(80);
-  });
+    it("applies percentage discount", () => {
+        expect(calculateDiscount(100, 20)).toBe(80);
+    });
 
-  it("never goes below zero", () => {
-    expect(calculateDiscount(10, 200)).toBe(0);
-  });
+    it("never goes below zero", () => {
+        expect(calculateDiscount(10, 200)).toBe(0);
+    });
 
-  it.each([
-    { price: 100, discount: 10, expected: 90 },
-    { price: 50, discount: 50, expected: 25 },
-    { price: 200, discount: 0, expected: 200 },
-  ])("$price with $discount% = $expected", ({ price, discount, expected }) => {
-    expect(calculateDiscount(price, discount)).toBe(expected);
-  });
+    it.each([
+        { price: 100, discount: 10, expected: 90 },
+        { price: 50, discount: 50, expected: 25 },
+        { price: 200, discount: 0, expected: 200 },
+    ])("$price with $discount% = $expected", ({ price, discount, expected }) => {
+        expect(calculateDiscount(price, discount)).toBe(expected);
+    });
 });
 
 describe("formatPrice", () => {
-  it("formats with currency symbol", () => {
-    expect(formatPrice(29.99, "USD")).toBe("$29.99");
-    expect(formatPrice(29.99, "EUR")).toBe("€29.99");
-  });
+    it("formats with currency symbol", () => {
+        expect(formatPrice(29.99, "USD")).toBe("$29.99");
+        expect(formatPrice(29.99, "EUR")).toBe("€29.99");
+    });
 });
 ```
 
@@ -82,49 +82,48 @@ import { chargeCard } from "./payments";
 
 // vi.mock is hoisted above the imports — keep it at the top level of the file
 vi.mock("./email", () => ({
-  sendEmail: vi.fn().mockResolvedValue({ success: true }),
+    sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("./payments", () => ({
-  chargeCard: vi.fn().mockResolvedValue({ chargeId: "ch_3PqXk2" }),
+    chargeCard: vi.fn().mockResolvedValue({ chargeId: "ch_3PqXk2" }),
 }));
 
 describe("processOrder", () => {
-  // No beforeEach(vi.clearAllMocks) needed: Vitest 5 clears call history before every test
+    // No beforeEach(vi.clearAllMocks) needed: Vitest 5 clears call history before every test
 
-  it("charges card and sends confirmation email", async () => {
-    const order = { userId: "u_481", items: [{ id: "sku_114", qty: 2 }], total: 59.98 };
-    const result = await processOrder(order);
+    it("charges card and sends confirmation email", async () => {
+        const order = { userId: "u_481", items: [{ id: "sku_114", qty: 2 }], total: 59.98 };
+        const result = await processOrder(order);
 
-    expect(chargeCard).toHaveBeenCalledWith({ amount: 59.98, userId: "u_481" });
-    expect(sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "order_confirmation", userId: "u_481" }),
-    );
-    expect(result.status).toBe("completed");
-  });
+        expect(chargeCard).toHaveBeenCalledWith({ amount: 59.98, userId: "u_481" });
+        expect(sendEmail).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "order_confirmation", userId: "u_481" }),
+        );
+        expect(result.status).toBe("completed");
+    });
 
-  it("stops on payment failure", async () => {
-    vi.mocked(chargeCard).mockRejectedValueOnce(new Error("Card declined"));
+    it("stops on payment failure", async () => {
+        vi.mocked(chargeCard).mockRejectedValueOnce(new Error("Card declined"));
 
-    await expect(processOrder({ userId: "u_481", items: [], total: 0 }))
-      .rejects.toThrow("Card declined");
-    expect(sendEmail).not.toHaveBeenCalled();
-  });
+        await expect(processOrder({ userId: "u_481", items: [], total: 0 })).rejects.toThrow("Card declined");
+        expect(sendEmail).not.toHaveBeenCalled();
+    });
 
-  it("spies on a method", () => {
-    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
-    console.log("order shipped");
-    expect(spy).toHaveBeenCalledWith("order shipped");
-  });
+    it("spies on a method", () => {
+        const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+        console.log("order shipped");
+        expect(spy).toHaveBeenCalledWith("order shipped");
+    });
 
-  it("controls timers", () => {
-    vi.useFakeTimers();
-    const callback = vi.fn();
-    setTimeout(callback, 5000);
-    vi.advanceTimersByTime(5000);
-    expect(callback).toHaveBeenCalled();
-    vi.useRealTimers();
-  });
+    it("controls timers", () => {
+        vi.useFakeTimers();
+        const callback = vi.fn();
+        setTimeout(callback, 5000);
+        vi.advanceTimersByTime(5000);
+        expect(callback).toHaveBeenCalled();
+        vi.useRealTimers();
+    });
 });
 ```
 
@@ -137,18 +136,18 @@ To keep the real implementation and only record calls, pass `{ spy: true }` inst
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    globals: true,                         // No need to import describe/it/expect
-    environment: "node",                   // Or "jsdom" / "happy-dom" for browser APIs
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "html", "lcov"],
-      include: ["src/**/*.ts"],            // Also report files no test imports
-      thresholds: { lines: 80, branches: 75, functions: 80 },
+    test: {
+        globals: true, // No need to import describe/it/expect
+        environment: "node", // Or "jsdom" / "happy-dom" for browser APIs
+        coverage: {
+            provider: "v8",
+            reporter: ["text", "html", "lcov"],
+            include: ["src/**/*.ts"], // Also report files no test imports
+            thresholds: { lines: 80, branches: 75, functions: 80 },
+        },
+        include: ["**/*.{test,spec}.{ts,tsx}"],
+        setupFiles: ["./test/setup.ts"], // The file must exist; drop the line if there is none
     },
-    include: ["**/*.{test,spec}.{ts,tsx}"],
-    setupFiles: ["./test/setup.ts"],       // The file must exist; drop the line if there is none
-  },
 });
 ```
 
@@ -161,14 +160,14 @@ Several configurations in one run (monorepo packages, node + DOM tests) are decl
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    coverage: { provider: "v8", include: ["src/**/*.ts"] },   // root-only option
-    projects: [
-      { test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" } },
-      { test: { name: "dom", include: ["src/**/*.dom.test.tsx"], environment: "jsdom" } },
-      "packages/*",                        // every folder in packages/ is a project
-    ],
-  },
+    test: {
+        coverage: { provider: "v8", include: ["src/**/*.ts"] }, // root-only option
+        projects: [
+            { test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" } },
+            { test: { name: "dom", include: ["src/**/*.dom.test.tsx"], environment: "jsdom" } },
+            "packages/*", // every folder in packages/ is a project
+        ],
+    },
 });
 ```
 

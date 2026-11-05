@@ -27,4 +27,3 @@ export interface JobRunRepository {
      */
     recordFailed(id: string, errorMessage: string, finishedAt?: Date): Promise<JobRunRecord>;
 }
-

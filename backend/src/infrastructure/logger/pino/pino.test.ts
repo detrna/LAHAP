@@ -4,10 +4,7 @@ import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import type { LoggerConfig } from "../../../config/logger.js";
 import { AppError } from "../../../shared/errors/app-error.js";
-import {
-    InvalidLoggerConfigError,
-    type LogLevel,
-} from "../../../shared/ports/logger/logger.js";
+import { InvalidLoggerConfigError, type LogLevel } from "../../../shared/ports/logger/logger.js";
 import { PinoLogger } from "./pino.js";
 
 function createCaptureStream() {
@@ -296,7 +293,10 @@ describe("PinoLogger (unit)", () => {
 
         it("writes only to the console when FILE_PATH is not set", () => {
             const { destination: consoleDestination, lines: consoleLines } = createCaptureStream();
-            const consoleLogger = new PinoLogger({ LEVEL: "info", SERVICE_NAME: "console-only" }, { consoleDestination });
+            const consoleLogger = new PinoLogger(
+                { LEVEL: "info", SERVICE_NAME: "console-only" },
+                { consoleDestination },
+            );
 
             consoleLogger.info("hello");
 
@@ -304,4 +304,3 @@ describe("PinoLogger (unit)", () => {
         });
     });
 });
-

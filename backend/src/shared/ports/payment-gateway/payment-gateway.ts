@@ -11,14 +11,7 @@ export interface PaymentTransactionResult {
     readonly simulatorUrl?: string | undefined;
 }
 
-export type PaymentStatus =
-    | "PAID"
-    | "PENDING"
-    | "CHALLENGE"
-    | "FAILED"
-    | "EXPIRED"
-    | "CANCELED"
-    | "REFUNDED";
+export type PaymentStatus = "PAID" | "PENDING" | "CHALLENGE" | "FAILED" | "EXPIRED" | "CANCELED" | "REFUNDED";
 
 export interface VerifiedPaymentNotification {
     readonly orderId: string;

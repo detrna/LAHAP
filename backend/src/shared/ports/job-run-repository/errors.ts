@@ -20,4 +20,3 @@ export class JobRunRepositoryFailureError extends AppError {
         super(`job run repository operation failed: ${operation}`, { cause });
     }
 }
-

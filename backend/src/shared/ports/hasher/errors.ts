@@ -20,4 +20,3 @@ export class HashingFailureError extends AppError {
         super(`hashing operation failed: ${operation}`, { cause });
     }
 }
-

@@ -1,19 +1,19 @@
 ---
 name: pino
 description: >-
-  Pino is a fast Node.js logger that writes structured JSON, one object per
-  line. Use when a user asks to add structured logging, replace console.log,
-  configure log levels, redact secrets from logs, log HTTP requests in Express
-  or Fastify, pretty-print logs in development, or ship logs to Datadog, Loki
-  or Elasticsearch.
+    Pino is a fast Node.js logger that writes structured JSON, one object per
+    line. Use when a user asks to add structured logging, replace console.log,
+    configure log levels, redact secrets from logs, log HTTP requests in Express
+    or Fastify, pretty-print logs in development, or ship logs to Datadog, Loki
+    or Elasticsearch.
 license: Apache-2.0
-compatibility: 'Node.js 20+ (pino 10 is tested on 20 and newer), Express, Fastify, Next.js'
+compatibility: "Node.js 20+ (pino 10 is tested on 20 and newer), Express, Fastify, Next.js"
 metadata:
-  author: terminal-skills
-  version: 1.1.0
-  category: devops
-  repository: https://github.com/pinojs/pino
-  tags: "pino, logging, nodejs, structured, observability"
+    author: terminal-skills
+    version: 1.1.0
+    category: devops
+    repository: https://github.com/pinojs/pino
+    tags: "pino, logging, nodejs, structured, observability"
 ---
 
 # Pino
@@ -42,11 +42,11 @@ import pino from "pino";
 const isDev = process.env.NODE_ENV === "development";
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",       // fatal, error, warn, info, debug, trace, silent
-  base: { service: "billing-api", version: process.env.npm_package_version },
-  redact: ["req.headers.authorization", "req.headers.cookie", "*.password", "*.apiKey"],
-  // JSON on stdout in production; pretty text only in development
-  transport: isDev ? { target: "pino-pretty", options: { colorize: true } } : undefined,
+    level: process.env.LOG_LEVEL ?? "info", // fatal, error, warn, info, debug, trace, silent
+    base: { service: "billing-api", version: process.env.npm_package_version },
+    redact: ["req.headers.authorization", "req.headers.cookie", "*.password", "*.apiKey"],
+    // JSON on stdout in production; pretty text only in development
+    transport: isDev ? { target: "pino-pretty", options: { colorize: true } } : undefined,
 });
 ```
 
@@ -55,7 +55,7 @@ Usage: put the data object first, the message second.
 ```typescript
 logger.info({ port: 3000 }, "Server listening");
 logger.warn({ latencyMs: 2500, endpoint: "/api/reports" }, "Slow request");
-logger.error({ err, invoiceId: "inv_2041" }, "Payment capture failed");   // key must be "err"
+logger.error({ err, invoiceId: "inv_2041" }, "Payment capture failed"); // key must be "err"
 ```
 
 An `Error` under the key `err` is serialized with `type`, `message` and `stack`. Logging it under another key (`error`, `e`) prints `{}` unless you add a serializer.
@@ -69,17 +69,17 @@ import { logger } from "./lib/logger";
 
 const app = express();
 app.use(
-  pinoHttp({
-    logger,
-    customLogLevel: (req, res, err) =>
-      err || res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
-    customSuccessMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
-  }),
+    pinoHttp({
+        logger,
+        customLogLevel: (req, res, err) =>
+            err || res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
+        customSuccessMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
+    }),
 );
 
 app.get("/orders/:id", (req, res) => {
-  req.log.info({ orderId: req.params.id }, "Loading order");   // child logger bound to this request
-  res.json({ id: req.params.id });
+    req.log.info({ orderId: req.params.id }, "Loading order"); // child logger bound to this request
+    res.json({ id: req.params.id });
 });
 ```
 
@@ -89,7 +89,7 @@ Every request gets an `id` and a completion line with `responseTime`. `req.log` 
 
 ```typescript
 const jobLog = logger.child({ jobId: "job_7781", queue: "invoices" });
-jobLog.info("Started");                               // jobId and queue appear on every line
+jobLog.info("Started"); // jobId and queue appear on every line
 jobLog.info({ rows: 420 }, "Imported");
 // {"level":30,"time":1790983327750,"service":"billing-api","jobId":"job_7781","queue":"invoices","rows":420,"msg":"Imported"}
 ```
@@ -101,10 +101,10 @@ jobLog.info({ rows: 420 }, "Imported");
 
 ```typescript
 const transport = pino.transport({
-  targets: [
-    { target: "pino/file", level: "error", options: { destination: "./logs/errors.log", mkdir: true } },
-    { target: "pino-pretty", level: "info", options: { colorize: false } },
-  ],
+    targets: [
+        { target: "pino/file", level: "error", options: { destination: "./logs/errors.log", mkdir: true } },
+        { target: "pino-pretty", level: "info", options: { colorize: false } },
+    ],
 });
 const logger = pino(transport);
 ```
@@ -128,7 +128,7 @@ User request: "Our request logs contain the Authorization header. Stop that."
 
 ```typescript
 const logger = pino({
-  redact: { paths: ["req.headers.authorization", "req.headers.cookie", "*.password"], censor: "[Redacted]" },
+    redact: { paths: ["req.headers.authorization", "req.headers.cookie", "*.password"], censor: "[Redacted]" },
 });
 ```
 

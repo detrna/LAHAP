@@ -9,11 +9,10 @@ import {
 
 describe("success-response", () => {
     it("creates a SuccessResponseBody without meta when meta is omitted", () => {
-        const response: SuccessResponseBody<{ id: string; name: string }> =
-            createSuccessResponse({
-                id: "user-1",
-                name: "Budi",
-            });
+        const response: SuccessResponseBody<{ id: string; name: string }> = createSuccessResponse({
+            id: "user-1",
+            name: "Budi",
+        });
 
         expect(response).toEqual({
             data: {
@@ -26,10 +25,7 @@ describe("success-response", () => {
     });
 
     it("creates a SuccessResponseBody with meta when meta is provided", () => {
-        const response = createSuccessResponse(
-            [{ id: "item-1" }],
-            { requestId: "req-123" },
-        );
+        const response = createSuccessResponse([{ id: "item-1" }], { requestId: "req-123" });
 
         expect(response).toEqual({
             data: [{ id: "item-1" }],
@@ -41,12 +37,11 @@ describe("success-response", () => {
 
     it("creates a PaginatedResponseBody from PaginationMetaInput", () => {
         const items = [{ id: "1" }, { id: "2" }];
-        const response: PaginatedResponseBody<{ id: string }> =
-            createPaginatedResponse(items, {
-                page: 1,
-                limit: 2,
-                total: 5,
-            });
+        const response: PaginatedResponseBody<{ id: string }> = createPaginatedResponse(items, {
+            page: 1,
+            limit: 2,
+            total: 5,
+        });
 
         expect(response).toEqual({
             data: items,
@@ -79,4 +74,3 @@ describe("success-response", () => {
         });
     });
 });
-

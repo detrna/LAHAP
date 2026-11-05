@@ -22,9 +22,7 @@ export const stockLevelEstimatorEnvSchema = z.object({
 
 export type StockLevelEstimatorEnv = z.output<typeof stockLevelEstimatorEnvSchema>;
 
-export const toStockLevelEstimatorConfig = (
-    env: StockLevelEstimatorEnv,
-): StockLevelEstimatorConfig => ({
+export const toStockLevelEstimatorConfig = (env: StockLevelEstimatorEnv): StockLevelEstimatorConfig => ({
     API_KEY: env.STOCK_ESTIMATOR_API_KEY || env.DASHSCOPE_API_KEY || "",
     BASE_URL:
         env.STOCK_ESTIMATOR_BASE_URL ||
@@ -36,7 +34,5 @@ export const toStockLevelEstimatorConfig = (
     TOLERANCE: env.STOCK_ESTIMATOR_TOLERANCE,
 });
 
-export const loadStockLevelEstimatorConfig = (
-    env: NodeJS.ProcessEnv = process.env,
-): StockLevelEstimatorConfig =>
+export const loadStockLevelEstimatorConfig = (env: NodeJS.ProcessEnv = process.env): StockLevelEstimatorConfig =>
     toStockLevelEstimatorConfig(stockLevelEstimatorEnvSchema.parse(env));

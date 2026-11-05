@@ -24,7 +24,10 @@ const makeEstimator = () =>
     new QwenStockLevelEstimator(
         {
             ...config.STOCK_LEVEL_ESTIMATOR,
-            MODEL: config.STOCK_LEVEL_ESTIMATOR.MODEL === "qwen-vl-ocr" ? "qwen3.6-flash" : config.STOCK_LEVEL_ESTIMATOR.MODEL,
+            MODEL:
+                config.STOCK_LEVEL_ESTIMATOR.MODEL === "qwen-vl-ocr"
+                    ? "qwen3.6-flash"
+                    : config.STOCK_LEVEL_ESTIMATOR.MODEL,
             TIMEOUT_MS: Math.max(config.STOCK_LEVEL_ESTIMATOR.TIMEOUT_MS, 60_000),
         },
         {
@@ -154,4 +157,3 @@ describe("QwenStockLevelEstimator (integration)", () => {
         ).rejects.toThrow(InvalidStockImageError);
     });
 });
-

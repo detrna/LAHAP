@@ -7,4 +7,3 @@ export interface Hasher {
     /** Returns true if the plain-text value matches the encoded hash, false otherwise. */
     compare(plain: string, hashed: string): Promise<boolean>;
 }
-

@@ -42,4 +42,3 @@ describe("loadStockLevelEstimatorConfig", () => {
         expect(config.TOLERANCE).toBe(0.15);
     });
 });
-

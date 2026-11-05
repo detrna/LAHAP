@@ -5,11 +5,7 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 
 export const paginationQuerySchema = z.object({
-    page: z.coerce
-        .number()
-        .int("page must be an integer")
-        .min(1, "page must be at least 1")
-        .default(DEFAULT_PAGE),
+    page: z.coerce.number().int("page must be an integer").min(1, "page must be at least 1").default(DEFAULT_PAGE),
     limit: z.coerce
         .number()
         .int("limit must be an integer")
@@ -32,11 +28,7 @@ export function createPaginationQuerySchema(options: PaginationOptions = {}) {
     const maxLimit = options.maxLimit ?? MAX_LIMIT;
 
     return z.object({
-        page: z.coerce
-            .number()
-            .int("page must be an integer")
-            .min(1, "page must be at least 1")
-            .default(defaultPage),
+        page: z.coerce.number().int("page must be an integer").min(1, "page must be at least 1").default(defaultPage),
         limit: z.coerce
             .number()
             .int("limit must be an integer")
@@ -105,4 +97,3 @@ export function createPaginationMeta(input: PaginationMetaInput): PaginationMeta
         hasPrevPage: page > 1 && totalPages > 0,
     };
 }
-

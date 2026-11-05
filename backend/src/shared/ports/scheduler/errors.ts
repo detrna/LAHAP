@@ -23,4 +23,3 @@ export class SchedulerFailureError extends AppError {
         super(`scheduler operation failed: ${operation}`, { cause });
     }
 }
-

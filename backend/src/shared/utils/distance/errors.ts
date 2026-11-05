@@ -9,4 +9,3 @@ export class InvalidCoordinatesError extends AppError {
         super(`invalid coordinates: lat=${coordinates.lat}, lng=${coordinates.lng}`);
     }
 }
-

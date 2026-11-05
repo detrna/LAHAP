@@ -6,7 +6,10 @@ import type { NewUserRecord } from "../../service/interfaces/users.repository.js
 import { UserAlreadyExistsError } from "../../service/interfaces/users.repository.js";
 import { PrismaUsersRepository } from "./users-repository.js";
 
-const randomPhone = () => `62899${Math.floor(Math.random() * 1e8).toString().padStart(8, "0")}`;
+const randomPhone = () =>
+    `62899${Math.floor(Math.random() * 1e8)
+        .toString()
+        .padStart(8, "0")}`;
 
 describe("PrismaUsersRepository (integration)", () => {
     let db: Db;
@@ -55,7 +58,12 @@ describe("PrismaUsersRepository (integration)", () => {
     it("creates a user with allergies and reads it back by id", async () => {
         const created = await create({ allergyIds });
 
-        expect(created).toMatchObject({ name: "Integration User", role: "CUSTOMER", latitude: -7.9393, isActive: true });
+        expect(created).toMatchObject({
+            name: "Integration User",
+            role: "CUSTOMER",
+            latitude: -7.9393,
+            isActive: true,
+        });
         expect(created.allergies.map(allergy => allergy.id).sort()).toEqual([...allergyIds].sort());
         expect(created.allergies[0]?.name.startsWith("Zz Test Allergy A")).toBe(true);
         expect(await repository.findById(created.id)).toEqual(created);

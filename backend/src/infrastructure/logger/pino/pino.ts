@@ -178,4 +178,3 @@ export class PinoLogger implements Logger {
         return this.instance.isLevelEnabled(level);
     }
 }
-
