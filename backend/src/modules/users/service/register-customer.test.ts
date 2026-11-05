@@ -29,6 +29,7 @@ describe("UsersService.registerCustomer (unit)", () => {
             latitude: null,
             longitude: null,
             allergyNote: null,
+            isActive: true,
             allergyIds: [],
         });
         expect(user).toMatchObject({ name: "6281234567890", phone: "6281234567890", role: "CUSTOMER" });

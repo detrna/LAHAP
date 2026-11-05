@@ -1,18 +1,35 @@
 import { vi } from "vitest";
 import type { Hasher } from "../../../../shared/ports/hasher/hasher.js";
+import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { SessionRevoker } from "../../service/interfaces/session-revoker.js";
 import type { UsersRepository } from "../../service/interfaces/users.repository.js";
+import type { UsersService } from "../../service/users.service.js";
 
 export type Mocked<T> = { [K in keyof T]: T[K] & ReturnType<typeof vi.fn> };
+
+export type MockedUsersService = Mocked<
+    Pick<
+        UsersService,
+        "getProfile" | "updateProfile" | "changePassword" | "listUsers" | "createUser" | "getUser" | "updateUser"
+    >
+>;
 
 export function createMockUsersRepository(): Mocked<UsersRepository> {
     return {
         findById: vi.fn(async () => null),
         findCredentialsByPhone: vi.fn(async () => null),
         findCredentialsByEmail: vi.fn(async () => null),
+        findCredentialsById: vi.fn(async () => null),
         existsByPhone: vi.fn(async () => false),
         existsByEmail: vi.fn(async () => false),
         findMissingAllergyIds: vi.fn(async () => []),
+        findConflict: vi.fn(async () => null),
         create: vi.fn(),
+        update: vi.fn(async () => null),
+        updatePasswordHash: vi.fn(async () => true),
+        list: vi.fn(async () => ({ items: [], total: 0 })),
+        findMembership: vi.fn(async () => null),
+        findLastSuccessEndDate: vi.fn(async () => null),
     } as Mocked<UsersRepository>;
 }
 
@@ -21,4 +38,28 @@ export function createMockHasher(): Mocked<Hasher> {
         hash: vi.fn(async (plain: string) => `hashed:${plain}`),
         compare: vi.fn(async (plain: string, hashed: string) => hashed === `hashed:${plain}`),
     } as Mocked<Hasher>;
+}
+
+export function createMockObjectStorage(): Mocked<Pick<ObjectStorage, "getSignedUrl">> {
+    return {
+        getSignedUrl: vi.fn(async (key: string) => `https://storage.test/${key}?signed`),
+    } as Mocked<Pick<ObjectStorage, "getSignedUrl">>;
+}
+
+export function createMockSessionRevoker(): Mocked<SessionRevoker> {
+    return {
+        revokeSessionsOfUser: vi.fn(async () => undefined),
+    } as Mocked<SessionRevoker>;
+}
+
+export function createMockUsersService(): MockedUsersService {
+    return {
+        getProfile: vi.fn(),
+        updateProfile: vi.fn(),
+        changePassword: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => ({ items: [], total: 0 })),
+        createUser: vi.fn(),
+        getUser: vi.fn(),
+        updateUser: vi.fn(),
+    } as MockedUsersService;
 }

@@ -7,6 +7,7 @@ import { login } from "./login.js";
 import { logout } from "./logout.js";
 import { refresh } from "./refresh.js";
 import { register } from "./register.js";
+import { revokeSessionsOfUser } from "./revoke-sessions-of-user.js";
 
 export class AuthService {
     constructor(
@@ -20,5 +21,6 @@ export class AuthService {
     login = login;
     refresh = refresh;
     logout = logout;
+    revokeSessionsOfUser = revokeSessionsOfUser;
     createSession = createSession;
 }

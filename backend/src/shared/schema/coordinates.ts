@@ -23,3 +23,23 @@ export function refineCoordinatesTogether(value: CoordinatePair, ctx: z.Refineme
         });
     }
 }
+
+export function refineCoordinatesPatch(value: CoordinatePair, ctx: z.RefinementCtx): void {
+    const hasLatitude = value.latitude !== undefined;
+    const hasLongitude = value.longitude !== undefined;
+    if (hasLatitude !== hasLongitude) {
+        ctx.addIssue({
+            code: "custom",
+            path: [hasLatitude ? "longitude" : "latitude"],
+            message: "latitude and longitude must be sent together",
+        });
+        return;
+    }
+    if (hasLatitude && (value.latitude === null) !== (value.longitude === null)) {
+        ctx.addIssue({
+            code: "custom",
+            path: [value.latitude === null ? "longitude" : "latitude"],
+            message: "latitude and longitude must both be null to clear them",
+        });
+    }
+}

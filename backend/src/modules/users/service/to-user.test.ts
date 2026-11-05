@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildMembership } from "../../tiers/test-utils/factory/tiers.factory.js";
 import { buildUserAllergyRecord, buildUserRecord } from "../test-utils/factory/users.factory.js";
 import { toUser } from "./to-user.js";
 
@@ -42,5 +43,16 @@ describe("toUser", () => {
         expect(user).not.toHaveProperty("membership");
         expect(user).not.toHaveProperty("isChurned");
         expect(user).not.toHaveProperty("password");
+    });
+
+    it("adds membership and churn data only when given", () => {
+        const membership = buildMembership();
+
+        expect(toUser(buildUserRecord(), { membership, isChurned: true })).toMatchObject({
+            membership,
+            isChurned: true,
+        });
+        expect(toUser(buildUserRecord(), { membership: null })).toMatchObject({ membership: null });
+        expect(toUser(buildUserRecord(), { membership: null })).not.toHaveProperty("isChurned");
     });
 });

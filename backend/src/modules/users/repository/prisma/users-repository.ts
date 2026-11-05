@@ -3,8 +3,14 @@ import type { UsersRepository } from "../../service/interfaces/users.repository.
 import { create } from "./create.js";
 import { existsByEmail, existsByPhone } from "./exists.js";
 import { findById } from "./find-by-id.js";
-import { findCredentialsByEmail, findCredentialsByPhone } from "./find-credentials.js";
+import { findConflict } from "./find-conflict.js";
+import { findCredentialsByEmail, findCredentialsById, findCredentialsByPhone } from "./find-credentials.js";
+import { findLastSuccessEndDate } from "./find-last-success-end-date.js";
+import { findMembership } from "./find-membership.js";
 import { findMissingAllergyIds } from "./find-missing-allergy-ids.js";
+import { list } from "./list.js";
+import { update } from "./update.js";
+import { updatePasswordHash } from "./update-password-hash.js";
 
 export class PrismaUsersRepository implements UsersRepository {
     constructor(readonly db: Db) {}
@@ -12,8 +18,15 @@ export class PrismaUsersRepository implements UsersRepository {
     findById = findById;
     findCredentialsByPhone = findCredentialsByPhone;
     findCredentialsByEmail = findCredentialsByEmail;
+    findCredentialsById = findCredentialsById;
     existsByPhone = existsByPhone;
     existsByEmail = existsByEmail;
     findMissingAllergyIds = findMissingAllergyIds;
+    findConflict = findConflict;
     create = create;
+    update = update;
+    updatePasswordHash = updatePasswordHash;
+    list = list;
+    findMembership = findMembership;
+    findLastSuccessEndDate = findLastSuccessEndDate;
 }

@@ -1,15 +1,8 @@
 import { z } from "zod";
 import { latitudeSchema, longitudeSchema, refineCoordinatesTogether } from "../../../shared/schema/coordinates.js";
+import { passwordSchema } from "../../../shared/schema/password.js";
 import { uniqueArray } from "../../../shared/schema/unique-array.js";
 import { phoneSchema } from "../../../shared/utils/phone/phone.js";
-
-const BCRYPT_MAX_BYTES = 72;
-
-const passwordSchema = z
-    .string()
-    .min(8)
-    .max(72)
-    .refine(value => Buffer.byteLength(value, "utf8") <= BCRYPT_MAX_BYTES, `must be at most ${BCRYPT_MAX_BYTES} bytes`);
 
 export const registerSchema = z
     .object({

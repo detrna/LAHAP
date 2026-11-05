@@ -1,12 +1,10 @@
 import { toNumericOrNull } from "../../../../infrastructure/database/prisma/numeric.js";
-import { getUniqueViolationConstraint } from "../../../../infrastructure/database/prisma/sql-errors.js";
 import type { NewUserRecord, UserRecord } from "../../service/interfaces/users.repository.js";
 import { UserAlreadyExistsError, UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
 import { usersWithAllergies } from "./queries.js";
 import { toUserRecord } from "./to-user-record.js";
+import { getUniqueUserField } from "./unique-violation.js";
 import type { PrismaUsersRepository } from "./users-repository.js";
-
-const UNIQUE_FIELDS = { user_phone_key: "phone", user_email_key: "email" } as const;
 
 export async function create(this: PrismaUsersRepository, user: NewUserRecord): Promise<UserRecord> {
     try {
@@ -21,6 +19,7 @@ export async function create(this: PrismaUsersRepository, user: NewUserRecord): 
                 latitude: toNumericOrNull(user.latitude, 8),
                 longitude: toNumericOrNull(user.longitude, 8),
                 allergyNote: user.allergyNote,
+                isActive: user.isActive,
             });
             if (user.allergyIds.length > 0) {
                 await tx.orm.public.UserAllergy.createAll(
@@ -32,10 +31,8 @@ export async function create(this: PrismaUsersRepository, user: NewUserRecord): 
             return toUserRecord(row);
         });
     } catch (cause) {
-        const constraint = getUniqueViolationConstraint(cause);
-        if (constraint !== null && constraint in UNIQUE_FIELDS) {
-            throw new UserAlreadyExistsError(UNIQUE_FIELDS[constraint as keyof typeof UNIQUE_FIELDS], { cause });
-        }
+        const field = getUniqueUserField(cause);
+        if (field !== null) throw new UserAlreadyExistsError(field, { cause });
         throw new UsersRepositoryFailureError("create", cause);
     }
 }

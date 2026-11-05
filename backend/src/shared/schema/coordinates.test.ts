@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { latitudeSchema, longitudeSchema, refineCoordinatesTogether } from "./coordinates.js";
+import { latitudeSchema, longitudeSchema, refineCoordinatesPatch, refineCoordinatesTogether } from "./coordinates.js";
 
 describe("latitudeSchema and longitudeSchema", () => {
     it("accept their full ranges", () => {
@@ -41,5 +41,28 @@ describe("refineCoordinatesTogether", () => {
 
         expect(nullable.safeParse({ latitude: null, longitude: null }).success).toBe(true);
         expect(nullable.safeParse({ latitude: -7.9, longitude: null }).success).toBe(false);
+    });
+});
+
+describe("refineCoordinatesPatch", () => {
+    const patch = z
+        .object({ latitude: latitudeSchema.nullable().optional(), longitude: longitudeSchema.nullable().optional() })
+        .superRefine(refineCoordinatesPatch);
+    const issuePaths = (value: unknown) => patch.safeParse(value).error?.issues.map(issue => issue.path.join("."));
+
+    it("accepts both missing, both set and both null", () => {
+        expect(patch.safeParse({}).success).toBe(true);
+        expect(patch.safeParse({ latitude: -7.9, longitude: 112.6 }).success).toBe(true);
+        expect(patch.safeParse({ latitude: null, longitude: null }).success).toBe(true);
+    });
+
+    it("rejects one half missing, even when the other is null", () => {
+        expect(issuePaths({ latitude: null })).toEqual(["longitude"]);
+        expect(issuePaths({ longitude: 112.6 })).toEqual(["latitude"]);
+    });
+
+    it("rejects clearing only one half", () => {
+        expect(issuePaths({ latitude: null, longitude: 112.6 })).toEqual(["longitude"]);
+        expect(issuePaths({ latitude: -7.9, longitude: null })).toEqual(["latitude"]);
     });
 });

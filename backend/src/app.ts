@@ -1,37 +1,40 @@
 import express, { type Express } from "express";
 import helmet from "helmet";
 import { corsPolicy, errorHandler, requestLogger } from "./http/middleware/index.js";
-import type { ModuleDeps } from "./modules/module-deps.js";
 import { AuthContainer } from "./modules/auth/container/auth.container.js";
-import { UsersContainer } from "./modules/users/container/users.container.js";
-import { SettingsContainer } from "./modules/settings/container/settings.container.js";
-import { FilesContainer } from "./modules/files/container/files.container.js";
-import { RealtimeContainer } from "./modules/realtime/container/realtime.container.js";
-import { NotificationsContainer } from "./modules/notifications/container/notifications.container.js";
 import { CatalogContainer } from "./modules/catalog/container/catalog.container.js";
-import { IngredientsContainer } from "./modules/ingredients/container/ingredients.container.js";
-import { TiersContainer } from "./modules/tiers/container/tiers.container.js";
-import { PromoCodesContainer } from "./modules/promo-codes/container/promo-codes.container.js";
-import { OrdersContainer } from "./modules/orders/container/orders.container.js";
-import { KitchenContainer } from "./modules/kitchen/container/kitchen.container.js";
 import { DeliveryContainer } from "./modules/delivery/container/delivery.container.js";
+import { FilesContainer } from "./modules/files/container/files.container.js";
+import { IngredientsContainer } from "./modules/ingredients/container/ingredients.container.js";
+import { KitchenContainer } from "./modules/kitchen/container/kitchen.container.js";
+import type { ModuleDeps } from "./modules/module-deps.js";
+import { NotificationsContainer } from "./modules/notifications/container/notifications.container.js";
+import { OrdersContainer } from "./modules/orders/container/orders.container.js";
+import { PromoCodesContainer } from "./modules/promo-codes/container/promo-codes.container.js";
+import { RealtimeContainer } from "./modules/realtime/container/realtime.container.js";
 import { RetentionContainer } from "./modules/retention/container/retention.container.js";
+import { SettingsContainer } from "./modules/settings/container/settings.container.js";
+import { TiersContainer } from "./modules/tiers/container/tiers.container.js";
+import { UsersContainer } from "./modules/users/container/users.container.js";
 
 export function createApp(deps: ModuleDeps): Express {
-    const users = new UsersContainer(deps);
-    const auth = new AuthContainer({ ...deps, users: users.service });
-    const settings = new SettingsContainer(deps);
-    const files = new FilesContainer(deps);
-    const realtime = new RealtimeContainer(deps);
-    const notifications = new NotificationsContainer(deps);
-    const catalog = new CatalogContainer(deps);
-    const ingredients = new IngredientsContainer(deps);
-    const tiers = new TiersContainer(deps);
-    const promoCodes = new PromoCodesContainer(deps);
-    const orders = new OrdersContainer(deps);
-    const kitchen = new KitchenContainer(deps);
-    const delivery = new DeliveryContainer(deps);
-    const retention = new RetentionContainer(deps);
+    const users: UsersContainer = new UsersContainer({
+        ...deps,
+        sessions: { revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId) },
+    });
+    const auth: AuthContainer = new AuthContainer({ ...deps, users: users.service });
+    const settings: SettingsContainer = new SettingsContainer(deps);
+    const files: FilesContainer = new FilesContainer(deps);
+    const realtime: RealtimeContainer = new RealtimeContainer(deps);
+    const notifications: NotificationsContainer = new NotificationsContainer(deps);
+    const catalog: CatalogContainer = new CatalogContainer(deps);
+    const ingredients: IngredientsContainer = new IngredientsContainer(deps);
+    const tiers: TiersContainer = new TiersContainer(deps);
+    const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
+    const orders: OrdersContainer = new OrdersContainer(deps);
+    const kitchen: KitchenContainer = new KitchenContainer(deps);
+    const delivery: DeliveryContainer = new DeliveryContainer(deps);
+    const retention: RetentionContainer = new RetentionContainer(deps);
 
     const app = express();
     app.set("trust proxy", deps.http.TRUST_PROXY);

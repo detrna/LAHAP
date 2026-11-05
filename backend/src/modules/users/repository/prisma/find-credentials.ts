@@ -6,7 +6,7 @@ import type { PrismaUsersRepository } from "./users-repository.js";
 
 async function findCredentialsBy(
     repository: PrismaUsersRepository,
-    filter: { readonly phone: string } | { readonly email: string },
+    filter: { readonly id: string } | { readonly phone: string } | { readonly email: string },
     operation: string,
 ): Promise<UserCredentialsRecord | null> {
     try {
@@ -29,4 +29,11 @@ export async function findCredentialsByEmail(
     email: string,
 ): Promise<UserCredentialsRecord | null> {
     return findCredentialsBy(this, { email }, "findCredentialsByEmail");
+}
+
+export async function findCredentialsById(
+    this: PrismaUsersRepository,
+    id: string,
+): Promise<UserCredentialsRecord | null> {
+    return findCredentialsBy(this, { id }, "findCredentialsById");
 }
