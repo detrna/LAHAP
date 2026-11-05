@@ -8,9 +8,13 @@ export class FilesContainer {
     readonly service: FilesService;
     readonly router: Router;
 
-    constructor({ adapters }: ModuleDeps) {
-        this.service = new FilesService();
+    constructor({ adapters, http }: ModuleDeps) {
+        this.service = new FilesService(adapters.objectStorage, adapters.clock);
         const controller = new FilesController(this.service);
-        this.router = createFilesRouter({ controller, tokenProvider: adapters.tokenProvider });
+        this.router = createFilesRouter({
+            controller,
+            tokenProvider: adapters.tokenProvider,
+            maxBytes: http.UPLOAD_MAX_BYTES,
+        });
     }
 }

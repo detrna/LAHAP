@@ -45,4 +45,4 @@ export const INGREDIENTS = {
 
 export type IngredientKey = keyof typeof INGREDIENTS;
 
-export const ingredientPhotoKey = (id: string) => `seed/ingredients/${id}.webp`;
+export const ingredientPhotoKey = (id: string) => `ingredients/seed/${id}.webp`;

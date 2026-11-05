@@ -31,4 +31,4 @@ export const PACKAGES = {
 
 export type PackageKey = keyof typeof PACKAGES;
 
-export const packagePhotoKey = (id: string) => `seed/packages/${id}.webp`;
+export const packagePhotoKey = (id: string) => `packages/seed/${id}.webp`;

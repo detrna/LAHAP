@@ -1,5 +1,9 @@
 import type { ObjectStorage } from "../ports/object-storage/object-storage.js";
 
+export const PHOTO_FOLDERS = ["menus", "packages", "ingredients", "tiers", "obstacles"] as const;
+
+export type PhotoFolder = (typeof PHOTO_FOLDERS)[number];
+
 export async function toPhotoUrl(storage: ObjectStorage, key: string | null): Promise<string | null> {
     return key === null ? null : storage.getSignedUrl(key);
 }

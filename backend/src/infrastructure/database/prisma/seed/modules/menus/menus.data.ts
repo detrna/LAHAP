@@ -154,4 +154,4 @@ export const MENUS = {
 
 export type MenuKey = keyof typeof MENUS;
 
-export const menuPhotoKey = (id: string) => `seed/menus/${id}.webp`;
+export const menuPhotoKey = (id: string) => `menus/seed/${id}.webp`;
