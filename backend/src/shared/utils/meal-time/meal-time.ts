@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { InvalidMealTimeError } from "./errors.js";
 
 export * from "./errors.js";
@@ -65,4 +66,22 @@ export function getMealTimeRange(input: string | ClockTime): MealTimeRange {
 /** Output shape for API responses, e.g. `{ time: "07:00", range: "Pagi" }`. */
 export function toMealTimeView(input: string | ClockTime): MealTimeView {
     return { time: formatClockTime(input), range: getMealTimeRange(input) };
+}
+
+const CLOCK_TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
+export const clockTimeSchema = z
+    .string()
+    .regex(CLOCK_TIME_PATTERN, 'must be a time like "07:00"')
+    .transform(value => toDbTime(value));
+
+export function toDbTime(input: string | ClockTime): Temporal.PlainTime {
+    const { hour, minute } = parseClockTime(input);
+    return Temporal.PlainTime.from({ hour, minute });
+}
+
+export function isSameClockTime(a: string | ClockTime, b: string | ClockTime): boolean {
+    const left = parseClockTime(a);
+    const right = parseClockTime(b);
+    return left.hour === right.hour && left.minute === right.minute;
 }
