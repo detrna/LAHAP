@@ -1,27 +1,20 @@
 import { randomUUID } from "node:crypto";
-import express, { type Express } from "express";
+import type { Express } from "express";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTokenProvider } from "../../../utils/factory/jwt/jwt.js";
-import { createMockLogger } from "../../../utils/mocks/logger.js";
+import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import type { HttpConfig } from "../../../../src/config/http.js";
 import { loadConfig } from "../../../../src/config/index.js";
-import { errorHandler } from "../../../../src/http/middleware/index.js";
-import { loadRedisCache, type RedisCache } from "../../../../src/infrastructure/cache/redis/redis.js";
-import { SystemClock } from "../../../../src/infrastructure/clock/system/system.js";
+import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
-import { BcryptHasher } from "../../../../src/infrastructure/hasher/bcrypt/bcrypt.js";
-import type { Adapters } from "../../../../src/infrastructure/index.js";
-import { UsersContainer } from "../../../../src/modules/users/container/users.container.js";
 import { AuthContainer } from "../../../../src/modules/auth/container/auth.container.js";
+import { UsersContainer } from "../../../../src/modules/users/container/users.container.js";
 
-const config = loadConfig();
 const PASSWORD = "password123";
 const randomLocalPhone = () =>
     `0899${Math.floor(Math.random() * 1e8)
         .toString()
         .padStart(8, "0")}`;
-const toStoredPhone = (local: string) => `62${local.slice(1)}`;
 
 function findCookie(response: request.Response, name: string): string {
     const header = response.headers["set-cookie"];
@@ -33,61 +26,51 @@ function findCookie(response: request.Response, name: string): string {
 
 describe("auth routes (e2e)", () => {
     let db: Db;
-    const caches: RedisCache[] = [];
+    let rows: CreatedRows;
+    const testApps: TestApp[] = [];
     let allergyId: string;
-    const registeredPhones: string[] = [];
     let app: Express;
 
-    async function createTestApp(http: Partial<HttpConfig> = {}): Promise<Express> {
-        const cache = await loadRedisCache({ ...config.REDIS, KEY_PREFIX: `gtnic-it:${randomUUID()}:` });
-        caches.push(cache);
-        const adapters = {
-            logger: createMockLogger(),
-            cache,
-            hasher: new BcryptHasher({ SALT_ROUNDS: 4 }),
-            tokenProvider: createTokenProvider(),
-            clock: new SystemClock(),
-        } as unknown as Adapters;
-        const deps = {
+    async function buildApp(http: Partial<HttpConfig> = {}): Promise<Express> {
+        const testApp = await createTestApp({
             db,
-            adapters,
             http: {
-                ...config.HTTP,
                 AUTH_RATE_LIMIT_MAX: 1000,
                 AUTH_COOKIE_NAME: "lahap_refresh",
                 AUTH_COOKIE_SAME_SITE: "lax",
                 AUTH_COOKIE_SECURE: false,
                 ...http,
-            } satisfies HttpConfig,
-        };
-        const users = new UsersContainer(deps);
-        const auth = new AuthContainer({ ...deps, users: users.service });
-
-        const testApp = express();
-        testApp.use(express.json());
-        testApp.use("/api", auth.router);
-        testApp.use(errorHandler());
-        return testApp;
+            },
+            mount: deps => {
+                const users = new UsersContainer(deps);
+                return [new AuthContainer({ ...deps, users: users.service }).router];
+            },
+        });
+        testApps.push(testApp);
+        return testApp.app;
     }
 
     async function register(body: Record<string, unknown> = {}) {
-        const phone = randomLocalPhone();
-        registeredPhones.push(toStoredPhone(phone));
-        return request(app)
+        const response = await request(app)
             .post("/api/auth/register")
-            .send({ phone, password: PASSWORD, confirmPassword: PASSWORD, ...body });
+            .send({ phone: randomLocalPhone(), password: PASSWORD, confirmPassword: PASSWORD, ...body });
+        if (response.status === 201) rows.track("User", response.body.data.user.id);
+        return response;
     }
 
     beforeAll(async () => {
-        db = await loadDatabase(config.DATABASE);
-        allergyId = (await db.orm.public.Allergy.create({ name: `Zz Auth Test ${randomUUID().slice(0, 8)}` })).id;
-        app = await createTestApp();
+        db = await loadDatabase(loadConfig().DATABASE);
+        rows = trackCreated(db);
+        allergyId = rows.track(
+            "Allergy",
+            (await db.orm.public.Allergy.create({ name: `Zz Auth Test ${randomUUID().slice(0, 8)}` })).id,
+        );
+        app = await buildApp();
     });
 
     afterAll(async () => {
-        for (const phone of registeredPhones) await db.orm.public.User.where({ phone }).deleteAll();
-        await db.orm.public.Allergy.where({ id: allergyId }).deleteAll();
-        for (const cache of caches) await cache.close();
+        await rows?.cleanup();
+        for (const testApp of testApps) await testApp.close();
         await db?.close();
     });
 
@@ -290,7 +273,7 @@ describe("auth routes (e2e)", () => {
     });
 
     it("rate-limits login per client with 429 and Retry-After", async () => {
-        const limitedApp = await createTestApp({ AUTH_RATE_LIMIT_MAX: 2, AUTH_RATE_LIMIT_WINDOW_SECONDS: 60 });
+        const limitedApp = await buildApp({ AUTH_RATE_LIMIT_MAX: 2, AUTH_RATE_LIMIT_WINDOW_SECONDS: 60 });
         const attempt = () =>
             request(limitedApp).post("/api/auth/login").send({ identifier: randomLocalPhone(), password: PASSWORD });
 
