@@ -1,0 +1,200 @@
+name: backend
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "backend/**"
+            - ".github/workflows/backend.yml"
+            - ".prettierrc"
+            - ".prettierignore"
+    pull_request:
+        paths:
+            - "backend/**"
+            - ".github/workflows/backend.yml"
+            - ".prettierrc"
+            - ".prettierignore"
+    workflow_dispatch:
+
+concurrency:
+    group: backend-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+    contents: read
+
+defaults:
+    run:
+        working-directory: backend
+
+jobs:
+    static:
+        name: static
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: backend/.nvmrc
+                  cache: npm
+                  cache-dependency-path: backend/package-lock.json
+            - run: npm ci
+            - name: Type-check
+              run: npm run typecheck
+            - name: Check formatting
+              run: npm run format:check
+            - name: Check the emitted contract is up to date
+              run: |
+                  npm run contract:emit
+                  git diff --exit-code -- src/infrastructure/database/prisma/contract.json src/infrastructure/database/prisma/contract.d.ts
+
+    unit:
+        name: unit
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: backend/.nvmrc
+                  cache: npm
+                  cache-dependency-path: backend/package-lock.json
+            - run: npm ci
+            - name: Unit tests
+              run: npm run test:run
+
+    integration:
+        name: integration
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        env:
+            IS_PRODUCTION: "false"
+            DB_USER: lahap
+            DB_PASSWORD: lahap
+            DB_NAME: lahap_test
+            DB_PORT: "5432"
+            DB_URL: postgresql://lahap:lahap@localhost:5432/lahap_test
+            REDIS_PORT: "6379"
+            REDIS_URL: redis://localhost:6379
+            S3_ENDPOINT: http://localhost:8333
+            S3_ACCESS_KEY: ci-access-key
+            S3_SECRET_KEY: ci-secret-key
+            S3_BUCKET: lahap-ci
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: backend/.nvmrc
+                  cache: npm
+                  cache-dependency-path: backend/package-lock.json
+            - run: npm ci
+            - name: Start Postgres, Redis and SeaweedFS
+              run: docker compose up -d --wait postgres redis seaweedfs
+            - name: Wait until SeaweedFS can store files
+              run: |
+                  for attempt in $(seq 1 30); do
+                      if curl -s http://localhost:9333/dir/assign | grep -q '"fid"' && curl -s -o /dev/null http://localhost:8333; then
+                          exit 0
+                      fi
+                      sleep 2
+                  done
+                  echo "SeaweedFS did not become ready"
+                  exit 1
+            - name: Apply migrations
+              run: npx prisma db migrate
+            - name: Check the contract has a migration for every change
+              run: npx prisma db verify
+            - name: Integration tests
+              run: npm run test:integration -- --exclude '**/midtrans/**' --exclude '**/qwen/**'
+            - name: End-to-end tests
+              run: npm run test:e2e
+            - name: Service logs
+              if: failure()
+              run: docker compose logs --no-color
+
+    build-and-push:
+        name: build and push image
+        needs: [static, unit, integration]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v7
+            - uses: docker/setup-buildx-action@v4
+            - uses: docker/login-action@v4
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - id: meta
+              uses: docker/metadata-action@v6
+              with:
+                  images: ghcr.io/${{ github.repository_owner }}/${{ vars.IMAGE_NAME }}
+                  tags: |
+                      type=sha,prefix=sha-,format=long
+                      type=raw,value=latest
+            - uses: docker/build-push-action@v7
+              with:
+                  context: backend
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    deploy:
+        name: Deploy to Server
+        needs: build-and-push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: production
+        concurrency:
+            group: deploy-production
+            cancel-in-progress: false
+        steps:
+            - uses: actions/checkout@v7
+            - name: Copy compose file to server
+              uses: appleboy/scp-action@v1.0.0
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT }}
+                  fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+                  source: backend/docker-compose.yml
+                  target: ${{ github.event.repository.name }}
+                  strip_components: 1
+                  overwrite: true
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@v1.2.5
+              env:
+                  IMAGE_NAME: ${{ github.repository_owner }}/${{ vars.IMAGE_NAME }}
+                  IMAGE_TAG: sha-${{ github.sha }}
+                  GHCR_USERNAME: ${{ github.repository_owner }}
+                  GHCR_TOKEN: ${{ secrets.AUTH_GITHUB_TOKEN }}
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT }}
+                  fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+                  envs: IMAGE_NAME,IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN
+                  script: |
+                      set -eu
+                      cd "$HOME/${{ github.event.repository.name }}"
+                      if [ ! -f .env ]; then
+                          echo ".env is missing on the server"
+                          exit 1
+                      fi
+                      trap 'docker logout ghcr.io > /dev/null 2>&1 || true' EXIT
+                      echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+                      export IMAGE_NAME IMAGE_TAG COMPOSE_PROFILES=app
+                      docker compose pull api worker
+                      docker compose run --rm api npx prisma db migrate
+                      docker compose up -d --wait --remove-orphans
+                      docker image prune -f

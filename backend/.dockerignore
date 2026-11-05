@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+log
+.env
+.env.*
+!.env.example
+tests
+**/*.test.ts
+**/test-utils
+.agents
+.claude
+.cursor
+.devin
+*.md
+Dockerfile
+docker-compose.yml

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../config/index.js";
 import { MIDTRANS_BCA_VA_SIMULATOR_URL, MidtransPaymentGateway } from "./midtrans.js";
 
@@ -8,12 +8,12 @@ const config = loadConfig();
 
 // Integration tests call the real Midtrans Sandbox API.
 // Run with: npm run test:integration
-if (!config.PAYMENT_GATEWAY.SERVER_KEY) {
-    throw new Error("MIDTRANS_SERVER_KEY is required to run integration tests");
-}
+describe.skipIf(!config.PAYMENT_GATEWAY.SERVER_KEY)("MidtransPaymentGateway (integration)", () => {
+    let gateway: MidtransPaymentGateway;
 
-describe("MidtransPaymentGateway (integration)", () => {
-    const gateway = new MidtransPaymentGateway(config.PAYMENT_GATEWAY, config.APP);
+    beforeAll(() => {
+        gateway = new MidtransPaymentGateway(config.PAYMENT_GATEWAY, config.APP);
+    });
 
     it("creates a transaction on Midtrans Sandbox and returns token, redirectUrl, and simulatorUrl", async () => {
         const orderId = `it-${randomUUID()}`;

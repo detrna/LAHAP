@@ -13,10 +13,6 @@ const config = loadConfig();
 
 // Integration tests call the real DashScope vision API.
 // Run with: npm run test:integration
-if (!config.STOCK_LEVEL_ESTIMATOR.API_KEY) {
-    throw new Error("STOCK_ESTIMATOR_API_KEY is required to run integration tests");
-}
-
 const FIXTURES_DIR = join(import.meta.dirname, "fixtures");
 const TIMEOUT_MS = 60_000;
 
@@ -42,7 +38,7 @@ async function loadFixtureImage(relativePath: string) {
     return { image, mimeType };
 }
 
-describe("QwenStockLevelEstimator (integration)", () => {
+describe.skipIf(!config.STOCK_LEVEL_ESTIMATOR.API_KEY)("QwenStockLevelEstimator (integration)", () => {
     // Multi-bottle scene: 5 full bottles of cooking oil
     it(
         "estimates stock for oil_scene_01_5bottles.png (start of day: 5 bottles)",

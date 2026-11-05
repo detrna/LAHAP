@@ -1,0 +1,36 @@
+name: backend vendor APIs
+
+on:
+    workflow_dispatch:
+
+concurrency:
+    group: backend-vendor
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+defaults:
+    run:
+        working-directory: backend
+
+jobs:
+    vendor:
+        name: vendor
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        env:
+            IS_PRODUCTION: "false"
+            MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
+            RECEIPT_EXTRACTOR_API_KEY: ${{ secrets.RECEIPT_EXTRACTOR_API_KEY }}
+            STOCK_ESTIMATOR_API_KEY: ${{ secrets.STOCK_ESTIMATOR_API_KEY }}
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: backend/.nvmrc
+                  cache: npm
+                  cache-dependency-path: backend/package-lock.json
+            - run: npm ci
+            - name: Midtrans and Qwen integration tests
+              run: npx vitest run midtrans.integration qwen.integration

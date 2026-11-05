@@ -10,10 +10,6 @@ const config = loadConfig();
 
 // Integration tests call the real (paid) OCR API.
 // Run with: npm run test:integration
-if (!config.RECEIPT_EXTRACTOR.API_KEY) {
-    throw new Error("RECEIPT_EXTRACTOR_API_KEY is required to run integration tests");
-}
-
 const FIXTURES_DIR = join(import.meta.dirname, "fixtures");
 const UNITS = ["PCS", "KG", "G", "L", "ML", "PACK", "BUNGKUS", "LUSIN", "BOX", "BUAH"] as const;
 const units: [string, ...string[]] = [...UNITS];
@@ -30,7 +26,7 @@ async function loadFixture(name: string) {
     return { image: await readFile(join(FIXTURES_DIR, name)), mimeType };
 }
 
-describe("QwenReceiptExtractor (integration)", () => {
+describe.skipIf(!config.RECEIPT_EXTRACTOR.API_KEY)("QwenReceiptExtractor (integration)", () => {
     // Happy path — clear readable receipts
     it.each(["receipt.jpg", "clean_receipt.png"])(
         "extracts valid items from %s",
