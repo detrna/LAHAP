@@ -11,3 +11,12 @@ export class SettingsRepositoryFailureError extends AppError {
         super(`settings repository operation failed: ${operation}`, { cause });
     }
 }
+
+export class BusinessNotConfiguredError extends AppError {
+    readonly code = "BUSINESS_NOT_CONFIGURED";
+    readonly statusCode = 500;
+
+    constructor() {
+        super("business settings are not configured");
+    }
+}

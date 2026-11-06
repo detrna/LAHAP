@@ -477,7 +477,7 @@
           "Catalog"
         ],
         "summary": "Get the business profile",
-        "description": "**Public** (no token).\n\nPick-up address, map location and contact.",
+        "description": "**Public** (no token).\n\nPick-up address, map location and contact. Answers 500 `BUSINESS_NOT_CONFIGURED` when the business row does not exist yet (fresh database: run the seed, or save the settings).",
         "responses": {
           "200": {
             "description": "Success.",
@@ -7133,7 +7133,7 @@
           "Admin · Settings"
         ],
         "summary": "Get settings",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\nAnswers 500 `BUSINESS_NOT_CONFIGURED` when the business row does not exist yet.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7183,7 +7183,7 @@
           "Admin · Settings"
         ],
         "summary": "Replace settings",
-        "description": "**Roles:** `ADMIN`.\n\nKitchen location, delivery defaults and payment timeout (UC-25). New rates apply to new orders only.",
+        "description": "**Roles:** `ADMIN`.\n\nKitchen location, delivery defaults and payment timeout (UC-25). Every field is required; `updatedAt` is ignored. `whatsappNumber` is normalized to `62…`, and `deliveryFreeRadius` must not be greater than `deliveryMaxDistance` (400 otherwise). New delivery rates and a new kitchen location apply to new orders only (BR-16); a new `paymentTimeoutMinutes` also applies to orders that are still `Pending`. Creates the single business row when none exists.",
         "x-roles": [
           "ADMIN"
         ],
@@ -11349,17 +11349,19 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Business name.",
+            "description": "Business name (trimmed, not empty).",
+            "minLength": 1,
             "maxLength": 100
           },
           "whatsappNumber": {
             "type": "string",
-            "description": "Business contact (`62…`); reserved for future features.",
+            "description": "Business contact; normalized to `62…` on save. Reserved for future features.",
             "maxLength": 20
           },
           "address": {
             "type": "string",
-            "description": "Kitchen address."
+            "description": "Kitchen address (trimmed, not empty).",
+            "minLength": 1
           },
           "latitude": {
             "type": "number",
@@ -11378,22 +11380,25 @@
           "deliveryFreeRadius": {
             "type": "number",
             "format": "double",
-            "description": "Default free radius (km).",
+            "description": "Default free radius (km), rounded to 2 decimals. Must not be greater than `deliveryMaxDistance`.",
             "minimum": 0,
+            "maximum": 999.99,
             "default": 1
           },
           "deliveryMaxDistance": {
             "type": "number",
             "format": "double",
-            "description": "Default max delivery distance (km); beyond it delivery is hidden at checkout.",
-            "minimum": 0,
+            "description": "Default max delivery distance (km), rounded to 2 decimals; beyond it delivery is hidden at checkout.",
+            "exclusiveMinimum": 0,
+            "maximum": 999.99,
             "default": 10
           },
           "deliveryPricePerKm": {
             "type": "number",
             "format": "double",
-            "description": "Default Rp per km beyond the free radius.",
+            "description": "Default Rp per km beyond the free radius, rounded to 2 decimals.",
             "minimum": 0,
+            "maximum": 99999999.99,
             "default": 5000
           },
           "paymentTimeoutMinutes": {
@@ -11401,6 +11406,7 @@
             "format": "int32",
             "description": "Minutes before an unpaid `Pending` order expires (BR-20).",
             "minimum": 1,
+            "maximum": 1440,
             "default": 15
           },
           "updatedAt": {
