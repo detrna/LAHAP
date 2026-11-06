@@ -5,6 +5,7 @@ import { create } from "./create.js";
 import { existsByEmail, existsByPhone } from "./exists.js";
 import { filterActiveUserIds } from "./filter-active-user-ids.js";
 import { findById } from "./find-by-id.js";
+import { findByIds } from "./find-by-ids.js";
 import { findConflict } from "./find-conflict.js";
 import { findCredentialsByEmail, findCredentialsById, findCredentialsByPhone } from "./find-credentials.js";
 import { list } from "./list.js";
@@ -16,6 +17,7 @@ export class PrismaUsersRepository implements UsersRepository {
     constructor(readonly db: Db) {}
 
     findById = findById;
+    findByIds = findByIds;
     findCredentialsByPhone = findCredentialsByPhone;
     findCredentialsByEmail = findCredentialsByEmail;
     findCredentialsById = findCredentialsById;

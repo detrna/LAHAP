@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'161ce6699b6059d266ed6ff9435e298d561f532a61d5e049f8e99ba0b9e3c717'>;
+  StorageHashBase<'f8dd7e04764ab17064c1bc8ea93eafd9299ba58549f49cd48643664961879fea'>;
 export type ExecutionHash =
   ExecutionHashBase<'f1d6c16d23baa2e4d589cda73002417b59117d32bed25e0f4cb7a6f6815afaa7'>;
 export type ProfileHash =
@@ -406,6 +406,7 @@ export namespace Models {
     createdAt: FieldOutputTypes['public']['Order']['createdAt'];
     id: FieldOutputTypes['public']['Order']['id'];
     menuScheduleId: FieldOutputTypes['public']['Order']['menuScheduleId'];
+    serviceDate: FieldOutputTypes['public']['Order']['serviceDate'];
     skipReason: FieldOutputTypes['public']['Order']['skipReason'];
     status: FieldOutputTypes['public']['Order']['status'];
     subscriptionId: FieldOutputTypes['public']['Order']['subscriptionId'];
@@ -1603,6 +1604,12 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly length: 36 };
                   readonly many: false;
                 };
+                readonly service_date: {
+                  readonly dataType: 'pg/date';
+                  readonly codecId: 'pg/date-temporal@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
                 readonly skip_reason: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -1656,6 +1663,12 @@ type ContractBase = Omit<
                   readonly name: 'order_menu_schedule_id_idx_31d1228b';
                   readonly prefix: 'order_menu_schedule_id_idx';
                   readonly columns: readonly ['menu_schedule_id'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'order_service_date_idx_7d824af3';
+                  readonly prefix: 'order_service_date_idx';
+                  readonly columns: readonly ['service_date'];
                   readonly unique: false;
                 },
                 {
@@ -4019,6 +4032,10 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly length: 36 };
                 };
               };
+              readonly serviceDate: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/date-temporal@1' };
+              };
               readonly skipReason: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -4116,6 +4133,7 @@ type ContractBase = Omit<
                 readonly createdAt: { readonly column: 'created_at' };
                 readonly id: { readonly column: 'id' };
                 readonly menuScheduleId: { readonly column: 'menu_schedule_id' };
+                readonly serviceDate: { readonly column: 'service_date' };
                 readonly skipReason: { readonly column: 'skip_reason' };
                 readonly status: { readonly column: 'status' };
                 readonly subscriptionId: { readonly column: 'subscription_id' };

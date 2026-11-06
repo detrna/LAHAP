@@ -3,6 +3,10 @@ import type { RecurringJobRegistration, Scheduler } from "../../../shared/ports/
 
 export const HEARTBEAT_SCHEDULE_ID = "heartbeat-schedule";
 export const HEARTBEAT_JOB_NAME = "heartbeat";
+export const EXPIRE_PENDING_PAYMENTS_SCHEDULE_ID = "expire-pending-payments-schedule";
+export const EXPIRE_PENDING_PAYMENTS_JOB_NAME = "expire-pending-payments";
+export const PREPARE_DUE_SLOTS_SCHEDULE_ID = "prepare-due-slots-schedule";
+export const PREPARE_DUE_SLOTS_JOB_NAME = "prepare-due-slots";
 
 /**
  * Builds the declarative list of recurring schedule definitions.
@@ -16,6 +20,18 @@ export const buildScheduleDefinitions = (schedulerConfig: SchedulerConfig): read
         id: HEARTBEAT_SCHEDULE_ID,
         jobName: HEARTBEAT_JOB_NAME,
         cronPattern: schedulerConfig.CRON.HEARTBEAT,
+        timezone: schedulerConfig.TIMEZONE,
+    },
+    {
+        id: EXPIRE_PENDING_PAYMENTS_SCHEDULE_ID,
+        jobName: EXPIRE_PENDING_PAYMENTS_JOB_NAME,
+        cronPattern: schedulerConfig.CRON.EXPIRE_PENDING_PAYMENTS,
+        timezone: schedulerConfig.TIMEZONE,
+    },
+    {
+        id: PREPARE_DUE_SLOTS_SCHEDULE_ID,
+        jobName: PREPARE_DUE_SLOTS_JOB_NAME,
+        cronPattern: schedulerConfig.CRON.PREPARE_DUE_SLOTS,
         timezone: schedulerConfig.TIMEZONE,
     },
 ];

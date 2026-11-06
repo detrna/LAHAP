@@ -140,6 +140,7 @@ classDiagram
 
     class Order {
         - id: String
+        - serviceDate: Date
         - status: String
         - usesAlternativeMenu: boolean
         - skipReason: String?
@@ -428,6 +429,7 @@ classDiagram
   | Attribute | Type | Nullable | Description & Invariants |
   | :--- | :--- | :---: | :--- |
   | `id` | `String` | No | Primary Key (Daily Slot Order ID). |
+  | `serviceDate` | `Date` | No | Copy of `MenuSchedule.date` taken at checkout, so date filters and sorting read the slot's own table. It can't go stale: a schedule's date can't change once it has orders. |
   | `status` | `String` | No | Slot status: `Terjadwal`, `Disiapkan`, `Diantar`, `Siap Diambil`, `Selesai`, `Dilewati` (PRD BR-23). Delivery obstacles are timestamped notes, not a status. |
   | `usesAlternativeMenu` | `boolean` | No | `true` = kitchen assigned the schedule's alternative menu (`ScheduleMenu.isPrimary = false`) for an allergy clash (PRD BR-24). Default `false`. |
   | `skipReason` | `String` | Yes | Optional free-text reason, set only when the slot becomes `Dilewati` (PRD UC-44). |
@@ -440,7 +442,7 @@ classDiagram
   | Attribute | Type | Nullable | Description & Invariants |
   | :--- | :--- | :---: | :--- |
   | `id` | `String` | No | Primary Key. |
-  | `method` | `String` | No | `CASH` (cashier, verified by admin), `MIDTRANS` (gateway, channel not chosen yet), or `MIDTRANS_<PAYMENT_TYPE>` from the webhook (e.g. `MIDTRANS_QRIS`, `MIDTRANS_BANK_TRANSFER`) (PRD BR-19). |
+  | `method` | `String` | No | `CASH` (cashier, verified by admin), `FREE` (total 0, paid at checkout without the gateway), `MIDTRANS` (gateway, channel not chosen yet), or `MIDTRANS_<PAYMENT_TYPE>` from the webhook (e.g. `MIDTRANS_QRIS`, `MIDTRANS_BANK_TRANSFER`) (PRD BR-19). |
   | `type` | `String` | No | `SUBSCRIPTION` (the only type the MVP creates) or `DELIVERY_SERVICE_UPGRADE` (reserved: extra delivery fee when switching pick-up → delivery after release, PRD §7.5). |
   | `amount` | `double` | No | Exact monetary amount billed. |
   | `status` | `String` | No | Stored state: `Pending`, `Success`, `Expire` (PRD BR-20), or `Refund` once the admin confirms the manual refund. Midtrans statuses are normalized by the `PaymentGateway` port and mapped to these values. |

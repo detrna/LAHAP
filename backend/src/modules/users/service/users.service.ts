@@ -6,7 +6,9 @@ import { countActiveUsers } from "./count-active-users.js";
 import { createUser } from "./create-user.js";
 import { filterActiveUserIds } from "./filter-active-user-ids.js";
 import { getActiveById } from "./get-active-by-id.js";
+import { getAllergyProfiles } from "./get-allergy-profiles.js";
 import { getProfile } from "./get-profile.js";
+import { getSummaries } from "./get-summaries.js";
 import { getUser } from "./get-user.js";
 import type { AllergyLookup } from "./interfaces/allergy-lookup.js";
 import type { MembershipLookup } from "./interfaces/membership-lookup.js";
@@ -45,6 +47,8 @@ export class UsersService {
     listActiveUserIds = listActiveUserIds;
     countActiveUsers = countActiveUsers;
     filterActiveUserIds = filterActiveUserIds;
+    getAllergyProfiles = getAllergyProfiles;
+    getSummaries = getSummaries;
     getUser = getUser;
     updateUser = updateUser;
     applyUserChanges = applyUserChanges;

@@ -113,6 +113,7 @@ function isDuplicateOrderId(status: number, messages: readonly string[]): boolea
 function normalizeInput(input: CreatePaymentTransactionInput): {
     orderId: string;
     grossAmount: number;
+    expiryMinutes: number | undefined;
 } {
     const orderId = input.orderId.trim();
     if (!orderId) {
@@ -124,10 +125,14 @@ function normalizeInput(input: CreatePaymentTransactionInput): {
     if (!Number.isInteger(input.grossAmount) || input.grossAmount <= 0) {
         throw new InvalidPaymentTransactionInputError("grossAmount must be a positive integer");
     }
+    if (input.expiryMinutes !== undefined && (!Number.isInteger(input.expiryMinutes) || input.expiryMinutes <= 0)) {
+        throw new InvalidPaymentTransactionInputError("expiryMinutes must be a positive integer");
+    }
 
     return {
         orderId,
         grossAmount: input.grossAmount,
+        expiryMinutes: input.expiryMinutes,
     };
 }
 
@@ -159,13 +164,14 @@ export class MidtransPaymentGateway implements PaymentGateway {
     }
 
     async createTransaction(input: CreatePaymentTransactionInput): Promise<PaymentTransactionResult> {
-        const { orderId, grossAmount } = normalizeInput(input);
+        const { orderId, grossAmount, expiryMinutes } = normalizeInput(input);
 
         const body = JSON.stringify({
             transaction_details: {
                 order_id: orderId,
                 gross_amount: grossAmount,
             },
+            ...(expiryMinutes !== undefined ? { expiry: { unit: "minutes", duration: expiryMinutes } } : {}),
         });
 
         let response: Response | undefined;

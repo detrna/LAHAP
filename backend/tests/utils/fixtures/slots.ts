@@ -56,7 +56,8 @@ async function readServiceDates(db: Db, packageId: string, slots: readonly TestS
     const dates = schedules.map(schedule => schedule.date).sort(Temporal.PlainDate.compare);
     const [startDate, endDate] = [dates[0], dates.at(-1)];
     if (startDate === undefined || endDate === undefined) throw new Error("createTestSlots needs at least one slot");
-    return { startDate, endDate };
+    const serviceDates = new Map<string, Temporal.PlainDate>(schedules.map(schedule => [schedule.id, schedule.date]));
+    return { startDate, endDate, serviceDates };
 }
 
 async function createTestPayment(
@@ -85,7 +86,7 @@ export async function createTestSlots(db: Db, rows: CreatedRows, input: TestSlot
     const { slots, payment, ...subscription } = input;
     if (slots.length === 0) throw new Error("createTestSlots needs at least one slot");
     for (const slot of slots) assertSlotFits(slot, input.isDelivery ?? false);
-    const dates = await readServiceDates(db, input.packageId, slots);
+    const { serviceDates, ...dates } = await readServiceDates(db, input.packageId, slots);
     const subscriptionId = await createTestSubscription(db, rows, {
         ...subscription,
         ...dates,
@@ -98,6 +99,7 @@ export async function createTestSlots(db: Db, rows: CreatedRows, input: TestSlot
         const created = await db.orm.public.Order.create({
             subscriptionId,
             menuScheduleId: slot.scheduleId,
+            serviceDate: serviceDates.get(slot.scheduleId)!,
             status: slot.status ?? "Terjadwal",
             usesAlternativeMenu: slot.usesAlternativeMenu ?? false,
             skipReason: slot.skipReason ?? null,

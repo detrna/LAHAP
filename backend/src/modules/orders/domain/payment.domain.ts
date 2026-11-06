@@ -1,4 +1,4 @@
-export type PaymentMethod = "CASH" | "MIDTRANS" | `MIDTRANS_${string}`;
+export type PaymentMethod = "CASH" | "FREE" | "MIDTRANS" | `MIDTRANS_${string}`;
 
 export const PAYMENT_TYPES = ["SUBSCRIPTION", "DELIVERY_SERVICE_UPGRADE"] as const;
 export type PaymentType = (typeof PAYMENT_TYPES)[number];

@@ -11,3 +11,21 @@ export class OrdersRepositoryFailureError extends AppError {
         super(`orders repository operation failed: ${operation}`, { cause });
     }
 }
+
+export class SubscriptionNotFoundError extends AppError {
+    readonly code = "SUBSCRIPTION_NOT_FOUND";
+    readonly statusCode = 404;
+
+    constructor(options?: { cause?: unknown }) {
+        super("subscription not found", options);
+    }
+}
+
+export class PaymentNotFoundError extends AppError {
+    readonly code = "PAYMENT_NOT_FOUND";
+    readonly statusCode = 404;
+
+    constructor(options?: { cause?: unknown }) {
+        super("payment not found", options);
+    }
+}

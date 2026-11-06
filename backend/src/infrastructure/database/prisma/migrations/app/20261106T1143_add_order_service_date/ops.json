@@ -1,0 +1,211 @@
+[
+  {
+    "id": "column.public.order.service_date",
+    "label": "Add column \"service_date\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "service_date",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"service_date\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "service_date"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"service_date\" on \"order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"service_date\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"service_date\" date"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"service_date\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "service_date"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"service_date\" on \"order\""
+        }
+      },
+      {
+        "description": "verify column \"service_date\" has type \"date\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "service_date",
+          "date"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-order-service_date",
+    "label": "Data transform: backfill-order-service_date",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "service_date",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "Check backfill-order-service_date has work to do",
+        "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"service_date\" IS NULL LIMIT 1) AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Run backfill-order-service_date",
+        "sql": "UPDATE \"order\" SET service_date = schedule.date FROM schedule WHERE schedule.id = \"order\".menu_schedule_id AND \"order\".service_date IS NULL",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify backfill-order-service_date resolved all violations",
+        "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"service_date\" IS NULL LIMIT 1) AS ok",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "order",
+            "column": "service_date",
+            "reason": "backfillMissedRows"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.order.service_date",
+    "label": "Set NOT NULL on \"order\".\"service_date\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "service_date",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"service_date\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "service_date"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"service_date\" on \"order\""
+        }
+      },
+      {
+        "description": "ensure no NULL values in \"service_date\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"order\" WHERE \"service_date\" IS NULL) AS \"result\"",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "order",
+            "column": "service_date",
+            "reason": "nullValues"
+          }
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"service_date\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ALTER COLUMN \"service_date\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"service_date\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "service_date",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.order.order_service_date_idx_7d824af3",
+    "label": "Create index \"order_service_date_idx_7d824af3\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "order_service_date_idx_7d824af3",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"order_service_date_idx_7d824af3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_service_date_idx_7d824af3\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"order_service_date_idx_7d824af3\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"order_service_date_idx_7d824af3\"",
+        "sql": "CREATE INDEX \"order_service_date_idx_7d824af3\" ON \"public\".\"order\" (\"service_date\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"order_service_date_idx_7d824af3\" exists on \"order\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"order_service_date_idx_7d824af3\"",
+          "i",
+          "I",
+          "\"public\".\"order\"",
+          "btree",
+          "[\"service_date\"]"
+        ]
+      }
+    ]
+  }
+]

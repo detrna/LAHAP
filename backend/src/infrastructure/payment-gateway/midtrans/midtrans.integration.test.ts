@@ -20,6 +20,7 @@ describe.skipIf(!config.PAYMENT_GATEWAY.SERVER_KEY)("MidtransPaymentGateway (int
         const result = await gateway.createTransaction({
             orderId,
             grossAmount: 25_000,
+            expiryMinutes: 15,
         });
 
         expect(result.token).toBeTruthy();

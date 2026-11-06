@@ -1,5 +1,6 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
 import type { RandomInt } from "../domain/generate-code.js";
+import { checkPromo } from "./check-promo.js";
 import { createPromoCode } from "./create-promo-code.js";
 import { deletePromoCode } from "./delete-promo-code.js";
 import { findActiveCode } from "./find-active-code.js";
@@ -26,4 +27,5 @@ export class PromoCodesService {
     updatePromoCode = updatePromoCode;
     deletePromoCode = deletePromoCode;
     findActiveCode = findActiveCode;
+    checkPromo = checkPromo;
 }

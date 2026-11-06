@@ -7,7 +7,15 @@ import {
 } from "../../../shared/ports/job-run-repository/job-run-repository.js";
 import type { RecurringJobRegistration, Scheduler } from "../../../shared/ports/scheduler/scheduler.js";
 import { createScheduledCheckProcessor, createScheduledJobHandlerMap, defaultHeartbeatHandler } from "./handlers.js";
-import { HEARTBEAT_JOB_NAME, HEARTBEAT_SCHEDULE_ID, registerSchedules } from "./register-schedules.js";
+import {
+    EXPIRE_PENDING_PAYMENTS_JOB_NAME,
+    EXPIRE_PENDING_PAYMENTS_SCHEDULE_ID,
+    HEARTBEAT_JOB_NAME,
+    HEARTBEAT_SCHEDULE_ID,
+    PREPARE_DUE_SLOTS_JOB_NAME,
+    PREPARE_DUE_SLOTS_SCHEDULE_ID,
+    registerSchedules,
+} from "./register-schedules.js";
 
 class InMemoryJobRunRepository implements JobRunRepository {
     readonly runs: JobRunRecord[] = [];
@@ -143,7 +151,10 @@ describe("Scheduler handlers and schedule registration", () => {
             TIMEZONE: "Asia/Jakarta",
             CRON: {
                 HEARTBEAT: "* * * * *",
+                EXPIRE_PENDING_PAYMENTS: "*/2 * * * *",
+                PREPARE_DUE_SLOTS: "*/15 * * * *",
             },
+            SLOT_PREPARATION_LEAD_MINUTES: 180,
         };
 
         await registerSchedules(fakeScheduler, schedulerConfig);
@@ -155,6 +166,46 @@ describe("Scheduler handlers and schedule registration", () => {
                 cronPattern: "* * * * *",
                 timezone: "Asia/Jakarta",
             },
+            {
+                id: EXPIRE_PENDING_PAYMENTS_SCHEDULE_ID,
+                jobName: EXPIRE_PENDING_PAYMENTS_JOB_NAME,
+                cronPattern: "*/2 * * * *",
+                timezone: "Asia/Jakarta",
+            },
+            {
+                id: PREPARE_DUE_SLOTS_SCHEDULE_ID,
+                jobName: PREPARE_DUE_SLOTS_JOB_NAME,
+                cronPattern: "*/15 * * * *",
+                timezone: "Asia/Jakarta",
+            },
         ]);
+    });
+
+    it("runs the expiry use case for the expire-pending-payments job", async () => {
+        const expirePendingPayments = vi.fn().mockResolvedValue({ expiredCount: 2 });
+        const jobRunRepo = new InMemoryJobRunRepository();
+        const processor = createScheduledCheckProcessor(
+            createScheduledJobHandlerMap({ expirePendingPayments }),
+            jobRunRepo,
+        );
+
+        await processor({ id: "job-3", name: EXPIRE_PENDING_PAYMENTS_JOB_NAME, data: {} });
+
+        expect(expirePendingPayments).toHaveBeenCalledTimes(1);
+        expect(jobRunRepo.runs[0]?.status).toBe("SUCCESS");
+    });
+
+    it("runs the preparation use case for the prepare-due-slots job", async () => {
+        const prepareDueSlots = vi.fn().mockResolvedValue({ preparedCount: 3 });
+        const jobRunRepo = new InMemoryJobRunRepository();
+        const processor = createScheduledCheckProcessor(createScheduledJobHandlerMap({ prepareDueSlots }), jobRunRepo);
+
+        await processor({ id: "job-4", name: PREPARE_DUE_SLOTS_JOB_NAME, data: {} });
+
+        expect(prepareDueSlots).toHaveBeenCalledTimes(1);
+    });
+
+    it("has no expiry handler unless the use case is given", () => {
+        expect(createScheduledJobHandlerMap()[EXPIRE_PENDING_PAYMENTS_JOB_NAME]).toBeUndefined();
     });
 });

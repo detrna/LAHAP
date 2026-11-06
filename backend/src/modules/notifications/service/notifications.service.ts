@@ -1,5 +1,6 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
 import type { Logger } from "../../../shared/ports/logger/logger.js";
+import { countUnread } from "./count-unread.js";
 import { announce } from "./announce.js";
 import { assertTargetsExist } from "./assert-targets-exist.js";
 import { broadcast } from "./broadcast.js";
@@ -35,6 +36,7 @@ export class NotificationsService {
     listMyNotifications = listMyNotifications;
     markNotificationRead = markNotificationRead;
     markAllNotificationsRead = markAllNotificationsRead;
+    countUnread = countUnread;
     notifyUser = notifyUser;
     notifyAdmins = notifyAdmins;
     announce = announce;

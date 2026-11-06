@@ -84,6 +84,12 @@ describe("MidtransPaymentGateway (unit)", () => {
                 InvalidPaymentTransactionInputError,
             );
 
+            await expect(
+                gateway.createTransaction({ orderId: "order-1", grossAmount: 1000, expiryMinutes: 0 }),
+            ).rejects.toThrow(InvalidPaymentTransactionInputError);
+            await expect(
+                gateway.createTransaction({ orderId: "order-1", grossAmount: 1000, expiryMinutes: 1.5 }),
+            ).rejects.toThrow(InvalidPaymentTransactionInputError);
             await expect(gateway.createTransaction({ orderId: "order-1", grossAmount: Number.NaN })).rejects.toThrow(
                 InvalidPaymentTransactionInputError,
             );
@@ -134,6 +140,21 @@ describe("MidtransPaymentGateway (unit)", () => {
                     order_id: "order-123",
                     gross_amount: 50_000,
                 },
+            });
+        });
+
+        it("sends the expiry in minutes when given", async () => {
+            const fetchSpy = vi
+                .spyOn(globalThis, "fetch")
+                .mockResolvedValueOnce(jsonResponse({ token: "token-1", redirect_url: "https://example.com/snap" }));
+            const gateway = new MidtransPaymentGateway(dummyConfig, { IS_PRODUCTION: false, PORT: 4000 });
+
+            await gateway.createTransaction({ orderId: "order-exp", grossAmount: 50_000, expiryMinutes: 15 });
+
+            const [, init] = fetchSpy.mock.calls[0]!;
+            expect(JSON.parse(init?.body as string)).toEqual({
+                transaction_details: { order_id: "order-exp", gross_amount: 50_000 },
+                expiry: { unit: "minutes", duration: 15 },
             });
         });
 
