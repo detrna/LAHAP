@@ -3744,9 +3744,6 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -5325,9 +5322,6 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -5461,9 +5455,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
           },
           "422": {
             "$ref": "#/components/responses/InvalidState"
@@ -9920,7 +9911,7 @@
             "type": "number",
             "format": "double",
             "description": "Price per portion (Rp) before discounts and delivery.",
-            "minimum": 0
+            "exclusiveMinimum": 0
           },
           "periods": {
             "type": "array",
@@ -10050,7 +10041,8 @@
             "type": "number",
             "format": "double",
             "description": "Price per portion (Rp).",
-            "minimum": 0
+            "exclusiveMinimum": 0,
+            "maximum": 9999999999.99
           },
           "periods": {
             "type": "array",
@@ -10077,7 +10069,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 999.99
           },
           "deliveryMaxDistance": {
             "type": [
@@ -10086,7 +10079,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 999.99
           },
           "deliveryPricePerKm": {
             "type": [
@@ -10095,7 +10089,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 99999999.99
           },
           "photoKey": {
             "type": "string",
@@ -10142,7 +10137,8 @@
             "type": "number",
             "format": "double",
             "description": "Price per portion (Rp).",
-            "minimum": 0
+            "exclusiveMinimum": 0,
+            "maximum": 9999999999.99
           },
           "periods": {
             "type": "array",
@@ -10169,7 +10165,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 999.99
           },
           "deliveryMaxDistance": {
             "type": [
@@ -10178,7 +10175,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 999.99
           },
           "deliveryPricePerKm": {
             "type": [
@@ -10187,7 +10185,8 @@
             ],
             "format": "double",
             "description": "Package override; `null` = use the business default (`Settings`).",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 99999999.99
           },
           "photoKey": {
             "type": "string",
