@@ -13,8 +13,8 @@ export const TIERS = [
     {
         id: seedId("tier", 2),
         name: "Silver",
-        description: "Diskon 5% setelah 20 hari layanan.",
-        requiredSubscriptionDays: 20,
+        description: "Diskon 5% setelah 30 hari layanan.",
+        requiredSubscriptionDays: 30,
         durationDays: 30,
         discountPercent: "5.00",
         photoKey: null,
