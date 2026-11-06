@@ -1016,6 +1016,27 @@
                           "items": {
                             "$ref": "#/components/schemas/Notification"
                           }
+                        },
+                        "meta": {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/PaginationMeta"
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "unreadCount"
+                              ],
+                              "properties": {
+                                "unreadCount": {
+                                  "type": "integer",
+                                  "format": "int32",
+                                  "minimum": 0,
+                                  "description": "Unread notifications of the signed-in user, whatever the `isRead` filter."
+                                }
+                              }
+                            }
+                          ]
                         }
                       }
                     }
@@ -1049,7 +1070,7 @@
           "Me"
         ],
         "summary": "Mark a notification as read",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.",
+        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\n404 when the notification does not exist or belongs to another user. Marking one that is already read is not an error.",
         "x-roles": [
           "CUSTOMER",
           "ADMIN",
@@ -1164,7 +1185,7 @@
           "Me"
         ],
         "summary": "List announcements for me",
-        "description": "**Roles:** `CUSTOMER`.\n\n`GLOBAL` announcements plus `PACKAGE`/`SCHEDULE` ones for packages/schedules you have `Success` orders on (BR-27). No per-user read state in the MVP.",
+        "description": "**Roles:** `CUSTOMER`.\n\n`GLOBAL` announcements, plus `PACKAGE` ones for packages where you have a `Success` order that ends today or later, and `SCHEDULE` ones for service days where you have a `Success` order slot that is not skipped (BR-27). Newest first. An announcement whose package or schedule was deleted no longer matches anyone. No per-user read state in the MVP.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -6429,7 +6450,7 @@
           "Admin · Notifications"
         ],
         "summary": "Send a notification",
-        "description": "**Roles:** `ADMIN`.\n\nThree levels: package, app-wide, single customer (UC-46).",
+        "description": "**Roles:** `ADMIN`.\n\nFour targets (UC-46): app-wide (`GLOBAL`), a package, a service day (`SCHEDULE`) or a single customer. Send only the id that belongs to the `target`; an id for another target gives 400. `title` and `body` are trimmed.\n\nOnly active customers receive anything. `GLOBAL` goes to every active customer (the live event is addressed to the `CUSTOMER` role). `PACKAGE` goes to customers with a `Success` order on the package that ends today or later. `SCHEDULE` goes to customers with a non-skipped slot on that schedule. `recipientCount` is the number of customers reached.\n\n404 `TARGET_NOT_FOUND` for an unknown package or schedule, and for a `userId` that is not an active customer (staff and inactive accounts give the same 404). Live delivery is best-effort: the record is saved even when the event cannot be published.",
         "x-roles": [
           "ADMIN"
         ],
@@ -6643,7 +6664,7 @@
           "Admin · Notifications"
         ],
         "summary": "Edit an announcement",
-        "description": "**Roles:** `ADMIN`.\n\nEdits text/target; does not re-send.",
+        "description": "**Roles:** `ADMIN`.\n\nEdits text/target; does not re-send. The scope is checked on the result of the edit: `PACKAGE` needs `packageId` and no `menuScheduleId`, `SCHEDULE` the reverse, `GLOBAL` neither, so changing the scope away from `PACKAGE` or `SCHEDULE` also needs the old id set to `null` (400 otherwise). 404 `ANNOUNCEMENT_NOT_FOUND` for an unknown announcement and 404 `TARGET_NOT_FOUND` for a new `packageId` or `menuScheduleId` that does not exist.",
         "x-roles": [
           "ADMIN"
         ],
@@ -11760,7 +11781,8 @@
           },
           "body": {
             "type": "string",
-            "description": "Message."
+            "description": "Message.",
+            "maxLength": 2000
           },
           "scope": {
             "$ref": "#/components/schemas/AnnouncementScope"
@@ -11803,14 +11825,15 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Heading.",
+            "description": "Heading. Trimmed.",
             "minLength": 1,
             "maxLength": 150
           },
           "body": {
             "type": "string",
-            "description": "Message.",
-            "minLength": 1
+            "description": "Message. Trimmed.",
+            "minLength": 1,
+            "maxLength": 2000
           },
           "scope": {
             "$ref": "#/components/schemas/AnnouncementScope"
@@ -11845,14 +11868,15 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Heading.",
+            "description": "Heading. Trimmed.",
             "minLength": 1,
             "maxLength": 150
           },
           "body": {
             "type": "string",
-            "description": "Message.",
-            "minLength": 1
+            "description": "Message. Trimmed.",
+            "minLength": 1,
+            "maxLength": 2000
           },
           "target": {
             "type": "string",
@@ -11867,17 +11891,17 @@
           "packageId": {
             "type": "string",
             "format": "uuid",
-            "description": "Required when `target = PACKAGE` (customers with a `Success` order on it)."
+            "description": "Required when `target = PACKAGE` (customers with a `Success` order on it that ends today or later)."
           },
           "menuScheduleId": {
             "type": "string",
             "format": "uuid",
-            "description": "Required when `target = SCHEDULE`."
+            "description": "Required when `target = SCHEDULE` (customers with a non-skipped slot on it)."
           },
           "userId": {
             "type": "string",
             "format": "uuid",
-            "description": "Required when `target = CUSTOMER`."
+            "description": "Required when `target = CUSTOMER`; must be an active customer."
           }
         },
         "x-apidog-folder": "Notifications"
@@ -14104,27 +14128,27 @@
         }
       },
       "ServiceUnavailable": {
-      "description": "The server already holds the maximum number of open event streams.",
-      "content": {
-        "application/json": {
-          "schema": {
-            "$ref": "#/components/schemas/ErrorResponseBody"
-          },
-          "examples": {
-            "SERVICE_UNAVAILABLE": {
-              "summary": "SERVICE_UNAVAILABLE",
-              "value": {
-                "error": {
-                  "code": "SERVICE_UNAVAILABLE",
-                  "message": "too many open event streams, try again later"
+        "description": "The server already holds the maximum number of open event streams.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponseBody"
+            },
+            "examples": {
+              "SERVICE_UNAVAILABLE": {
+                "summary": "SERVICE_UNAVAILABLE",
+                "value": {
+                  "error": {
+                    "code": "SERVICE_UNAVAILABLE",
+                    "message": "too many open event streams, try again later"
+                  }
                 }
               }
             }
           }
         }
-      }
-    },
-    "InternalError": {
+      },
+      "InternalError": {
         "description": "Unexpected server, storage or gateway failure.",
         "content": {
           "application/json": {

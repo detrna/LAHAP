@@ -1,5 +1,6 @@
 import type { Announcement } from "../../domain/announcement.domain.js";
 import type { Notification, BroadcastResult } from "../../domain/notification.domain.js";
+import type { AnnouncementRecord, NotificationRecord } from "../../service/interfaces/notifications.repository.js";
 
 export function buildNotification(overrides: Partial<Notification> = {}): Notification {
     return {
@@ -28,6 +29,33 @@ export function buildAnnouncement(overrides: Partial<Announcement> = {}): Announ
         menuScheduleId: null,
         createdAt: "2026-11-03T00:00:00.000+07:00",
         updatedAt: "2026-11-03T00:00:00.000+07:00",
+        ...overrides,
+    };
+}
+
+export function buildNotificationRecord(overrides: Partial<NotificationRecord> = {}): NotificationRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        userId: "00000000-0000-4000-8000-000000000001",
+        title: "test title",
+        body: "test body",
+        isRead: false,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T00:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T00:00:00"),
+        ...overrides,
+    };
+}
+
+export function buildAnnouncementRecord(overrides: Partial<AnnouncementRecord> = {}): AnnouncementRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        title: "test title",
+        body: "test body",
+        scope: "GLOBAL",
+        packageId: null,
+        menuScheduleId: null,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T00:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T00:00:00"),
         ...overrides,
     };
 }

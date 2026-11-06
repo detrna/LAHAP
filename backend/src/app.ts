@@ -11,6 +11,7 @@ import { noPortionCounts } from "./modules/ingredients/service/interfaces/portio
 import { KitchenContainer } from "./modules/kitchen/container/kitchen.container.js";
 import type { ModuleDeps } from "./modules/module-deps.js";
 import { NotificationsContainer } from "./modules/notifications/container/notifications.container.js";
+import { noAnnouncementAudience } from "./modules/notifications/service/interfaces/announcement-audience.js";
 import { OrdersContainer } from "./modules/orders/container/orders.container.js";
 import { PromoCodesContainer } from "./modules/promo-codes/container/promo-codes.container.js";
 import { noPromoUsage } from "./modules/promo-codes/service/interfaces/promo-usage.js";
@@ -31,7 +32,20 @@ export function createApp(deps: ModuleDeps): App {
     const settings: SettingsContainer = new SettingsContainer(deps);
     const files: FilesContainer = new FilesContainer(deps);
     const realtime: RealtimeContainer = new RealtimeContainer(deps);
-    const notifications: NotificationsContainer = new NotificationsContainer(deps);
+    const notifications: NotificationsContainer = new NotificationsContainer({
+        ...deps,
+        realtime: realtime.service,
+        recipients: {
+            listActiveUserIds: role => users.service.listActiveUserIds(role),
+            countActiveUsers: role => users.service.countActiveUsers(role),
+            filterActiveUserIds: (ids, role) => users.service.filterActiveUserIds(ids, role),
+        },
+        targets: {
+            findMissingPackageIds: ids => catalog.service.findMissingPackageIds(ids),
+            findMissingScheduleIds: ids => catalog.service.findMissingScheduleIds(ids),
+        },
+        audience: noAnnouncementAudience,
+    });
     const catalog: CatalogContainer = new CatalogContainer({
         ...deps,
         photoKeys: files.service,
