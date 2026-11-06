@@ -6108,7 +6108,7 @@
             "name": "search",
             "in": "query",
             "required": false,
-            "description": "Case-insensitive name search.",
+            "description": "Case-insensitive search on the code.",
             "schema": {
               "type": "string",
               "minLength": 1
@@ -6379,7 +6379,7 @@
           "Admin · Promotions"
         ],
         "summary": "Delete a promo code",
-        "description": "**Roles:** `ADMIN`.\n\nOrders that used it keep their discount (`promoCodeId` becomes null).",
+        "description": "**Roles:** `ADMIN`.\n\nOrders that used it keep their discount (`promoCodeId` becomes null).\n\nAnswers 409 while any `Pending` subscription uses the code. Paid orders never block deletion.",
         "x-roles": [
           "ADMIN"
         ],
@@ -10791,7 +10791,7 @@
       },
       "PromoCode": {
         "type": "object",
-        "description": "Promo code. Valid when `isActive`, before `validUntil`, `quota > 0`, and the food subtotal ≥ `minPurchase`. Each customer can use a code once (UC-47, UC-49).",
+        "description": "Promo code. Valid when `isActive`, before `validUntil`, `usedCount < quota`, the food subtotal ≥ `minPurchase`, and the customer has no paid order that used it yet. Each customer can use a code once (UC-47, UC-49).",
         "required": [
           "id",
           "code",
@@ -10801,6 +10801,7 @@
           "allowStackWithTier",
           "validUntil",
           "quota",
+          "usedCount",
           "isActive",
           "createdAt",
           "updatedAt"
@@ -10814,10 +10815,11 @@
           },
           "code": {
             "type": "string",
-            "description": "Unique code.",
+            "description": "Unique code, stored uppercase (`A–Z`, `0–9`, `-`, `_`, 1–50 characters).",
             "examples": [
               "HEMAT20"
-            ]
+            ],
+            "pattern": "^[A-Z0-9_-]{1,50}$"
           },
           "discountType": {
             "$ref": "#/components/schemas/DiscountType"
@@ -10825,7 +10827,7 @@
           "discountValue": {
             "type": "number",
             "format": "double",
-            "description": "Percent (0–100) or Rp, per `discountType`.",
+            "description": "Percent (greater than 0, at most 100) or Rp (greater than 0), per `discountType`.",
             "minimum": 0
           },
           "minPurchase": {
@@ -10848,8 +10850,15 @@
           "quota": {
             "type": "integer",
             "format": "int32",
-            "description": "Remaining redemptions.",
+            "description": "Total redemptions allowed. 0 means the code can never be used.",
             "minimum": 0
+          },
+          "usedCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Redemptions in use: subscriptions with this code that are `Pending` or `Success`. A cancelled or expired order gives its use back.",
+            "minimum": 0,
+            "readOnly": true
           },
           "isActive": {
             "type": "boolean",
@@ -10882,9 +10891,10 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "Unique code (stored uppercase). Omit to have the server generate one (UC-47).",
+            "description": "Unique code (letters, digits, `-`, `_`; stored uppercase, so `merdeka` becomes `MERDEKA`). Omit to have the server generate one (UC-47).",
             "minLength": 1,
-            "maxLength": 50
+            "maxLength": 50,
+            "pattern": "^[A-Za-z0-9_-]{1,50}$"
           },
           "discountType": {
             "$ref": "#/components/schemas/DiscountType"
@@ -10892,7 +10902,7 @@
           "discountValue": {
             "type": "number",
             "format": "double",
-            "description": "Percent (0–100) or Rp.",
+            "description": "Percent (greater than 0, at most 100) or Rp (greater than 0).",
             "minimum": 0
           },
           "minPurchase": {
@@ -10910,12 +10920,12 @@
           "validUntil": {
             "type": "string",
             "format": "date-time",
-            "description": "Expiry. Defaults to 14 days from now (UC-47)."
+            "description": "Expiry, with a UTC offset. Must be in the future. Defaults to 14 days from now (UC-47)."
           },
           "quota": {
             "type": "integer",
             "format": "int32",
-            "description": "Redemptions available.",
+            "description": "Total redemptions allowed. 0 means the code can never be used.",
             "minimum": 0
           },
           "isActive": {
@@ -10933,9 +10943,10 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "Unique code.",
+            "description": "Unique code (stored uppercase).",
             "minLength": 1,
-            "maxLength": 50
+            "maxLength": 50,
+            "pattern": "^[A-Za-z0-9_-]{1,50}$"
           },
           "discountType": {
             "$ref": "#/components/schemas/DiscountType"
@@ -10943,7 +10954,7 @@
           "discountValue": {
             "type": "number",
             "format": "double",
-            "description": "Percent (0–100) or Rp.",
+            "description": "Percent (greater than 0, at most 100) or Rp (greater than 0). Checked against the resulting `discountType`.",
             "minimum": 0
           },
           "minPurchase": {
@@ -10959,12 +10970,12 @@
           "validUntil": {
             "type": "string",
             "format": "date-time",
-            "description": "Expiry."
+            "description": "Expiry, with a UTC offset. Must be in the future."
           },
           "quota": {
             "type": "integer",
             "format": "int32",
-            "description": "Redemptions available.",
+            "description": "Total redemptions allowed. May be set below `usedCount`, which leaves the code exhausted.",
             "minimum": 0
           },
           "isActive": {

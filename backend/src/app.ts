@@ -13,6 +13,7 @@ import type { ModuleDeps } from "./modules/module-deps.js";
 import { NotificationsContainer } from "./modules/notifications/container/notifications.container.js";
 import { OrdersContainer } from "./modules/orders/container/orders.container.js";
 import { PromoCodesContainer } from "./modules/promo-codes/container/promo-codes.container.js";
+import { noPromoUsage } from "./modules/promo-codes/service/interfaces/promo-usage.js";
 import { RealtimeContainer } from "./modules/realtime/container/realtime.container.js";
 import { RetentionContainer } from "./modules/retention/container/retention.container.js";
 import { SettingsContainer } from "./modules/settings/container/settings.container.js";
@@ -46,7 +47,7 @@ export function createApp(deps: ModuleDeps): Express {
         photoKeys: files.service,
         orderStats: noOrderStats,
     });
-    const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
+    const promoCodes: PromoCodesContainer = new PromoCodesContainer({ ...deps, promoUsage: noPromoUsage });
     const orders: OrdersContainer = new OrdersContainer(deps);
     const users: UsersContainer = new UsersContainer({
         ...deps,

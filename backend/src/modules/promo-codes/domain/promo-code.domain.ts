@@ -10,6 +10,7 @@ export interface PromoCode {
     readonly allowStackWithTier: boolean;
     readonly validUntil: string;
     readonly quota: number;
+    readonly usedCount: number;
     readonly isActive: boolean;
     readonly createdAt: string;
     readonly updatedAt: string;
