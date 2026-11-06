@@ -10,6 +10,7 @@ import { UsersContainer } from "../../../../src/modules/users/container/users.co
 import type { UsersService } from "../../../../src/modules/users/service/users.service.js";
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
+import { normalizePhone } from "../../../../src/shared/utils/phone/phone.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import { withOtherAdminsInactive } from "../../../utils/fixtures/admins.js";
 
@@ -46,7 +47,12 @@ describe("users routes (e2e)", () => {
 
     async function createAccount(role: Role): Promise<Account> {
         const phone = randomLocalPhone();
-        const user = await usersService.createUser({ phone, password: PASSWORD, role, name: `Zz E2E ${role}` });
+        const user = await usersService.createUser({
+            phone: normalizePhone(phone),
+            password: PASSWORD,
+            role,
+            name: `Zz E2E ${role}`,
+        });
         rows.track("User", user.id);
         const response = await login(phone);
         expect(response.status).toBe(200);
