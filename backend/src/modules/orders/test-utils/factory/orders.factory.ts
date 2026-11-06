@@ -4,6 +4,7 @@ import type { OrderStatusHistory, Order, SkipDayResult, CourierScheduleEntry } f
 import type { Payment, PaymentSession } from "../../domain/payment.domain.js";
 import type { DashboardStats, IncomeReport } from "../../domain/report.domain.js";
 import type { Subscription } from "../../domain/subscription.domain.js";
+import type { OrderRecord, PaymentRecord, SubscriptionRecord } from "../../service/interfaces/orders.repository.js";
 
 export function buildSubscription(overrides: Partial<Subscription> = {}): Subscription {
     return {
@@ -181,6 +182,72 @@ export function buildIncomeReport(overrides: Partial<IncomeReport> = {}): Income
         },
         byPackage: [],
         byPurchaseType: [],
+        ...overrides,
+    };
+}
+
+export function buildSubscriptionRecord(overrides: Partial<SubscriptionRecord> = {}): SubscriptionRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        userId: "00000000-0000-4000-8000-000000000001",
+        packageId: "00000000-0000-4000-8000-000000000001",
+        promoCodeId: null,
+        tierId: null,
+        status: "Pending",
+        purchaseType: "Online",
+        period: "Harian",
+        startDate: Temporal.PlainDate.from("2026-11-10"),
+        endDate: Temporal.PlainDate.from("2026-11-10"),
+        isDelivery: false,
+        recipientName: "test recipientName",
+        deliveryAddress: null,
+        deliveryLatitude: null,
+        deliveryLongitude: null,
+        deliveryDistanceKm: null,
+        notes: null,
+        pricePerPortion: 15000,
+        foodSubtotal: 15000,
+        tierDiscount: 0,
+        promoDiscount: 0,
+        deliveryFeePerSlot: 0,
+        deliveryFeeTotal: 0,
+        totalPrice: 15000,
+        needsRefund: false,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        ...overrides,
+    };
+}
+
+export function buildPaymentRecord(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000002",
+        subscriptionId: "00000000-0000-4000-8000-000000000001",
+        userId: "00000000-0000-4000-8000-000000000001",
+        method: "MIDTRANS",
+        type: "SUBSCRIPTION",
+        amount: 15000,
+        status: "Pending",
+        transactionId: null,
+        paidAt: null,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        ...overrides,
+    };
+}
+
+export function buildOrderRecord(overrides: Partial<OrderRecord> = {}): OrderRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000003",
+        subscriptionId: "00000000-0000-4000-8000-000000000001",
+        menuScheduleId: "00000000-0000-4000-8000-000000000001",
+        serviceDate: Temporal.PlainDate.from("2026-11-10"),
+        courierId: null,
+        status: "Terjadwal",
+        usesAlternativeMenu: false,
+        skipReason: null,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
         ...overrides,
     };
 }

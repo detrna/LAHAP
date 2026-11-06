@@ -1325,7 +1325,7 @@
           "Subscriptions"
         ],
         "summary": "Preview an order",
-        "description": "**Roles:** `CUSTOMER`.\n\nComputes slots, allergy warnings, delivery availability, discounts and the total without saving anything (UC-07–UC-09, UC-41, UC-49). 422 when the package is unavailable, a slot is unpublished/past cut-off, or the selection is empty.",
+        "description": "**Roles:** `CUSTOMER`.\n\nComputes slots, allergy warnings, delivery availability, discounts and the total without saving anything (UC-07–UC-09, UC-41, UC-49). Discounts are rounded down to a whole rupiah. `Mingguan`/`Bulanan` may start in a week or month already under way: only the published slots after today are taken. `delivery.available` is `false` until a pin is sent. 422 `INVALID_STATE` when the package is unavailable (`package is not available`) or doesn't offer the period or a meal time, a chosen slot is unpublished or of another package (`slot is not available`), a slot is today or earlier (`cut-off has passed`), or nothing is left to order (`no slots to order`). 400 when a weekly order doesn't start on a Monday or a monthly one on the 1st.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1393,7 +1393,7 @@
           "Subscriptions"
         ],
         "summary": "Place an order",
-        "description": "**Roles:** `CUSTOMER`.\n\nCreates the order (`Pending`), its slots (`Terjadwal`) and a `Pending` payment (UC-10). With `MIDTRANS`, open `paymentSession`; the webhook moves it to `Success`. With `CASH` (Offline only), the admin verifies at the cashier. Unpaid orders expire after `paymentTimeoutMinutes`. Delivery beyond max distance or `CASH` on Online → 422.",
+        "description": "**Roles:** `CUSTOMER`.\n\nCreates the order (`Pending`), its slots (`Terjadwal`) and a `Pending` payment (UC-10). With `MIDTRANS`, open `paymentSession`; the webhook moves it to `Success`. The Midtrans transaction expires after `paymentTimeoutMinutes`, together with the order (BR-20). With `CASH` (Offline only), the admin verifies at the cashier. Unpaid orders expire after `paymentTimeoutMinutes`. When discounts bring the total to 0, no gateway is called: the payment is saved as `Success` with method `FREE` and the order is `Success` at once (`paymentSession` is `null`).\n\nDiscounts are rounded down to a whole rupiah. The promo code is checked again inside the write, so two orders racing for a code's last use can't both get it.\n\n422 `INVALID_STATE` messages: `online orders cannot be paid in cash`, `delivery is not available for this address`, `promo code quota is exhausted`, `promo code has already been used`, `promo code no longer exists`, plus the preview's (`package is not available`, `package does not offer this period`, `slot is not available`, `cut-off has passed`, `no slots to order`, `package does not offer delivery time HH:mm`). 502 when Midtrans fails; nothing is saved.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1444,6 +1444,9 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
           }
         },
         "security": [
@@ -1597,7 +1600,7 @@
           "Subscriptions"
         ],
         "summary": "Cancel my order",
-        "description": "**Roles:** `CUSTOMER`.\n\nAllowed until the cut-off (23:59:59 the day before the first slot, BR-09; UC-43). `Pending` → `Dibatalkan` (no payment needed). `Success` → `Dibatalkan` with `needsRefund = true` (manual refund by the admin). After the cut-off → 422; use skip instead.",
+        "description": "**Roles:** `CUSTOMER`.\n\nAllowed until the cut-off (23:59:59 the day before the first slot, BR-09; UC-43). `Pending` → `Dibatalkan` and its pending payment → `Expire` (no payment needed). `Success` → `Dibatalkan` with `needsRefund = true` (manual refund by the admin); the slots keep their status but are no longer served, the promo use is given back and the tier is re-evaluated without extending it. The customer is notified either way. 404 for another customer's order. 422 after the cut-off (`cut-off has passed`; use skip instead) or for an order that is already `Expire`/`Dibatalkan` (`subscription cannot be cancelled`).",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1663,7 +1666,7 @@
           "Subscriptions"
         ],
         "summary": "Resume payment",
-        "description": "**Roles:** `CUSTOMER`.\n\nReturns the Snap session of the order's `Pending` `MIDTRANS` payment (e.g. after closing the popup). 422 when the order is not `Pending` or pays by cash.",
+        "description": "**Roles:** `CUSTOMER`.\n\nReturns the Snap session of the order's `Pending` `MIDTRANS` payment (e.g. after closing the popup). The session is kept in Redis until the order expires. 404 for another customer's order. 422 when the order is not `Pending` (`subscription is not waiting for payment`), pays by cash (`cash orders are paid at the cashier`), or the session is gone (`payment session has expired`).",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1729,7 +1732,7 @@
           "Slots"
         ],
         "summary": "List my slots",
-        "description": "**Roles:** `CUSTOMER`.\n\nYour `Success` orders' slots for a day with status, final menu and obstacle notes (UC-12). Live updates arrive over `/realtime/stream`.",
+        "description": "**Roles:** `CUSTOMER`.\n\nYour `Success` orders' slots for a day (default today) with status, `menuSchedule`, the served `menu` (the alternative when the kitchen assigned it), obstacle notes and `completedAt`, by meal time (UC-12). Live updates arrive over `/realtime/stream`.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1800,7 +1803,7 @@
           "Slots"
         ],
         "summary": "Skip a slot",
-        "description": "**Roles:** `CUSTOMER`.\n\n`Terjadwal`/`Disiapkan` → `Dilewati` (UC-44). No refund. 422 once the food is ready.",
+        "description": "**Roles:** `CUSTOMER`.\n\n`Terjadwal`/`Disiapkan` → `Dilewati` (UC-44), with the optional reason. No refund. The change is recorded in the slot's status history and sent as `slot.status`. 404 for another customer's slot or a slot of an unpaid order. 422 once the food is ready (`slot is not skippable`).",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1876,7 +1879,7 @@
           "Slots"
         ],
         "summary": "Skip a whole day",
-        "description": "**Roles:** `CUSTOMER`.\n\nSkips every skippable slot of yours on `date`; slots already food-ready are left as they are.",
+        "description": "**Roles:** `CUSTOMER`.\n\nSkips every skippable slot of yours on `date` (of your `Success` orders, or only `subscriptionId`), writing the same reason to each; slots already food-ready are left as they are. 404 when `subscriptionId` is not yours.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -2007,7 +2010,7 @@
           "Payments"
         ],
         "summary": "Midtrans payment notification",
-        "description": "**Public** (no token).\n\nCalled by Midtrans only. Signature is verified (401 on mismatch); handling is idempotent. On `Success` the order becomes `Success` in the same transaction and `paidAt` is set. Configure this URL as the Payment Notification URL in the Midtrans dashboard.",
+        "description": "**Public** (no token).\n\nCalled by Midtrans only. The signature is verified (401 on mismatch, 400 on a malformed payload). `order_id` is our `payment.id`. The payment row is locked while the change is decided, so repeated or concurrent notifications are applied once. Mapping: `settlement`/`capture` (accept) → payment `Success` with `paidAt`, the reported channel as `method` (`MIDTRANS_<PAYMENT_TYPE>`), and the order `Success` in the same transaction; `pending` and a `capture` flagged `challenge` → no change (logged); `deny`/`failure`/`cancel`/`expire` → payment and order `Expire`; `refund` → payment `Refund`, `needsRefund = false`, and a still-`Success` order becomes `Dibatalkan`. A payment that arrives after the order was expired or cancelled is recorded as `Success` with `needsRefund = true` and the admins are notified; the order stays closed. Answers 200 for an unknown `order_id` or an amount that differs from the payment (logged, nothing changes), so Midtrans stops retrying. Configure this URL as the Payment Notification URL in the Midtrans dashboard.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2173,7 +2176,7 @@
           "Kitchen"
         ],
         "summary": "Mark food ready",
-        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nOne-way (UC-39). Delivery slots appear on the courier's to-do list. Slots not in `Disiapkan` are skipped and not counted.",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nOne-way (UC-39). Only `Disiapkan` slots of `Success` orders change: delivery → `Diantar` (they appear on the courier's to-do list), pick-up → `Siap Diambil`. Slots become `Disiapkan` automatically `SLOT_PREPARATION_LEAD_MINUTES` (default 180) before their meal time, through a worker job that runs every 15 minutes, so a slot can't be marked ready before then. Slots in any other status are skipped and not counted. Each change is recorded in the status history and sent as `slot.status`.",
         "x-roles": [
           "KITCHEN",
           "ADMIN"
@@ -2239,7 +2242,7 @@
           "Kitchen"
         ],
         "summary": "Give the alternative menu",
-        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nSets `usesAlternativeMenu = true` and notifies the customer (\"Menu kamu hari ini diganti ke … karena alergi …\"). 422 when the schedule has no alternative (\"tanpa alternatif\") or the slot is past `Disiapkan`.",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nSets `usesAlternativeMenu = true`, notifies the customer (\"Menu kamu diganti ke … karena alergi …\", naming the profile allergies found in the primary menu) and sends `slot.menu`. The status doesn't change. Setting it again changes and sends nothing. 404 for a slot of an order that isn't `Success`. 422 when the schedule has no alternative (`schedule has no alternative menu`) or the slot is past `Disiapkan` (`slot is past food preparation`).",
         "x-roles": [
           "KITCHEN",
           "ADMIN"
@@ -2304,7 +2307,7 @@
           "Kitchen"
         ],
         "summary": "Undo the alternative menu",
-        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nBack to the primary menu before food-ready; notifies the customer.",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nBack to the primary menu before food-ready; notifies the customer and sends `slot.menu`. 422 once the slot is past `Disiapkan`.",
         "x-roles": [
           "KITCHEN",
           "ADMIN"
@@ -2693,7 +2696,7 @@
           "Courier"
         ],
         "summary": "Mark delivered",
-        "description": "**Roles:** `COURIER`, `ADMIN`.\n\n`Diantar` → `Selesai` (UC-30). Couriers can only complete their own slots (404 otherwise). 422 for any other status.",
+        "description": "**Roles:** `COURIER`, `ADMIN`.\n\n`Diantar` → `Selesai` (UC-30), recorded in the status history and sent as `slot.status`. Couriers can only complete the slots assigned to them (404 otherwise); an admin can complete any. 422 for any other status (`slot is not out for delivery`).",
         "x-roles": [
           "COURIER",
           "ADMIN"
@@ -6779,7 +6782,7 @@
           "Admin · Orders"
         ],
         "summary": "List orders",
-        "description": "**Roles:** `ADMIN`.\n\nUC-28.",
+        "description": "**Roles:** `ADMIN`.\n\nUC-28. Newest first, each with the customer (`user`). `from`/`to` filter on the creation date in Asia/Jakarta (inclusive); 400 when `to` is before `from`.",
         "x-roles": [
           "ADMIN"
         ],
@@ -6912,7 +6915,7 @@
           "Admin · Orders"
         ],
         "summary": "Get an order",
-        "description": "**Roles:** `ADMIN`.\n\nWith slots, payments and the customer.",
+        "description": "**Roles:** `ADMIN`.\n\nWith the customer, the slots (served menu, obstacles, `completedAt`) and payments. 404 for an unknown order.",
         "x-roles": [
           "ADMIN"
         ],
@@ -6975,7 +6978,7 @@
           "Admin · Orders"
         ],
         "summary": "List slots",
-        "description": "**Roles:** `ADMIN`.\n\nSlots of `Success` orders with method, courier, status and obstacle notes (UC-27).",
+        "description": "**Roles:** `ADMIN`.\n\nSlots of `Success` orders on `date` (default today) with the order and its customer, the courier, status, served menu and obstacle notes (UC-27). `deliveryTime` filters through the day's schedules at that meal time; `unassigned=true` keeps slots without a courier.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7117,7 +7120,7 @@
           "Admin · Orders"
         ],
         "summary": "Get a slot",
-        "description": "**Roles:** `ADMIN`.\n\nWith status history and obstacles.",
+        "description": "**Roles:** `ADMIN`.\n\nWith the status history (oldest first, each with `changedBy`; `null` for the worker) and obstacles.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7180,7 +7183,7 @@
           "Admin · Orders"
         ],
         "summary": "Mark picked up",
-        "description": "**Roles:** `ADMIN`.\n\nPick-up path: `Siap Diambil` → `Selesai` when the customer collects (UC-27). 422 for other statuses.",
+        "description": "**Roles:** `ADMIN`.\n\nPick-up path: `Siap Diambil` → `Selesai` when the customer collects (UC-27). 422 for other statuses (`slot is not ready for pick-up`).",
         "x-roles": [
           "ADMIN"
         ],
@@ -7246,7 +7249,7 @@
           "Admin · Orders"
         ],
         "summary": "Correct a slot status",
-        "description": "**Roles:** `ADMIN`.\n\nFor steps the kitchen or courier forgot (UC-27). Forward-only and path-aware (delivery vs pick-up); out-of-order changes → 422. The note is stored on the history row.",
+        "description": "**Roles:** `ADMIN`.\n\nFor steps the kitchen or courier forgot (UC-27). Forward-only and path-aware (delivery vs pick-up), or `Dilewati` from `Terjadwal`/`Disiapkan` (before food-ready; the note is also stored as `skipReason`). Never back to an earlier status. Out-of-order changes → 422 (`slot cannot move from <status> to <status>`). The note is stored on the history row.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7322,7 +7325,7 @@
           "Admin · Orders"
         ],
         "summary": "Get the courier schedule",
-        "description": "**Roles:** `ADMIN`.\n\nWho delivers which meal time (UC-27).",
+        "description": "**Roles:** `ADMIN`.\n\nWho delivers which meal time (UC-27): one entry per date and meal time with delivery slots of `Success` orders (skipped slots left out), the sole courier if every slot has the same one, and the counts. At most 31 days.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7401,7 +7404,7 @@
           "Admin · Orders"
         ],
         "summary": "Assign a courier",
-        "description": "**Roles:** `ADMIN`.\n\nBy meal time (all its delivery slots) or by slot (move one delivery). 422 when `courierId` is not an active courier.",
+        "description": "**Roles:** `ADMIN`.\n\nBy meal time (all its delivery slots of `Success` orders on `date` at `deliveryTime`, optionally one package) or by slot (move one delivery). Only delivery slots that aren't `Selesai` or `Dilewati` change; `updatedCount` says how many. The status doesn't change, so no history row is written. 422 when `courierId` is not an active courier (`courier is not an active courier`).",
         "x-roles": [
           "ADMIN"
         ],
@@ -7472,7 +7475,7 @@
           "Admin · Payments"
         ],
         "summary": "List payments",
-        "description": "**Roles:** `ADMIN`.\n\nUC-28.",
+        "description": "**Roles:** `ADMIN`.\n\nUC-28. Newest first. `needsRefund` filters by the order's flag; `from`/`to` filter on the creation date in Asia/Jakarta (inclusive).",
         "x-roles": [
           "ADMIN"
         ],
@@ -7595,7 +7598,7 @@
           "Admin · Payments"
         ],
         "summary": "Verify a cash payment",
-        "description": "**Roles:** `ADMIN`.\n\n`Pending` `CASH` payment → `Success` and its order → `Success`, after the money is received (UC-28). 422 otherwise.",
+        "description": "**Roles:** `ADMIN`.\n\n`Pending` `CASH` payment → `Success` and its order → `Success`, after the money is received (UC-28). Then the customer's tier is re-evaluated and they are notified. 404 for an unknown payment. 422 when the payment is not a pending cash payment (`payment is not a pending cash payment`) or the order already expired (`subscription is not waiting for payment`).",
         "x-roles": [
           "ADMIN"
         ],
@@ -7661,7 +7664,7 @@
           "Admin · Payments"
         ],
         "summary": "Confirm a manual refund",
-        "description": "**Roles:** `ADMIN`.\n\nAfter refunding outside the app: payment → `Refund`, order `needsRefund = false` (UC-43). 422 when the order does not need a refund. The refund flow is still being revised by the PM.",
+        "description": "**Roles:** `ADMIN`.\n\nAfter refunding outside the app: payment → `Refund`, order `needsRefund = false` (UC-43). 422 when the order does not need a refund (`subscription does not need a refund`) or the payment was never paid (`payment has not been paid`). The refund flow is still being revised by the PM.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7842,7 +7845,7 @@
           "Admin · Reports"
         ],
         "summary": "Get income",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\nIncome from the price snapshots of `Success` orders **created** in the period (Asia/Jakarta; the week starts Monday): the total, by package and by purchase type (UC-31). Skipped slots still count (BR-11); cancelled or expired orders don't.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7914,7 +7917,7 @@
           "Admin · Reports"
         ],
         "summary": "Get the dashboard",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\nOwner dashboard (UC-33): the income report's total for the period, the five menus with the most paid, not skipped portions served in the period, the shopping-list shortages for today and the next 6 days, and the signed-in admin's unread notification count.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8522,10 +8525,11 @@
       },
       "PaymentMethod": {
         "type": "string",
-        "description": "`CASH` (offline cashier, verified by admin), `MIDTRANS` (gateway, channel not chosen yet) or `MIDTRANS_<PAYMENT_TYPE>` once the webhook reports the channel.",
-        "pattern": "^(CASH|MIDTRANS(_[A-Z0-9_]+)?)$",
+        "description": "`CASH` (offline cashier, verified by admin), `FREE` (the total was 0, so it was paid at checkout without the gateway), `MIDTRANS` (gateway, channel not chosen yet) or `MIDTRANS_<PAYMENT_TYPE>` once the webhook reports the channel.",
+        "pattern": "^(CASH|FREE|MIDTRANS(_[A-Z0-9_]+)?)$",
         "examples": [
           "CASH",
+          "FREE",
           "MIDTRANS",
           "MIDTRANS_QRIS",
           "MIDTRANS_BANK_TRANSFER"
@@ -13415,7 +13419,7 @@
       "MidtransNotification": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Midtrans HTTP notification (only the fields the backend reads are listed). Verified with `signature_key = SHA512(order_id + status_code + gross_amount + serverKey)`; the backend then re-fetches the status from Midtrans before updating anything. Mapping of `transaction_status` to stored statuses: `settlement`/`capture`(accept) → `Success`, `pending` → `Pending`, `expire` → `Expire`; other values are still an open decision (AGENTS.md).",
+        "description": "Midtrans HTTP notification (only the fields the backend reads are listed). Verified with `signature_key = SHA512(order_id + status_code + gross_amount + serverKey)`, and `gross_amount` must equal the payment's amount. Mapping of `transaction_status` to stored statuses: `settlement`/`capture` (accept) → `Success`, `pending` and `capture` with `fraud_status = challenge` → unchanged `Pending`, `deny`/`failure`/`cancel`/`expire` → `Expire`, `refund` → `Refund`.",
         "required": [
           "order_id",
           "status_code",
@@ -13426,7 +13430,7 @@
         "properties": {
           "order_id": {
             "type": "string",
-            "description": "`payment.transactionId` sent at checkout."
+            "description": "Our `payment.id`, sent as `order_id` at checkout."
           },
           "status_code": {
             "type": "string",
@@ -14162,6 +14166,27 @@
                   "error": {
                     "code": "INTERNAL_ERROR",
                     "message": "something went wrong"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadGateway": {
+        "description": "The payment gateway failed or refused the request. Nothing was saved.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponseBody"
+            },
+            "examples": {
+              "PAYMENT_GATEWAY_PROVIDER_ERROR": {
+                "summary": "PAYMENT_GATEWAY_PROVIDER_ERROR",
+                "value": {
+                  "error": {
+                    "code": "PAYMENT_GATEWAY_PROVIDER_ERROR",
+                    "message": "payment gateway request failed"
                   }
                 }
               }
