@@ -17,6 +17,7 @@ import {
     ingredientIdParamsSchema,
     ingredientListQuerySchema,
     ingredientUpdateSchema,
+    shoppingListQuerySchema,
     stockUpdateSchema,
 } from "../schema/ingredients.schemas.js";
 
@@ -52,6 +53,13 @@ export function createIngredientsRouter({ controller, tokenProvider }: Ingredien
         admin,
         validateBody(ingredientBatchUpdateSchema),
         controller.updateIngredients,
+    );
+    router.get(
+        "/admin/ingredients/shopping-list",
+        signedIn,
+        admin,
+        validateQuery(shoppingListQuerySchema),
+        controller.getShoppingList,
     );
     router.delete(
         "/admin/ingredients",

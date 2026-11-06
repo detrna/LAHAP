@@ -37,7 +37,13 @@ export class IngredientInUseError extends AppError {
     readonly code = "CONFLICT";
     readonly statusCode = 409;
 
-    constructor(options?: { cause?: unknown }) {
-        super("ingredient is used by menus, remove it from them first", options);
+    constructor(options: { menuNames?: readonly string[]; cause?: unknown } = {}) {
+        const { menuNames = [], cause } = options;
+        super(
+            menuNames.length > 0
+                ? `ingredient is used by menus: ${menuNames.join(", ")}`
+                : "ingredient is used by menus, remove it from them first",
+            { cause },
+        );
     }
 }

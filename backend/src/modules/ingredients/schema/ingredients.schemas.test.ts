@@ -7,6 +7,7 @@ import {
     ingredientIdParamsSchema,
     ingredientListQuerySchema,
     ingredientUpdateSchema,
+    shoppingListQuerySchema,
     stockUpdateSchema,
 } from "./ingredients.schemas.js";
 
@@ -139,5 +140,20 @@ describe("ingredientIdParamsSchema", () => {
     it("requires a uuid", () => {
         expect(ingredientIdParamsSchema.safeParse({ id: ID_A }).success).toBe(true);
         expect(ingredientIdParamsSchema.safeParse({ id: "shopping-list" }).success).toBe(false);
+    });
+});
+
+describe("shoppingListQuerySchema", () => {
+    it("reads from and to as dates, both optional", () => {
+        expect(shoppingListQuerySchema.parse({ from: "2026-11-09", to: "2026-11-15" })).toEqual({
+            from: Temporal.PlainDate.from("2026-11-09"),
+            to: Temporal.PlainDate.from("2026-11-15"),
+        });
+        expect(shoppingListQuerySchema.parse({})).toEqual({});
+    });
+
+    it("rejects malformed and impossible dates", () => {
+        expect(shoppingListQuerySchema.safeParse({ from: "09-11-2026" }).success).toBe(false);
+        expect(shoppingListQuerySchema.safeParse({ to: "2026-02-30" }).success).toBe(false);
     });
 });

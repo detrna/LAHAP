@@ -99,7 +99,11 @@ describe("catalog routes (e2e)", () => {
                     },
                     orderActivity: activity,
                 });
-                const ingredients = createIngredientsContainer(deps, { photoKeys, allergies: catalog.service });
+                const ingredients = createIngredientsContainer(deps, {
+                    photoKeys,
+                    allergies: catalog.service,
+                    menus: catalog.service,
+                });
                 return [catalog.router];
             },
         });

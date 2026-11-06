@@ -2,6 +2,7 @@ import type { IngredientsService } from "../service/ingredients.service.js";
 import { createIngredients } from "./create-ingredients.js";
 import { deleteIngredients } from "./delete-ingredients.js";
 import { getIngredient } from "./get-ingredient.js";
+import { getShoppingList } from "./get-shopping-list.js";
 import { listIngredients } from "./list-ingredients.js";
 import { updateIngredient } from "./update-ingredient.js";
 import { updateIngredients } from "./update-ingredients.js";
@@ -17,4 +18,5 @@ export class IngredientsController {
     updateIngredient = updateIngredient.bind(this);
     deleteIngredients = deleteIngredients.bind(this);
     updateStock = updateStock.bind(this);
+    getShoppingList = getShoppingList.bind(this);
 }

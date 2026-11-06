@@ -4178,7 +4178,7 @@
           "Admin · Ingredients"
         ],
         "summary": "Get the shopping list",
-        "description": "**Roles:** `ADMIN`.\n\nNeeds from scheduled menus × `Success` non-skipped portions vs current stock (UC-32). Default range = next week's forecast.",
+        "description": "**Roles:** `ADMIN`.\n\nNeeds from the published schedules in the range × `Success` non-skipped portions vs current stock (UC-32). Default range = next week's forecast. The range may span at most 31 days (400 `VALIDATION_ERROR` otherwise, also when `to` is before `from`). A range that starts in the past also counts slots already cooked, whose ingredients are already gone from the counted stock.",
         "x-roles": [
           "ADMIN"
         ],
@@ -4197,7 +4197,7 @@
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Last date (default from + 6 days).",
+            "description": "Last date (default from + 6 days). At most 31 days after `from`.",
             "schema": {
               "type": "string",
               "format": "date"

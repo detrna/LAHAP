@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../../src/config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
+import type { PortionCount } from "../../../../src/modules/ingredients/service/interfaces/portion-counts.js";
 import { FilesService } from "../../../../src/modules/files/service/files.service.js";
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
@@ -39,6 +40,7 @@ describe("ingredients routes (e2e)", () => {
     let rows: CreatedRows;
     let testApp: TestApp;
     let app: Express;
+    let portionCounts: PortionCount[] = [];
     const tag = randomUUID().slice(0, 8);
 
     const admin = () => asRole("ADMIN");
@@ -78,6 +80,11 @@ describe("ingredients routes (e2e)", () => {
                     createIngredientsContainer(deps, {
                         photoKeys: new FilesService(objectStorage, deps.adapters.clock),
                         allergies: catalog.service,
+                        menus: catalog.service,
+                        portions: {
+                            countPortionsBySchedule: async scheduleIds =>
+                                portionCounts.filter(count => scheduleIds.includes(count.scheduleId)),
+                        },
                     }).router,
                 ];
             },
@@ -101,6 +108,7 @@ describe("ingredients routes (e2e)", () => {
             ["delete", "/api/admin/ingredients"],
             ["get", `/api/admin/ingredients/${id}`],
             ["patch", `/api/admin/ingredients/${id}`],
+            ["get", "/api/admin/ingredients/shopping-list"],
             ["get", "/api/kitchen/ingredients"],
             ["put", `/api/kitchen/ingredients/${id}/stock`],
         ] as const)("answers 401 to %s %s without a token", async (method, path) => {
@@ -113,6 +121,7 @@ describe("ingredients routes (e2e)", () => {
             expect((await request(app).patch("/api/admin/ingredients").set(asRole(role)).send({})).status).toBe(403);
             expect((await request(app).delete("/api/admin/ingredients").set(asRole(role)).send({})).status).toBe(403);
             expect((await request(app).get(`/api/admin/ingredients/${id}`).set(asRole(role))).status).toBe(403);
+            expect((await request(app).get("/api/admin/ingredients/shopping-list").set(asRole(role))).status).toBe(403);
         });
 
         it.each(["CUSTOMER", "COURIER"] as const)("answers 403 to a %s on the kitchen routes", async role => {
@@ -480,6 +489,7 @@ describe("ingredients routes (e2e)", () => {
 
             expect(response.status).toBe(409);
             expect(response.body.error.code).toBe("CONFLICT");
+            expect(response.body.error.message).toBe(`ingredient is used by menus: Zz E2E ${tag} Menu`);
             expect((await request(app).get(`/api/admin/ingredients/${free.id}`).set(admin())).status).toBe(200);
         });
 
@@ -489,6 +499,159 @@ describe("ingredients routes (e2e)", () => {
             expect((await remove([])).status).toBe(400);
             expect((await remove([id, id])).status).toBe(400);
             expect((await remove(["nope"])).status).toBe(400);
+        });
+    });
+    describe("shopping list", () => {
+        const RANGE = "from=2099-03-01&to=2099-03-07";
+        const list = (query = RANGE) => request(app).get(`/api/admin/ingredients/shopping-list?${query}`).set(admin());
+
+        async function createMenu(name: string, lines: { ingredientId: string; quantity: string }[]): Promise<string> {
+            const menu = await db.orm.public.Menu.create({
+                name: `Zz E2E ${tag} ${name}`,
+                description: "e2e menu",
+                tags: [],
+                photoKey: "menus/2026/11/e2e.webp",
+            });
+            rows.track("Menu", menu.id);
+            for (const line of lines) {
+                const link = await db.orm.public.MenuIngredient.create({
+                    menuId: menu.id,
+                    ingredientId: line.ingredientId,
+                    quantityPerPortion: line.quantity,
+                });
+                rows.track("MenuIngredient", link.id);
+            }
+            return menu.id;
+        }
+
+        async function createSchedule(
+            packageId: string,
+            date: string,
+            menus: { menuId: string; isPrimary: boolean }[],
+            isPublished = true,
+        ): Promise<string> {
+            const schedule = await db.orm.public.Schedule.create({
+                packageId,
+                date: Temporal.PlainDate.from(date),
+                deliveryTime: Temporal.PlainTime.from("12:00"),
+                isPublished,
+            });
+            rows.track("Schedule", schedule.id);
+            for (const menu of menus) {
+                const link = await db.orm.public.ScheduleMenu.create({ scheduleId: schedule.id, ...menu });
+                rows.track("ScheduleMenu", link.id);
+            }
+            return schedule.id;
+        }
+
+        async function createPackage(): Promise<string> {
+            const created = await db.orm.public.Package.create({
+                name: `Zz E2E ${tag} Package`,
+                description: "e2e package",
+                basePrice: "15000.00",
+                periods: ["Harian"],
+                deliveryTimes: [Temporal.PlainTime.from("12:00")],
+                photoKey: "packages/2026/11/e2e.webp",
+            });
+            return rows.track("Package", created.id);
+        }
+
+        afterEach(() => {
+            portionCounts = [];
+        });
+
+        it("lists the shortage of what the paid portions need against the stock, sorted by name", async () => {
+            const rice = await createIngredient("List Rice", { unit: "kg", stock: 1 });
+            const tofu = await createIngredient("List Tofu", { unit: "kg", stock: 50 });
+            const egg = await createIngredient("List Egg", { unit: "butir", stock: 5 });
+            const primary = await createMenu("List Primary", [
+                { ingredientId: rice.id, quantity: "0.10" },
+                { ingredientId: egg.id, quantity: "1.00" },
+            ]);
+            const alternative = await createMenu("List Alternative", [
+                { ingredientId: rice.id, quantity: "0.10" },
+                { ingredientId: tofu.id, quantity: "0.50" },
+            ]);
+            const packageId = await createPackage();
+            const day1 = await createSchedule(packageId, "2099-03-02", [
+                { menuId: primary, isPrimary: true },
+                { menuId: alternative, isPrimary: false },
+            ]);
+            const day2 = await createSchedule(packageId, "2099-03-03", [{ menuId: primary, isPrimary: true }]);
+            portionCounts = [
+                { scheduleId: day1, usesAlternativeMenu: false, portions: 8 },
+                { scheduleId: day1, usesAlternativeMenu: true, portions: 2 },
+                { scheduleId: day2, usesAlternativeMenu: false, portions: 10 },
+            ];
+
+            const response = await list();
+
+            expect(response.status).toBe(200);
+            expect(response.body.data).toEqual([
+                {
+                    ingredientId: egg.id,
+                    name: egg.name,
+                    unit: "butir",
+                    requiredQuantity: 18,
+                    currentStock: 5,
+                    shortageQuantity: 13,
+                },
+                {
+                    ingredientId: rice.id,
+                    name: rice.name,
+                    unit: "kg",
+                    requiredQuantity: 2,
+                    currentStock: 1,
+                    shortageQuantity: 1,
+                },
+            ]);
+        });
+
+        it("ignores draft schedules and schedules outside the range", async () => {
+            const rice = await createIngredient("Range Rice", { stock: 0 });
+            const menu = await createMenu("Range Menu", [{ ingredientId: rice.id, quantity: "1.00" }]);
+            const packageId = await createPackage();
+            const draft = await createSchedule(packageId, "2099-03-04", [{ menuId: menu, isPrimary: true }], false);
+            const outside = await createSchedule(packageId, "2099-03-20", [{ menuId: menu, isPrimary: true }]);
+            portionCounts = [
+                { scheduleId: draft, usesAlternativeMenu: false, portions: 5 },
+                { scheduleId: outside, usesAlternativeMenu: false, portions: 5 },
+            ];
+
+            const response = await list();
+
+            expect(response.status).toBe(200);
+            expect(response.body.data).toEqual([]);
+        });
+
+        it("answers an empty list when no portion is paid", async () => {
+            const rice = await createIngredient("Empty Rice", { stock: 0 });
+            const menu = await createMenu("Empty Menu", [{ ingredientId: rice.id, quantity: "1.00" }]);
+            await createSchedule(await createPackage(), "2099-03-05", [{ menuId: menu, isPrimary: true }]);
+
+            const response = await list();
+
+            expect(response.status).toBe(200);
+            expect(response.body.data).toEqual([]);
+        });
+
+        it("defaults to next week when no range is sent", async () => {
+            const response = await list("");
+
+            expect(response.status).toBe(200);
+            expect(Array.isArray(response.body.data)).toBe(true);
+        });
+
+        it.each([
+            ["a range over 31 days", "from=2099-03-01&to=2099-04-01"],
+            ["a reversed range", "from=2099-03-07&to=2099-03-01"],
+            ["a malformed date", "from=01-03-2099"],
+            ["an impossible date", "to=2099-02-30"],
+        ])("answers 400 for %s", async (_label, query) => {
+            const response = await list(query);
+
+            expect(response.status).toBe(400);
+            expect(response.body.error.code).toBe("VALIDATION_ERROR");
         });
     });
 });

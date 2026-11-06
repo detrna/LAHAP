@@ -3,7 +3,9 @@ import type { ObjectStorage } from "../../../../shared/ports/object-storage/obje
 import type { IngredientsService } from "../../service/ingredients.service.js";
 import type { AllergyLookup } from "../../service/interfaces/allergy-lookup.js";
 import type { IngredientsRepository } from "../../service/interfaces/ingredients.repository.js";
+import type { MenuLookup } from "../../service/interfaces/menu-lookup.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
+import type { PortionCounts } from "../../service/interfaces/portion-counts.js";
 
 export type Mocked<T> = { [K in keyof T]: T[K] & ReturnType<typeof vi.fn> };
 
@@ -19,6 +21,7 @@ export type MockedIngredientsService = Mocked<
         | "updateIngredient"
         | "updateStock"
         | "deleteIngredients"
+        | "getShoppingList"
     >
 >;
 
@@ -51,6 +54,18 @@ export function createMockAllergyLookup(): Mocked<AllergyLookup> {
     } as Mocked<AllergyLookup>;
 }
 
+export function createMockMenuLookup(): Mocked<MenuLookup> {
+    return {
+        findMenusUsingIngredients: vi.fn(async () => []),
+        findSchedules: vi.fn(async () => []),
+        getRecipeLines: vi.fn(async () => []),
+    } as Mocked<MenuLookup>;
+}
+
+export function createMockPortionCounts(): Mocked<PortionCounts> {
+    return { countPortionsBySchedule: vi.fn(async () => []) } as Mocked<PortionCounts>;
+}
+
 export function createMockIngredientsService(): MockedIngredientsService {
     return {
         listIngredients: vi.fn(),
@@ -60,5 +75,6 @@ export function createMockIngredientsService(): MockedIngredientsService {
         updateIngredient: vi.fn(),
         updateStock: vi.fn(),
         deleteIngredients: vi.fn(),
+        getShoppingList: vi.fn(),
     } as MockedIngredientsService;
 }

@@ -7,6 +7,7 @@ import { noOrderActivity } from "./modules/catalog/service/interfaces/order-acti
 import { DeliveryContainer } from "./modules/delivery/container/delivery.container.js";
 import { FilesContainer } from "./modules/files/container/files.container.js";
 import { IngredientsContainer } from "./modules/ingredients/container/ingredients.container.js";
+import { noPortionCounts } from "./modules/ingredients/service/interfaces/portion-counts.js";
 import { KitchenContainer } from "./modules/kitchen/container/kitchen.container.js";
 import type { ModuleDeps } from "./modules/module-deps.js";
 import { NotificationsContainer } from "./modules/notifications/container/notifications.container.js";
@@ -36,6 +37,8 @@ export function createApp(deps: ModuleDeps): Express {
         ...deps,
         photoKeys: files.service,
         allergies: catalog.service,
+        menus: catalog.service,
+        portions: noPortionCounts,
     });
     const tiers: TiersContainer = new TiersContainer(deps);
     const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);

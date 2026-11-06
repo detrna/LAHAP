@@ -5,6 +5,7 @@ import { photoKeyIn } from "../../../shared/schema/photo-key.js";
 import { queryBooleanSchema } from "../../../shared/schema/query-boolean.js";
 import { searchQuerySchema } from "../../../shared/schema/search.js";
 import { uniqueArray } from "../../../shared/schema/unique-array.js";
+import { isoDateSchema } from "../../../shared/time/schemas.js";
 import { INGREDIENT_UNITS } from "../domain/ingredient.domain.js";
 
 export const MAX_BATCH_SIZE = 100;
@@ -81,6 +82,11 @@ export const ingredientListQuerySchema = paginationQuerySchema.extend({
     lowStock: queryBooleanSchema.optional(),
 });
 
+export const shoppingListQuerySchema = z.object({
+    from: isoDateSchema.optional(),
+    to: isoDateSchema.optional(),
+});
+
 export type IngredientIdParams = z.output<typeof ingredientIdParamsSchema>;
 export type IngredientCreateBody = z.output<typeof ingredientCreateSchema>;
 export type IngredientUpdateBody = z.output<typeof ingredientUpdateSchema>;
@@ -89,3 +95,4 @@ export type IngredientBatchUpdateBody = z.output<typeof ingredientBatchUpdateSch
 export type IngredientBatchDeleteBody = z.output<typeof ingredientBatchDeleteSchema>;
 export type StockUpdateBody = z.output<typeof stockUpdateSchema>;
 export type IngredientListQuery = z.output<typeof ingredientListQuerySchema>;
+export type ShoppingListQuery = z.output<typeof shoppingListQuerySchema>;
