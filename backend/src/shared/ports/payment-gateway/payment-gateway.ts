@@ -3,6 +3,7 @@ export * from "./errors.js";
 export interface CreatePaymentTransactionInput {
     readonly orderId: string;
     readonly grossAmount: number;
+    readonly expiryMinutes?: number | undefined;
 }
 
 export interface PaymentTransactionResult {
