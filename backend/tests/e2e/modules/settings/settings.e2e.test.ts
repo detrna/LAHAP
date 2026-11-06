@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../../src/config/index.js";
+import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
 import { SettingsContainer } from "../../../../src/modules/settings/container/settings.container.js";
 import type { Settings } from "../../../../src/modules/settings/domain/settings.domain.js";
@@ -29,9 +30,25 @@ describe("settings routes (e2e)", () => {
     let testApp: TestApp;
     let app: Express;
     let original: Settings;
+    let rows: CreatedRows;
 
     beforeAll(async () => {
         db = await loadDatabase(loadConfig().DATABASE);
+        rows = trackCreated(db);
+        if ((await db.orm.public.Business.select("id").all()).length === 0) {
+            const created = await db.orm.public.Business.create({
+                name: "Zz E2E Original Kitchen",
+                whatsappNumber: "6281200000000",
+                address: "Jl. Original No. 1",
+                latitude: "-7.94060000",
+                longitude: "112.62190000",
+                deliveryFreeRadius: "1.00",
+                deliveryMaxDistance: "10.00",
+                deliveryPricePerKm: "5000.00",
+                paymentTimeoutMinutes: 15,
+            });
+            rows.track("Business", created.id);
+        }
         testApp = await createTestApp({ db, mount: deps => [new SettingsContainer(deps).router] });
         app = testApp.app;
         const response = await request(app).get("/api/admin/settings").set(asRole("ADMIN"));
@@ -46,6 +63,7 @@ describe("settings routes (e2e)", () => {
             expect(restored.status).toBe(200);
             expect(restored.body.data).toMatchObject(values);
         }
+        await rows?.cleanup();
         await testApp?.close();
         await db?.close();
     });
