@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestSchedule } from "../../../../../tests/utils/fixtures/schedules.js";
 import { createTestPackage } from "../../../../../tests/utils/fixtures/subscriptions.js";
 import { loadConfig } from "../../../../config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../infrastructure/database/prisma/cleanup.js";
@@ -147,20 +148,12 @@ describe("PrismaCatalogRepository menus (integration)", () => {
         beforeAll(async () => {
             menu = await createMenu("Linked");
             alternative = await createMenu("Linked Alt", { isAlternative: true });
-            const packageId = await createTestPackage(db, rows);
-            const schedule = await db.orm.public.Schedule.create({
-                packageId,
-                date: Temporal.PlainDate.from("2030-01-01"),
-                deliveryTime: Temporal.PlainTime.from("07:00"),
+            scheduleId = await createTestSchedule(db, rows, {
+                packageId: await createTestPackage(db, rows),
+                date: "2030-01-01",
+                primaryMenuId: menu.id,
+                alternativeMenuId: alternative.id,
             });
-            scheduleId = rows.track("Schedule", schedule.id);
-            for (const [menuId, isPrimary] of [
-                [menu.id, true],
-                [alternative.id, false],
-            ] as const) {
-                const link = await db.orm.public.ScheduleMenu.create({ scheduleId, menuId, isPrimary });
-                rows.track("ScheduleMenu", link.id);
-            }
         });
 
         it("finds the schedules using a menu, by role", async () => {

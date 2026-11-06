@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTestSubscription } from "../../../../../tests/utils/fixtures/subscriptions.js";
+import { createTestSchedule } from "../../../../../tests/utils/fixtures/schedules.js";
+import { createTestSlots } from "../../../../../tests/utils/fixtures/slots.js";
 import { createTestUser } from "../../../../../tests/utils/fixtures/users.js";
 import { loadConfig } from "../../../../config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../infrastructure/database/prisma/cleanup.js";
@@ -227,12 +228,7 @@ describe("PrismaCatalogRepository schedules (integration)", () => {
     describe("publishing", () => {
         it("publishes by id and by range, skipping schedules without a primary menu", async () => {
             const [first, second] = await createSchedules(newSchedule("2030-06-01"), newSchedule("2030-06-02"));
-            const bare = await db.orm.public.Schedule.create({
-                packageId: pkg.id,
-                date: date("2030-06-03"),
-                deliveryTime: time("07:00"),
-            });
-            rows.track("Schedule", bare.id);
+            const bare = await createTestSchedule(db, rows, { packageId: pkg.id, date: "2030-06-03" });
 
             expect(await repository.setSchedulesPublished({ ids: [first?.id ?? ""] }, true)).toBe(1);
             expect(
@@ -242,7 +238,7 @@ describe("PrismaCatalogRepository schedules (integration)", () => {
                 ),
             ).toBe(2);
             expect((await repository.findScheduleById(second?.id ?? ""))?.isPublished).toBe(true);
-            expect((await repository.findScheduleById(bare.id))?.isPublished).toBe(false);
+            expect((await repository.findScheduleById(bare))?.isPublished).toBe(false);
 
             expect(
                 await repository.setSchedulesPublished(
@@ -269,19 +265,12 @@ describe("PrismaCatalogRepository schedules (integration)", () => {
         it("refuses to delete a schedule that has slots", async () => {
             const [schedule] = await createSchedules(newSchedule("2030-07-10"));
             const userId = await createTestUser(db, rows);
-            const subscriptionId = await createTestSubscription(db, rows, {
+            await createTestSlots(db, rows, {
                 userId,
                 packageId: pkg.id,
                 status: "Expire",
-                startDate: date("2030-07-10"),
-                endDate: date("2030-07-10"),
+                slots: [{ scheduleId: schedule?.id ?? "" }],
             });
-            const order = await db.orm.public.Order.create({
-                subscriptionId,
-                menuScheduleId: schedule?.id ?? "",
-                status: "Terjadwal",
-            });
-            rows.track("Order", order.id);
 
             await expect(repository.deleteSchedules([schedule?.id ?? ""])).rejects.toBeInstanceOf(ScheduleInUseError);
         });

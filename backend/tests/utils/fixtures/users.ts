@@ -5,6 +5,8 @@ import type { Role } from "../../../src/shared/auth/roles.js";
 export interface TestUserInput {
     readonly name?: string | undefined;
     readonly role?: Role | undefined;
+    readonly allergyIds?: readonly string[] | undefined;
+    readonly allergyNote?: string | undefined;
 }
 
 const randomPhone = () =>
@@ -18,6 +20,11 @@ export async function createTestUser(db: Db, rows: CreatedRows, input: TestUserI
         phone: randomPhone(),
         password: "$2b$10$fixturehashfixturehashfixturehashfixturehashfixtur",
         role: input.role ?? "CUSTOMER",
+        allergyNote: input.allergyNote ?? null,
     });
+    const allergyIds = input.allergyIds ?? [];
+    if (allergyIds.length > 0) {
+        await db.orm.public.UserAllergy.createAll(allergyIds.map(allergyId => ({ userId: created.id, allergyId })));
+    }
     return rows.track("User", created.id);
 }

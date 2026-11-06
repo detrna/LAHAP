@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestSchedule } from "../../../../../tests/utils/fixtures/schedules.js";
+import { createTestSlots } from "../../../../../tests/utils/fixtures/slots.js";
 import { createTestSubscription } from "../../../../../tests/utils/fixtures/subscriptions.js";
 import { createTestUser } from "../../../../../tests/utils/fixtures/users.js";
 import { loadConfig } from "../../../../config/index.js";
@@ -48,14 +50,8 @@ describe("PrismaCatalogRepository (integration)", () => {
         return created;
     };
 
-    const createSchedule = async (packageId: string, date: string, deliveryTime: string): Promise<string> => {
-        const schedule = await db.orm.public.Schedule.create({
-            packageId,
-            date: Temporal.PlainDate.from(date),
-            deliveryTime: time(deliveryTime),
-        });
-        return rows.track("Schedule", schedule.id);
-    };
+    const createSchedule = (packageId: string, date: string, deliveryTime: string): Promise<string> =>
+        createTestSchedule(db, rows, { packageId, date, deliveryTime });
 
     beforeAll(async () => {
         db = await loadDatabase(loadConfig().DATABASE);
@@ -336,17 +332,11 @@ describe("PrismaCatalogRepository (integration)", () => {
                 const created = await createPackage("Held schedule");
                 const held = await createSchedule(created.id, "2026-11-20", "18:30");
                 const userId = await createTestUser(db, rows);
-                const subscriptionId = await createTestSubscription(db, rows, {
+                await createTestSlots(db, rows, {
                     userId,
                     packageId: created.id,
                     status: "Dibatalkan",
-                    startDate: Temporal.PlainDate.from("2026-11-20"),
-                    endDate: Temporal.PlainDate.from("2026-11-20"),
-                });
-                await db.orm.public.Order.create({
-                    subscriptionId,
-                    menuScheduleId: held,
-                    status: "Terjadwal",
+                    slots: [{ scheduleId: held }],
                 });
 
                 await expect(

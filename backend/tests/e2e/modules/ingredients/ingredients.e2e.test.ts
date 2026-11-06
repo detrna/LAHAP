@@ -13,6 +13,8 @@ import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.
 import { createCatalogContainer } from "../../../utils/app/catalog-container.js";
 import { createIngredientsContainer } from "../../../utils/app/ingredients-container.js";
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
+import { createTestMenu, createTestSchedule, type TestRecipeLine } from "../../../utils/fixtures/schedules.js";
+import { createTestPackage } from "../../../utils/fixtures/subscriptions.js";
 
 const objectStorage = {
     exists: async (key: string) => !key.includes("missing"),
@@ -471,19 +473,10 @@ describe("ingredients routes (e2e)", () => {
         it("answers 409 while a menu uses the ingredient and deletes none of the batch", async () => {
             const used = await createIngredient("Delete Used");
             const free = await createIngredient("Delete Free");
-            const menu = await db.orm.public.Menu.create({
+            await createTestMenu(db, rows, {
                 name: `Zz E2E ${tag} Menu`,
-                description: "e2e menu",
-                tags: [],
-                photoKey: "menus/2026/11/e2e.webp",
+                ingredients: [{ ingredientId: used.id, quantityPerPortion: 1 }],
             });
-            rows.track("Menu", menu.id);
-            const link = await db.orm.public.MenuIngredient.create({
-                menuId: menu.id,
-                ingredientId: used.id,
-                quantityPerPortion: "1.00",
-            });
-            rows.track("MenuIngredient", link.id);
 
             const response = await remove([free.id, used.id]);
 
@@ -505,56 +498,19 @@ describe("ingredients routes (e2e)", () => {
         const RANGE = "from=2099-03-01&to=2099-03-07";
         const list = (query = RANGE) => request(app).get(`/api/admin/ingredients/shopping-list?${query}`).set(admin());
 
-        async function createMenu(name: string, lines: { ingredientId: string; quantity: string }[]): Promise<string> {
-            const menu = await db.orm.public.Menu.create({
-                name: `Zz E2E ${tag} ${name}`,
-                description: "e2e menu",
-                tags: [],
-                photoKey: "menus/2026/11/e2e.webp",
-            });
-            rows.track("Menu", menu.id);
-            for (const line of lines) {
-                const link = await db.orm.public.MenuIngredient.create({
-                    menuId: menu.id,
-                    ingredientId: line.ingredientId,
-                    quantityPerPortion: line.quantity,
-                });
-                rows.track("MenuIngredient", link.id);
-            }
-            return menu.id;
-        }
+        const createMenu = (name: string, ingredients: TestRecipeLine[]): Promise<string> =>
+            createTestMenu(db, rows, { name: `Zz E2E ${tag} ${name}`, ingredients });
 
-        async function createSchedule(
+        const createSchedule = (
             packageId: string,
             date: string,
-            menus: { menuId: string; isPrimary: boolean }[],
+            menus: { primaryMenuId: string; alternativeMenuId?: string },
             isPublished = true,
-        ): Promise<string> {
-            const schedule = await db.orm.public.Schedule.create({
-                packageId,
-                date: Temporal.PlainDate.from(date),
-                deliveryTime: Temporal.PlainTime.from("12:00"),
-                isPublished,
-            });
-            rows.track("Schedule", schedule.id);
-            for (const menu of menus) {
-                const link = await db.orm.public.ScheduleMenu.create({ scheduleId: schedule.id, ...menu });
-                rows.track("ScheduleMenu", link.id);
-            }
-            return schedule.id;
-        }
+        ): Promise<string> =>
+            createTestSchedule(db, rows, { packageId, date, deliveryTime: "12:00", isPublished, ...menus });
 
-        async function createPackage(): Promise<string> {
-            const created = await db.orm.public.Package.create({
-                name: `Zz E2E ${tag} Package`,
-                description: "e2e package",
-                basePrice: "15000.00",
-                periods: ["Harian"],
-                deliveryTimes: [Temporal.PlainTime.from("12:00")],
-                photoKey: "packages/2026/11/e2e.webp",
-            });
-            return rows.track("Package", created.id);
-        }
+        const createPackage = (): Promise<string> =>
+            createTestPackage(db, rows, { name: `Zz E2E ${tag} Package`, deliveryTimes: ["12:00"] });
 
         afterEach(() => {
             portionCounts = [];
@@ -565,19 +521,19 @@ describe("ingredients routes (e2e)", () => {
             const tofu = await createIngredient("List Tofu", { unit: "kg", stock: 50 });
             const egg = await createIngredient("List Egg", { unit: "butir", stock: 5 });
             const primary = await createMenu("List Primary", [
-                { ingredientId: rice.id, quantity: "0.10" },
-                { ingredientId: egg.id, quantity: "1.00" },
+                { ingredientId: rice.id, quantityPerPortion: 0.1 },
+                { ingredientId: egg.id, quantityPerPortion: 1 },
             ]);
             const alternative = await createMenu("List Alternative", [
-                { ingredientId: rice.id, quantity: "0.10" },
-                { ingredientId: tofu.id, quantity: "0.50" },
+                { ingredientId: rice.id, quantityPerPortion: 0.1 },
+                { ingredientId: tofu.id, quantityPerPortion: 0.5 },
             ]);
             const packageId = await createPackage();
-            const day1 = await createSchedule(packageId, "2099-03-02", [
-                { menuId: primary, isPrimary: true },
-                { menuId: alternative, isPrimary: false },
-            ]);
-            const day2 = await createSchedule(packageId, "2099-03-03", [{ menuId: primary, isPrimary: true }]);
+            const day1 = await createSchedule(packageId, "2099-03-02", {
+                primaryMenuId: primary,
+                alternativeMenuId: alternative,
+            });
+            const day2 = await createSchedule(packageId, "2099-03-03", { primaryMenuId: primary });
             portionCounts = [
                 { scheduleId: day1, usesAlternativeMenu: false, portions: 8 },
                 { scheduleId: day1, usesAlternativeMenu: true, portions: 2 },
@@ -609,10 +565,10 @@ describe("ingredients routes (e2e)", () => {
 
         it("ignores draft schedules and schedules outside the range", async () => {
             const rice = await createIngredient("Range Rice", { stock: 0 });
-            const menu = await createMenu("Range Menu", [{ ingredientId: rice.id, quantity: "1.00" }]);
+            const menu = await createMenu("Range Menu", [{ ingredientId: rice.id, quantityPerPortion: 1 }]);
             const packageId = await createPackage();
-            const draft = await createSchedule(packageId, "2099-03-04", [{ menuId: menu, isPrimary: true }], false);
-            const outside = await createSchedule(packageId, "2099-03-20", [{ menuId: menu, isPrimary: true }]);
+            const draft = await createSchedule(packageId, "2099-03-04", { primaryMenuId: menu }, false);
+            const outside = await createSchedule(packageId, "2099-03-20", { primaryMenuId: menu });
             portionCounts = [
                 { scheduleId: draft, usesAlternativeMenu: false, portions: 5 },
                 { scheduleId: outside, usesAlternativeMenu: false, portions: 5 },
@@ -626,8 +582,8 @@ describe("ingredients routes (e2e)", () => {
 
         it("answers an empty list when no portion is paid", async () => {
             const rice = await createIngredient("Empty Rice", { stock: 0 });
-            const menu = await createMenu("Empty Menu", [{ ingredientId: rice.id, quantity: "1.00" }]);
-            await createSchedule(await createPackage(), "2099-03-05", [{ menuId: menu, isPrimary: true }]);
+            const menu = await createMenu("Empty Menu", [{ ingredientId: rice.id, quantityPerPortion: 1 }]);
+            await createSchedule(await createPackage(), "2099-03-05", { primaryMenuId: menu });
 
             const response = await list();
 

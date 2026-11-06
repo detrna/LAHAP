@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestMenu } from "../../../../../tests/utils/fixtures/schedules.js";
 import { loadConfig } from "../../../../config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../infrastructure/database/prisma/db.js";
@@ -249,19 +250,10 @@ describe("PrismaIngredientsRepository (integration)", () => {
         it("maps an ingredient a menu uses to IngredientInUseError and deletes none of the batch", async () => {
             const used = await createIngredient("Delete Used");
             const free = await createIngredient("Delete Free");
-            const menu = await db.orm.public.Menu.create({
+            await createTestMenu(db, rows, {
                 name: `Zz Menu ${tag}`,
-                description: "integration menu",
-                tags: [],
-                photoKey: "menus/2026/11/integration.webp",
+                ingredients: [{ ingredientId: used.id, quantityPerPortion: 1 }],
             });
-            rows.track("Menu", menu.id);
-            const link = await db.orm.public.MenuIngredient.create({
-                menuId: menu.id,
-                ingredientId: used.id,
-                quantityPerPortion: "1.00",
-            });
-            rows.track("MenuIngredient", link.id);
 
             await expect(repository.deleteMany([free.id, used.id])).rejects.toBeInstanceOf(IngredientInUseError);
             expect(await repository.findByIds([free.id, used.id])).toHaveLength(2);

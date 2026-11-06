@@ -14,6 +14,7 @@ import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.
 import { createCatalogContainer } from "../../../utils/app/catalog-container.js";
 import { createIngredientsContainer } from "../../../utils/app/ingredients-container.js";
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
+import { createTestSchedule } from "../../../utils/fixtures/schedules.js";
 import { createTestPackage, createTestSubscription } from "../../../utils/fixtures/subscriptions.js";
 import { createTestUser } from "../../../utils/fixtures/users.js";
 
@@ -420,14 +421,8 @@ describe("catalog routes (e2e)", () => {
         });
 
         describe("removing a meal time", () => {
-            const createSchedule = async (packageId: string, date: string, deliveryTime: string) => {
-                const schedule = await db.orm.public.Schedule.create({
-                    packageId,
-                    date: Temporal.PlainDate.from(date),
-                    deliveryTime: Temporal.PlainTime.from(deliveryTime),
-                });
-                return rows.track("Schedule", schedule.id);
-            };
+            const createSchedule = (packageId: string, date: string, deliveryTime: string) =>
+                createTestSchedule(db, rows, { packageId, date, deliveryTime });
 
             it("deletes the future schedules at the removed time when no order holds them", async () => {
                 const { id } = await createPackage("Drop free");

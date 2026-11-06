@@ -11,6 +11,7 @@ import type { Role } from "../../../../src/shared/auth/roles.js";
 import { createNotificationsContainer } from "../../../utils/app/notifications-container.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
+import { createTestSchedule } from "../../../utils/fixtures/schedules.js";
 import { createTestPackage } from "../../../utils/fixtures/subscriptions.js";
 import { createTestUser } from "../../../utils/fixtures/users.js";
 
@@ -93,12 +94,7 @@ describe("notifications routes (e2e)", () => {
         await db.orm.public.User.where({ id: inactiveCustomerId }).update({ isActive: false });
         staffId = await createTestUser(db, rows, { name: `Zz ${tag} Staff`, role: "KITCHEN" });
         packageId = await createTestPackage(db, rows);
-        const schedule = await db.orm.public.Schedule.create({
-            packageId,
-            date: Temporal.PlainDate.from("2099-06-01"),
-            deliveryTime: Temporal.PlainTime.from("07:00"),
-        });
-        scheduleId = rows.track("Schedule", schedule.id);
+        scheduleId = await createTestSchedule(db, rows, { packageId, date: "2099-06-01" });
         testApp = await createTestApp({
             db,
             mount: deps => [createNotificationsContainer(deps, { realtime, audience }).router],

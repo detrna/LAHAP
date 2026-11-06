@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { createTestSchedule } from "../../../../../tests/utils/fixtures/schedules.js";
 import { createTestPackage } from "../../../../../tests/utils/fixtures/subscriptions.js";
 import { createTestUser } from "../../../../../tests/utils/fixtures/users.js";
 import { loadConfig } from "../../../../config/index.js";
@@ -40,14 +41,8 @@ describe("PrismaNotificationsRepository (integration)", () => {
         return record;
     };
 
-    const createSchedule = async (packageId: string, day: string): Promise<string> => {
-        const schedule = await db.orm.public.Schedule.create({
-            packageId,
-            date: Temporal.PlainDate.from(day),
-            deliveryTime: Temporal.PlainTime.from("07:00"),
-        });
-        return rows.track("Schedule", schedule.id);
-    };
+    const createSchedule = (packageId: string, day: string): Promise<string> =>
+        createTestSchedule(db, rows, { packageId, date: day });
 
     beforeAll(async () => {
         db = await loadDatabase(loadConfig().DATABASE);
