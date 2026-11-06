@@ -33,6 +33,7 @@ import { getRecipeLines } from "./menus/get-recipe-lines.js";
 import { findMenusUsingIngredients } from "./menus/find-menus-using-ingredients.js";
 import { presentSchedule, presentSchedules } from "./schedules/present-schedules.js";
 import { listSchedules } from "./schedules/list-schedules.js";
+import { getSchedulesByIds } from "./schedules/get-schedules-by-ids.js";
 import { getSchedule } from "./schedules/get-schedule.js";
 import { listPublishedSchedules } from "./schedules/list-published-schedules.js";
 import { findSchedules } from "./schedules/find-schedules.js";
@@ -88,6 +89,7 @@ export class CatalogService {
     presentSchedule = presentSchedule;
     listSchedules = listSchedules;
     getSchedule = getSchedule;
+    getSchedulesByIds = getSchedulesByIds;
     listPublishedSchedules = listPublishedSchedules;
     findSchedules = findSchedules;
     findMissingScheduleIds = findMissingScheduleIds;
