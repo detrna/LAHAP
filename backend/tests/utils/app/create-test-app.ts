@@ -6,6 +6,7 @@ import { errorHandler } from "../../../src/http/middleware/index.js";
 import { loadRedisCache } from "../../../src/infrastructure/cache/redis/redis.js";
 import { SystemClock } from "../../../src/infrastructure/clock/system/system.js";
 import type { Db } from "../../../src/infrastructure/database/prisma/db.js";
+import { loadRedisEventBus } from "../../../src/infrastructure/event-bus/redis/redis.js";
 import { BcryptHasher } from "../../../src/infrastructure/hasher/bcrypt/bcrypt.js";
 import type { Adapters } from "../../../src/infrastructure/index.js";
 import type { ModuleDeps } from "../../../src/modules/module-deps.js";
@@ -29,16 +30,16 @@ export interface TestApp {
 
 export async function createTestApp(options: TestAppOptions): Promise<TestApp> {
     const config = loadConfig();
-    const ownedCache =
-        options.cache === undefined
-            ? await loadRedisCache({ ...config.REDIS, KEY_PREFIX: `gtnic-it:${randomUUID()}:` })
-            : undefined;
+    const redis = { ...config.REDIS, KEY_PREFIX: `gtnic-it:${randomUUID()}:` };
+    const ownedCache = options.cache === undefined ? await loadRedisCache(redis) : undefined;
+    const ownedEventBus = options.adapters?.eventBus === undefined ? await loadRedisEventBus(redis) : undefined;
     const adapters = {
         logger: createMockLogger(),
         clock: new SystemClock(),
         hasher: new BcryptHasher({ SALT_ROUNDS: 4 }),
         tokenProvider: createTokenProvider(),
         cache: options.cache ?? ownedCache,
+        eventBus: ownedEventBus,
         ...options.adapters,
     } as Adapters;
     const deps: ModuleDeps = { db: options.db, adapters, http: { ...config.HTTP, ...options.http } };
@@ -52,7 +53,7 @@ export async function createTestApp(options: TestAppOptions): Promise<TestApp> {
         app,
         deps,
         async close() {
-            await ownedCache?.close();
+            await Promise.all([ownedCache?.close(), ownedEventBus?.close()]);
         },
     };
 }

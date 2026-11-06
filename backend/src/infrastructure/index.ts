@@ -1,6 +1,7 @@
 import type { Config } from "../config/index.js";
 import type { Cache } from "../shared/ports/cache/cache.js";
 import type { Clock } from "../shared/ports/clock/clock.js";
+import type { EventBus } from "../shared/ports/event-bus/event-bus.js";
 import type { Hasher } from "../shared/ports/hasher/hasher.js";
 import type { Logger } from "../shared/ports/logger/logger.js";
 import type { ObjectStorage } from "../shared/ports/object-storage/object-storage.js";
@@ -10,6 +11,7 @@ import type { StockLevelEstimator } from "../shared/ports/stock-level-estimator/
 import type { TokenProvider } from "../shared/ports/token-provider/token-provider.js";
 import { loadRedisCache } from "./cache/redis/redis.js";
 import { SystemClock } from "./clock/system/system.js";
+import { loadRedisEventBus } from "./event-bus/redis/redis.js";
 import { BcryptHasher } from "./hasher/bcrypt/bcrypt.js";
 import { PinoLogger } from "./logger/pino/pino.js";
 import { loadObjectStorage } from "./object-storage/seaweedfs/seaweedfs.js";
@@ -22,6 +24,7 @@ import { JwtTokenProvider } from "./token-provider/jwt/jwt.js";
 export interface Adapters {
     readonly logger: Logger;
     readonly cache: Cache;
+    readonly eventBus: EventBus;
     readonly clock: Clock;
     readonly hasher: Hasher;
     readonly tokenProvider: TokenProvider;
@@ -32,8 +35,9 @@ export interface Adapters {
 }
 
 export async function createAdapters(config: Config): Promise<Adapters> {
-    const [cache, objectStorage] = await Promise.all([
+    const [cache, eventBus, objectStorage] = await Promise.all([
         loadRedisCache(config.REDIS),
+        loadRedisEventBus(config.REDIS),
         loadObjectStorage(config.OBJECT_STORAGE, {
             autoCreateBucket: !config.APP.IS_PRODUCTION,
         }),
@@ -49,5 +53,6 @@ export async function createAdapters(config: Config): Promise<Adapters> {
         paymentGateway: new MidtransPaymentGateway(config.PAYMENT_GATEWAY, config.APP),
         objectStorage,
         cache,
+        eventBus,
     };
 }
