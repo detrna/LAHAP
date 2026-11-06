@@ -2,13 +2,6 @@ import { fromNumericOrNull } from "../../../../infrastructure/database/prisma/nu
 import { isRole } from "../../../../shared/auth/roles.js";
 import type { UserRecord } from "../../service/interfaces/users.repository.js";
 
-interface AllergyRow {
-    readonly id: string;
-    readonly name: string;
-    readonly createdAt: Temporal.PlainDateTime;
-    readonly updatedAt: Temporal.PlainDateTime;
-}
-
 export interface UserRow {
     readonly id: string;
     readonly name: string;
@@ -22,7 +15,7 @@ export interface UserRow {
     readonly isActive: boolean;
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
-    readonly allergies: readonly { readonly allergy: AllergyRow }[];
+    readonly allergies: readonly { readonly allergyId: string }[];
 }
 
 export function toUserRecord(row: UserRow): UserRecord {
@@ -43,13 +36,6 @@ export function toUserRecord(row: UserRow): UserRecord {
         isActive: row.isActive,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
-        allergies: row.allergies
-            .map(({ allergy }) => ({
-                id: allergy.id,
-                name: allergy.name,
-                createdAt: allergy.createdAt,
-                updatedAt: allergy.updatedAt,
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
+        allergyIds: row.allergies.map(link => link.allergyId),
     };
 }

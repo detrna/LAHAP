@@ -11,7 +11,7 @@ export class TiersContainer {
 
     constructor({ db, adapters }: ModuleDeps) {
         const repository = new PrismaTiersRepository(db);
-        this.service = new TiersService(repository);
+        this.service = new TiersService(repository, adapters.objectStorage, adapters.clock);
         const controller = new TiersController(this.service);
         this.router = createTiersRouter({ controller, tokenProvider: adapters.tokenProvider });
     }

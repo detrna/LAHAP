@@ -3,13 +3,6 @@ import type { UniqueUserField } from "../../domain/errors.js";
 
 export * from "../../domain/errors.js";
 
-export interface UserAllergyRecord {
-    readonly id: string;
-    readonly name: string;
-    readonly createdAt: Temporal.PlainDateTime;
-    readonly updatedAt: Temporal.PlainDateTime;
-}
-
 export interface UserRecord {
     readonly id: string;
     readonly name: string;
@@ -23,7 +16,7 @@ export interface UserRecord {
     readonly isActive: boolean;
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
-    readonly allergies: readonly UserAllergyRecord[];
+    readonly allergyIds: readonly string[];
 }
 
 export interface UserCredentialsRecord {
@@ -74,39 +67,19 @@ export interface UserListQuery {
     readonly phoneSearch?: string | undefined;
     readonly roles?: readonly Role[] | undefined;
     readonly isActive?: boolean | undefined;
-    readonly isChurned?: boolean | undefined;
-    readonly churnCutoff: Temporal.PlainDate;
+    readonly churned?: ChurnedFilter | undefined;
     readonly skip: number;
     readonly take: number;
 }
 
-export interface UserListItemRecord {
-    readonly user: UserRecord;
-    readonly lastSuccessEndDate: Temporal.PlainDate | null;
+export interface ChurnedFilter {
+    readonly userIds: readonly string[];
+    readonly isChurned: boolean;
 }
 
 export interface UserListRecord {
-    readonly items: readonly UserListItemRecord[];
+    readonly items: readonly UserRecord[];
     readonly total: number;
-}
-
-export interface MembershipTierRecord {
-    readonly id: string;
-    readonly name: string;
-    readonly description: string | null;
-    readonly requiredSubscriptionDays: number;
-    readonly durationDays: number;
-    readonly discountPercent: number;
-    readonly photoKey: string | null;
-    readonly createdAt: Temporal.PlainDateTime;
-    readonly updatedAt: Temporal.PlainDateTime;
-}
-
-export interface MembershipRecord {
-    readonly tierId: string;
-    readonly tier: MembershipTierRecord;
-    readonly startedAt: Temporal.PlainDateTime;
-    readonly expiresAt: Temporal.PlainDateTime;
 }
 
 export interface UsersRepository {
@@ -116,12 +89,9 @@ export interface UsersRepository {
     findCredentialsById(id: string): Promise<UserCredentialsRecord | null>;
     existsByPhone(phone: string): Promise<boolean>;
     existsByEmail(email: string): Promise<boolean>;
-    findMissingAllergyIds(ids: readonly string[]): Promise<readonly string[]>;
     findConflict(query: UserConflictQuery): Promise<UniqueUserField | null>;
     create(user: NewUserRecord): Promise<UserRecord>;
     update(id: string, changes: UserChanges, options?: UpdateUserOptions): Promise<UserRecord | null>;
     updatePasswordHash(id: string, passwordHash: string): Promise<boolean>;
     list(query: UserListQuery): Promise<UserListRecord>;
-    findMembership(userId: string): Promise<MembershipRecord | null>;
-    findLastSuccessEndDate(userId: string): Promise<Temporal.PlainDate | null>;
 }

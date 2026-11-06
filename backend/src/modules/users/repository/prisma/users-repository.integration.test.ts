@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { withOtherAdminsInactive } from "../../../../../tests/utils/fixtures/admins.js";
-import { createTestPackage, createTestSubscription } from "../../../../../tests/utils/fixtures/subscriptions.js";
 import { loadConfig } from "../../../../config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../infrastructure/database/prisma/db.js";
@@ -72,8 +71,7 @@ describe("PrismaUsersRepository (integration)", () => {
             latitude: -7.9393,
             isActive: true,
         });
-        expect(created.allergies.map(allergy => allergy.id).sort()).toEqual([...allergyIds].sort());
-        expect(created.allergies[0]?.name.startsWith("Zz Test Allergy A")).toBe(true);
+        expect([...created.allergyIds].sort()).toEqual([...allergyIds].sort());
         expect(await repository.findById(created.id)).toEqual(created);
     });
 
@@ -104,13 +102,6 @@ describe("PrismaUsersRepository (integration)", () => {
         expect(await repository.existsByEmail(`nobody-${randomUUID()}@lahap.test`)).toBe(false);
     });
 
-    it("lists only the allergy ids that do not exist", async () => {
-        const unknown = randomUUID();
-
-        expect(await repository.findMissingAllergyIds([...allergyIds, unknown])).toEqual([unknown]);
-        expect(await repository.findMissingAllergyIds([])).toEqual([]);
-    });
-
     it("maps a duplicate phone or email to UserAlreadyExistsError", async () => {
         const email = `it-${randomUUID()}@lahap.test`;
         const created = await create({ email });
@@ -137,7 +128,7 @@ describe("PrismaUsersRepository (integration)", () => {
         const updated = await repository.update(created.id, { name: "Renamed", latitude: null, longitude: null });
 
         expect(updated).toMatchObject({ name: "Renamed", latitude: null, longitude: null, phone: created.phone });
-        expect(updated?.allergies.map(allergy => allergy.id)).toEqual([allergyIds[0]]);
+        expect(updated?.allergyIds).toEqual([allergyIds[0]]);
         expect(updated?.updatedAt).not.toEqual(created.updatedAt);
     });
 
@@ -147,8 +138,8 @@ describe("PrismaUsersRepository (integration)", () => {
         const replaced = await repository.update(created.id, {}, { allergyIds: [allergyIds[1] ?? ""] });
         const cleared = await repository.update(created.id, {}, { allergyIds: [] });
 
-        expect(replaced?.allergies.map(allergy => allergy.id)).toEqual([allergyIds[1]]);
-        expect(cleared?.allergies).toEqual([]);
+        expect(replaced?.allergyIds).toEqual([allergyIds[1]]);
+        expect(cleared?.allergyIds).toEqual([]);
     });
 
     it("returns null when updating an unknown id", async () => {
@@ -222,13 +213,12 @@ describe("PrismaUsersRepository (integration)", () => {
         const tag = randomUUID().slice(0, 8);
         const query = (overrides: Partial<UserListQuery> = {}): UserListQuery => ({
             search: `Zz List ${tag}`,
-            churnCutoff: Temporal.PlainDate.from("2026-11-06"),
             skip: 0,
             take: 50,
             ...overrides,
         });
         const names = async (overrides: Partial<UserListQuery> = {}) =>
-            (await repository.list(query(overrides))).items.map(item => item.user.name);
+            (await repository.list(query(overrides))).items.map(item => item.name);
 
         it("searches name, email and phone, newest first, with the total", async () => {
             const older = await create({ name: `Zz List ${tag} Older` });
@@ -237,7 +227,7 @@ describe("PrismaUsersRepository (integration)", () => {
             const page = await repository.list(query({ take: 1 }));
 
             expect(page.total).toBe(2);
-            expect(page.items.map(item => item.user.id)).toEqual([newer.id]);
+            expect(page.items.map(item => item.id)).toEqual([newer.id]);
             expect(await names({ search: `zz-${tag}@LAHAP` })).toEqual([newer.name]);
             expect(await names({ search: older.phone.slice(2) })).toEqual([older.name]);
         });
@@ -270,62 +260,26 @@ describe("PrismaUsersRepository (integration)", () => {
             expect(await names({ roles: ["COURIER"], isActive: true })).toEqual([]);
         });
 
-        it("filters churned customers and reports each user's last successful end date", async () => {
-            const packageId = await createTestPackage(db, rows);
+        it("filters churned customers by the given user ids, counting customers only", async () => {
             const churned = await create({ name: `Zz List ${tag} Churned` });
             const recent = await create({ name: `Zz List ${tag} Recent` });
-            const pendingOnly = await create({ name: `Zz List ${tag} Pending` });
-            const subscription = (userId: string, endDate: string, status: "Success" | "Pending" = "Success") =>
-                createTestSubscription(db, rows, {
-                    userId,
-                    packageId,
-                    status,
-                    startDate: Temporal.PlainDate.from(endDate).subtract({ days: 5 }),
-                    endDate: Temporal.PlainDate.from(endDate),
-                });
-            await subscription(churned.id, "2026-10-01");
-            await subscription(churned.id, "2026-11-05");
-            await subscription(churned.id, "2026-12-01", "Pending");
-            await subscription(recent.id, "2026-11-06");
-            await subscription(pendingOnly.id, "2026-10-01", "Pending");
+            const staff = await create({ name: `Zz List ${tag} Staff`, role: "KITCHEN" });
+            const userIds = [churned.id, staff.id];
 
-            const all = await repository.list(query());
-
-            expect(await names({ isChurned: true })).toEqual([churned.name]);
-            expect((await names({ isChurned: false })).sort()).toEqual([pendingOnly.name, recent.name].sort());
-            expect(all.items.find(item => item.user.id === churned.id)?.lastSuccessEndDate?.toString()).toBe(
-                "2026-11-05",
+            expect(await names({ churned: { userIds, isChurned: true } })).toEqual([churned.name]);
+            expect((await names({ churned: { userIds, isChurned: false } })).sort()).toEqual(
+                [recent.name, staff.name].sort(),
             );
-            expect(all.items.find(item => item.user.id === pendingOnly.id)?.lastSuccessEndDate).toBeNull();
-            expect((await repository.findLastSuccessEndDate(churned.id))?.toString()).toBe("2026-11-05");
-            expect(await repository.findLastSuccessEndDate(pendingOnly.id)).toBeNull();
+            expect(await names({ churned: { userIds: [], isChurned: true } })).toEqual([]);
+            expect(await names({ churned: { userIds: [], isChurned: false } })).toHaveLength(3);
         });
-    });
 
-    describe("findMembership", () => {
-        it("reads the membership with its tier, active or expired", async () => {
-            const user = await create();
-            const tier = await db.orm.public.Tier.create({
-                name: `Zz Tier ${randomUUID().slice(0, 8)}`,
-                requiredSubscriptionDays: 100000 + Math.floor(Math.random() * 1e6),
-                durationDays: 30,
-                discountPercent: "12.50",
-            });
-            rows.track("Tier", tier.id);
-            const membership = await db.orm.public.Membership.create({
-                userId: user.id,
-                tierId: tier.id,
-                startedAt: Temporal.PlainDateTime.from("2026-01-01T00:00:00"),
-                expiresAt: Temporal.PlainDateTime.from("2026-01-31T00:00:00"),
-            });
-            rows.track("Membership", membership.id);
+        it("returns each user's allergy ids", async () => {
+            const created = await create({ name: `Zz List ${tag} Allergic`, allergyIds });
 
-            expect(await repository.findMembership(user.id)).toMatchObject({
-                tierId: tier.id,
-                tier: { id: tier.id, discountPercent: 12.5, durationDays: 30, photoKey: null },
-                expiresAt: Temporal.PlainDateTime.from("2026-01-31T00:00:00"),
-            });
-            expect(await repository.findMembership(randomUUID())).toBeNull();
+            const [item] = (await repository.list(query({ search: created.name }))).items;
+
+            expect([...(item?.allergyIds ?? [])].sort()).toEqual([...allergyIds].sort());
         });
     });
 });

@@ -1,9 +1,9 @@
 import type { Varchar } from "@prisma/orm-postgres/contract-builder";
-import { UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
-import type { PrismaUsersRepository } from "./users-repository.js";
+import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
+import type { PrismaCatalogRepository } from "../catalog-repository.js";
 
 export async function findMissingAllergyIds(
-    this: PrismaUsersRepository,
+    this: PrismaCatalogRepository,
     ids: readonly string[],
 ): Promise<readonly string[]> {
     if (ids.length === 0) return [];
@@ -15,6 +15,6 @@ export async function findMissingAllergyIds(
         const foundIds = new Set<string>(found.map(allergy => allergy.id));
         return ids.filter(id => !foundIds.has(id));
     } catch (cause) {
-        throw new UsersRepositoryFailureError("findMissingAllergyIds", cause);
+        throw new CatalogRepositoryFailureError("findMissingAllergyIds", cause);
     }
 }

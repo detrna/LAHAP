@@ -1,6 +1,6 @@
 import type { UserCredentialsRecord } from "../../service/interfaces/users.repository.js";
 import { UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
-import { usersWithAllergies } from "./queries.js";
+import { usersWithAllergyIds } from "./queries.js";
 import { toUserRecord } from "./to-user-record.js";
 import type { PrismaUsersRepository } from "./users-repository.js";
 
@@ -10,7 +10,7 @@ async function findCredentialsBy(
     operation: string,
 ): Promise<UserCredentialsRecord | null> {
     try {
-        const row = await usersWithAllergies(repository.db.orm).where(filter).first();
+        const row = await usersWithAllergyIds(repository.db.orm).where(filter).first();
         return row === null ? null : { user: toUserRecord(row), passwordHash: row.password };
     } catch (cause) {
         throw new UsersRepositoryFailureError(operation, cause);

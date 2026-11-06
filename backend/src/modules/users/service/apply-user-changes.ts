@@ -34,7 +34,7 @@ export async function applyUserChanges(this: UsersService, id: string, input: Us
         ...(email !== undefined && email !== null ? { email } : {}),
     });
     if (conflict !== null) throw new UserAlreadyExistsError(conflict);
-    if (input.allergyIds !== undefined) await ensureKnownAllergies(this.usersRepository, input.allergyIds);
+    if (input.allergyIds !== undefined) await ensureKnownAllergies(this.allergyLookup, input.allergyIds);
 
     const changes: UserChanges = {
         ...(input.name !== undefined ? { name: input.name } : {}),

@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { normalizePhone } from "../../../shared/utils/phone/phone.js";
 import type { User } from "../domain/user.domain.js";
 import type { UserCredentialsRecord } from "./interfaces/users.repository.js";
-import { toUser } from "./to-user.js";
 import type { UsersService } from "./users.service.js";
 
 async function findCredentials(this: UsersService, identifier: string): Promise<UserCredentialsRecord | null> {
@@ -36,5 +35,5 @@ export async function verifyCredentials(
     if (!matches || !credentials.user.isActive) {
         return null;
     }
-    return toUser(credentials.user);
+    return this.toUserView(credentials.user);
 }

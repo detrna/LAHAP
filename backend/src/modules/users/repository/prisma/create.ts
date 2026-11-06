@@ -1,7 +1,7 @@
 import { toNumericOrNull } from "../../../../infrastructure/database/prisma/numeric.js";
 import type { NewUserRecord, UserRecord } from "../../service/interfaces/users.repository.js";
 import { UserAlreadyExistsError, UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
-import { usersWithAllergies } from "./queries.js";
+import { usersWithAllergyIds } from "./queries.js";
 import { toUserRecord } from "./to-user-record.js";
 import { getUniqueUserField } from "./unique-violation.js";
 import type { PrismaUsersRepository } from "./users-repository.js";
@@ -26,7 +26,7 @@ export async function create(this: PrismaUsersRepository, user: NewUserRecord): 
                     user.allergyIds.map(allergyId => ({ userId: created.id, allergyId })),
                 );
             }
-            const row = await usersWithAllergies(tx.orm).where({ id: created.id }).first();
+            const row = await usersWithAllergyIds(tx.orm).where({ id: created.id }).first();
             if (row === null) throw new Error(`user ${created.id} vanished inside its own transaction`);
             return toUserRecord(row);
         });

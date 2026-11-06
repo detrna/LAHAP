@@ -52,7 +52,7 @@ describe("UsersService.applyUserChanges (unit)", () => {
     });
 
     it("replaces the allergy set only when allergyIds is sent", async () => {
-        const { repository, service } = setup();
+        const { allergyLookup, repository, service } = setup();
 
         await service.applyUserChanges(USER_ID, { allergyIds: [ALLERGY_A] });
         await service.applyUserChanges(USER_ID, { allergyIds: [] });
@@ -63,7 +63,7 @@ describe("UsersService.applyUserChanges (unit)", () => {
             { allergyIds: [], ensureActiveAdminRemains: false },
             { ensureActiveAdminRemains: false },
         ]);
-        expect(repository.findMissingAllergyIds).toHaveBeenCalledTimes(1);
+        expect(allergyLookup.findMissingAllergyIds).toHaveBeenCalledTimes(1);
     });
 
     it("hashes a new password", async () => {
@@ -91,8 +91,8 @@ describe("UsersService.applyUserChanges (unit)", () => {
     });
 
     it("rejects unknown allergies", async () => {
-        const { repository, service } = setup();
-        repository.findMissingAllergyIds.mockResolvedValue([ALLERGY_A]);
+        const { allergyLookup, repository, service } = setup();
+        allergyLookup.findMissingAllergyIds.mockResolvedValue([ALLERGY_A]);
 
         await expect(service.applyUserChanges(USER_ID, { allergyIds: [ALLERGY_A] })).rejects.toBeInstanceOf(
             UnknownAllergyError,

@@ -3,7 +3,6 @@ import type { User } from "../domain/user.domain.js";
 import { UserAlreadyExistsError } from "./interfaces/users.repository.js";
 import { ensureKnownAllergies } from "./known-allergies.js";
 import { blankToNull, normalizeEmail } from "./normalize.js";
-import { toUser } from "./to-user.js";
 import type { UsersService } from "./users.service.js";
 
 export interface CreateUserInput {
@@ -30,7 +29,7 @@ export async function createUser(this: UsersService, input: CreateUserInput): Pr
     if (email !== null && (await this.usersRepository.existsByEmail(email))) {
         throw new UserAlreadyExistsError("email");
     }
-    await ensureKnownAllergies(this.usersRepository, allergyIds);
+    await ensureKnownAllergies(this.allergyLookup, allergyIds);
 
     const record = await this.usersRepository.create({
         name: blankToNull(input.name) ?? input.phone,
@@ -45,5 +44,5 @@ export async function createUser(this: UsersService, input: CreateUserInput): Pr
         isActive: input.isActive ?? true,
         allergyIds,
     });
-    return toUser(record);
+    return this.toUserView(record);
 }

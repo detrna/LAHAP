@@ -2,6 +2,7 @@ import type { Allergy } from "../../domain/allergy.domain.js";
 import type { MenuIngredient, Menu } from "../../domain/menu.domain.js";
 import type { Package } from "../../domain/package.domain.js";
 import type { ScheduleMenu, MenuSchedule, PublishMenuSchedulesResult } from "../../domain/schedule.domain.js";
+import type { AllergyRecord } from "../../service/interfaces/catalog.repository.js";
 
 export function buildAllergy(overrides: Partial<Allergy> = {}): Allergy {
     return {
@@ -9,6 +10,16 @@ export function buildAllergy(overrides: Partial<Allergy> = {}): Allergy {
         name: "Kacang",
         createdAt: "2026-11-03T00:00:00.000+07:00",
         updatedAt: "2026-11-03T00:00:00.000+07:00",
+        ...overrides,
+    };
+}
+
+export function buildAllergyRecord(overrides: Partial<AllergyRecord> = {}): AllergyRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Kacang",
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
         ...overrides,
     };
 }

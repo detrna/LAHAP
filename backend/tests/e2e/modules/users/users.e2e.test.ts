@@ -6,12 +6,13 @@ import { loadConfig } from "../../../../src/config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
 import { AuthContainer } from "../../../../src/modules/auth/container/auth.container.js";
-import { UsersContainer } from "../../../../src/modules/users/container/users.container.js";
+import type { UsersContainer } from "../../../../src/modules/users/container/users.container.js";
 import type { UsersService } from "../../../../src/modules/users/service/users.service.js";
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
 import { normalizePhone } from "../../../../src/shared/utils/phone/phone.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
+import { createUsersContainer } from "../../../utils/app/users-container.js";
 import { withOtherAdminsInactive } from "../../../utils/fixtures/admins.js";
 
 const PASSWORD = "password123";
@@ -72,9 +73,8 @@ describe("users routes (e2e)", () => {
             http: { AUTH_RATE_LIMIT_MAX: 1000 },
             adapters: { objectStorage },
             mount: deps => {
-                const users: UsersContainer = new UsersContainer({
-                    ...deps,
-                    sessions: { revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId) },
+                const users: UsersContainer = createUsersContainer(deps, {
+                    revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId),
                 });
                 const auth: AuthContainer = new AuthContainer({ ...deps, users: users.service });
                 usersService = users.service;

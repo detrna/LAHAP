@@ -31,18 +31,17 @@ function matchingUsers(orm: Db["orm"], query: UserListQuery) {
     if (query.isActive !== undefined) {
         users = users.where({ isActive: query.isActive });
     }
-    if (query.isChurned !== undefined) {
-        const { churnCutoff, isChurned } = query;
-        users = users.where(user => {
-            const churned = and(
-                user.role.eq("CUSTOMER"),
-                user.subscriptions.some(subscription => subscription.status.eq("Success")),
-                user.subscriptions.none(subscription =>
-                    and(subscription.status.eq("Success"), subscription.endDate.gte(churnCutoff)),
-                ),
-            );
-            return isChurned ? churned : not(churned);
-        });
+    if (query.churned !== undefined) {
+        const { isChurned } = query.churned;
+        const userIds = query.churned.userIds as Varchar<36>[];
+        if (userIds.length === 0) {
+            if (isChurned) users = users.where(user => user.id.eq(""));
+        } else {
+            users = users.where(user => {
+                const churned = and(user.role.eq("CUSTOMER"), user.id.in(userIds));
+                return isChurned ? churned : not(churned);
+            });
+        }
     }
 
     return users;
@@ -52,8 +51,7 @@ export async function list(this: PrismaUsersRepository, query: UserListQuery): P
     try {
         const [rows, totals] = await Promise.all([
             matchingUsers(this.db.orm, query)
-                .include("allergies", link => link.include("allergy"))
-                .include("subscriptions", subscriptions => subscriptions.where({ status: "Success" }).max("endDate"))
+                .include("allergies", link => link.select("allergyId"))
                 .orderBy([user => user.createdAt.desc(), user => user.id.desc()])
                 .offset(query.skip)
                 .limit(query.take)
@@ -61,7 +59,7 @@ export async function list(this: PrismaUsersRepository, query: UserListQuery): P
             matchingUsers(this.db.orm, query).aggregate(aggregate => ({ total: aggregate.count() })),
         ]);
         return {
-            items: rows.map(row => ({ user: toUserRecord(row), lastSuccessEndDate: row.subscriptions })),
+            items: rows.map(toUserRecord),
             total: totals.total,
         };
     } catch (cause) {

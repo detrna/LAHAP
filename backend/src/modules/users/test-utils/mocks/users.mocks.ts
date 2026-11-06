@@ -1,7 +1,9 @@
 import { vi } from "vitest";
 import type { Hasher } from "../../../../shared/ports/hasher/hasher.js";
-import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { AllergyLookup } from "../../service/interfaces/allergy-lookup.js";
+import type { MembershipLookup } from "../../service/interfaces/membership-lookup.js";
 import type { SessionRevoker } from "../../service/interfaces/session-revoker.js";
+import type { SubscriptionHistory } from "../../service/interfaces/subscription-history.js";
 import type { UsersRepository } from "../../service/interfaces/users.repository.js";
 import type { UsersService } from "../../service/users.service.js";
 
@@ -22,14 +24,11 @@ export function createMockUsersRepository(): Mocked<UsersRepository> {
         findCredentialsById: vi.fn(async () => null),
         existsByPhone: vi.fn(async () => false),
         existsByEmail: vi.fn(async () => false),
-        findMissingAllergyIds: vi.fn(async () => []),
         findConflict: vi.fn(async () => null),
         create: vi.fn(),
         update: vi.fn(async () => null),
         updatePasswordHash: vi.fn(async () => true),
         list: vi.fn(async () => ({ items: [], total: 0 })),
-        findMembership: vi.fn(async () => null),
-        findLastSuccessEndDate: vi.fn(async () => null),
     } as Mocked<UsersRepository>;
 }
 
@@ -40,10 +39,24 @@ export function createMockHasher(): Mocked<Hasher> {
     } as Mocked<Hasher>;
 }
 
-export function createMockObjectStorage(): Mocked<Pick<ObjectStorage, "getSignedUrl">> {
+export function createMockAllergyLookup(): Mocked<AllergyLookup> {
     return {
-        getSignedUrl: vi.fn(async (key: string) => `https://storage.test/${key}?signed`),
-    } as Mocked<Pick<ObjectStorage, "getSignedUrl">>;
+        findMissingAllergyIds: vi.fn(async () => []),
+        getAllergiesByIds: vi.fn(async () => []),
+    } as Mocked<AllergyLookup>;
+}
+
+export function createMockMembershipLookup(): Mocked<MembershipLookup> {
+    return {
+        getMembership: vi.fn(async () => null),
+    } as Mocked<MembershipLookup>;
+}
+
+export function createMockSubscriptionHistory(): Mocked<SubscriptionHistory> {
+    return {
+        findLastSuccessEndDates: vi.fn(async () => new Map()),
+        findUserIdsWithLastSuccessEndBefore: vi.fn(async () => []),
+    } as Mocked<SubscriptionHistory>;
 }
 
 export function createMockSessionRevoker(): Mocked<SessionRevoker> {

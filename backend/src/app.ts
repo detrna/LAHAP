@@ -18,11 +18,6 @@ import { TiersContainer } from "./modules/tiers/container/tiers.container.js";
 import { UsersContainer } from "./modules/users/container/users.container.js";
 
 export function createApp(deps: ModuleDeps): Express {
-    const users: UsersContainer = new UsersContainer({
-        ...deps,
-        sessions: { revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId) },
-    });
-    const auth: AuthContainer = new AuthContainer({ ...deps, users: users.service });
     const settings: SettingsContainer = new SettingsContainer(deps);
     const files: FilesContainer = new FilesContainer(deps);
     const realtime: RealtimeContainer = new RealtimeContainer(deps);
@@ -32,6 +27,14 @@ export function createApp(deps: ModuleDeps): Express {
     const tiers: TiersContainer = new TiersContainer(deps);
     const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
     const orders: OrdersContainer = new OrdersContainer(deps);
+    const users: UsersContainer = new UsersContainer({
+        ...deps,
+        allergies: catalog.service,
+        memberships: tiers.service,
+        subscriptions: orders.service,
+        sessions: { revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId) },
+    });
+    const auth: AuthContainer = new AuthContainer({ ...deps, users: users.service });
     const kitchen: KitchenContainer = new KitchenContainer(deps);
     const delivery: DeliveryContainer = new DeliveryContainer(deps);
     const retention: RetentionContainer = new RetentionContainer(deps);

@@ -17,30 +17,13 @@ function buildRow(overrides: Partial<UserRow> = {}): UserRow {
         isActive: true,
         createdAt: at("2026-11-03T01:00:00"),
         updatedAt: at("2026-11-03T02:00:00"),
-        allergies: [
-            {
-                allergy: {
-                    id: "a-2",
-                    name: "Seafood",
-                    createdAt: at("2026-11-01T00:00:00"),
-                    updatedAt: at("2026-11-01T00:00:00"),
-                },
-            },
-            {
-                allergy: {
-                    id: "a-1",
-                    name: "Kacang",
-                    createdAt: at("2026-11-01T00:00:00"),
-                    updatedAt: at("2026-11-01T00:00:00"),
-                },
-            },
-        ],
+        allergies: [{ allergyId: "a-2" }, { allergyId: "a-1" }],
         ...overrides,
     };
 }
 
 describe("toUserRecord", () => {
-    it("maps a row, turning Numeric coordinates into numbers and sorting allergies by name", () => {
+    it("maps a row, turning Numeric coordinates into numbers and keeping the allergy ids", () => {
         const record = toUserRecord(buildRow());
 
         expect(record).toMatchObject({
@@ -49,7 +32,7 @@ describe("toUserRecord", () => {
             longitude: 112.6094,
             role: "CUSTOMER",
         });
-        expect(record.allergies.map(allergy => allergy.name)).toEqual(["Kacang", "Seafood"]);
+        expect(record.allergyIds).toEqual(["a-2", "a-1"]);
         expect(record.createdAt.toString()).toBe("2026-11-03T01:00:00");
     });
 
@@ -58,7 +41,7 @@ describe("toUserRecord", () => {
 
         expect(record.latitude).toBeNull();
         expect(record.longitude).toBeNull();
-        expect(record.allergies).toEqual([]);
+        expect(record.allergyIds).toEqual([]);
     });
 
     it("rejects a role outside ROLES", () => {

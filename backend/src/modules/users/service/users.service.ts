@@ -1,16 +1,18 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
 import type { Hasher } from "../../../shared/ports/hasher/hasher.js";
-import type { ObjectStorage } from "../../../shared/ports/object-storage/object-storage.js";
 import { applyUserChanges } from "./apply-user-changes.js";
 import { changePassword } from "./change-password.js";
 import { createUser } from "./create-user.js";
 import { getActiveById } from "./get-active-by-id.js";
 import { getProfile } from "./get-profile.js";
 import { getUser } from "./get-user.js";
+import type { AllergyLookup } from "./interfaces/allergy-lookup.js";
+import type { MembershipLookup } from "./interfaces/membership-lookup.js";
 import type { SessionRevoker } from "./interfaces/session-revoker.js";
+import type { SubscriptionHistory } from "./interfaces/subscription-history.js";
 import type { UsersRepository } from "./interfaces/users.repository.js";
 import { listUsers } from "./list-users.js";
-import { toMembership, toProfile, toUserDetail } from "./present-user.js";
+import { toProfile, toUserDetail, toUserView } from "./present-user.js";
 import { registerCustomer } from "./register-customer.js";
 import { updateProfile } from "./update-profile.js";
 import { updateUser } from "./update-user.js";
@@ -22,8 +24,10 @@ export class UsersService {
     constructor(
         readonly usersRepository: UsersRepository,
         readonly hasher: Hasher,
-        readonly objectStorage: ObjectStorage,
         readonly clock: Clock,
+        readonly allergyLookup: AllergyLookup,
+        readonly membershipLookup: MembershipLookup,
+        readonly subscriptionHistory: SubscriptionHistory,
         readonly sessionRevoker?: SessionRevoker | undefined,
     ) {}
 
@@ -38,7 +42,7 @@ export class UsersService {
     getUser = getUser;
     updateUser = updateUser;
     applyUserChanges = applyUserChanges;
-    toMembership = toMembership;
+    toUserView = toUserView;
     toProfile = toProfile;
     toUserDetail = toUserDetail;
 }

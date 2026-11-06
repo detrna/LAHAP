@@ -3,7 +3,7 @@ import { InvalidStateError } from "../../../../shared/errors/invalid-state-error
 import { LAST_ACTIVE_ADMIN_MESSAGE } from "../../domain/admin-access.js";
 import type { UpdateUserOptions, UserChanges, UserRecord } from "../../service/interfaces/users.repository.js";
 import { UserAlreadyExistsError, UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
-import { usersWithAllergies } from "./queries.js";
+import { usersWithAllergyIds } from "./queries.js";
 import { toUserRecord } from "./to-user-record.js";
 import { getUniqueUserField } from "./unique-violation.js";
 import type { PrismaUsersRepository } from "./users-repository.js";
@@ -57,7 +57,7 @@ export async function update(
                 }
             }
 
-            const row = await usersWithAllergies(tx.orm).where({ id }).first();
+            const row = await usersWithAllergyIds(tx.orm).where({ id }).first();
             if (row === null) throw new Error(`user ${id} vanished inside its own transaction`);
             return toUserRecord(row);
         });

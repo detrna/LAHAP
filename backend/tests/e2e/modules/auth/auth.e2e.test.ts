@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { Express } from "express";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createUsersContainer } from "../../../utils/app/users-container.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import type { HttpConfig } from "../../../../src/config/http.js";
 import { loadConfig } from "../../../../src/config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
 import { AuthContainer } from "../../../../src/modules/auth/container/auth.container.js";
-import { UsersContainer } from "../../../../src/modules/users/container/users.container.js";
 
 const PASSWORD = "password123";
 const randomLocalPhone = () =>
@@ -42,7 +42,7 @@ describe("auth routes (e2e)", () => {
                 ...http,
             },
             mount: deps => {
-                const users = new UsersContainer(deps);
+                const users = createUsersContainer(deps);
                 return [new AuthContainer({ ...deps, users: users.service }).router];
             },
         });

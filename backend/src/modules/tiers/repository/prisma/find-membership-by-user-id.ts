@@ -1,9 +1,12 @@
 import { fromNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
-import type { MembershipRecord } from "../../service/interfaces/users.repository.js";
-import { UsersRepositoryFailureError } from "../../service/interfaces/users.repository.js";
-import type { PrismaUsersRepository } from "./users-repository.js";
+import type { MembershipRecord } from "../../service/interfaces/tiers.repository.js";
+import { TiersRepositoryFailureError } from "../../service/interfaces/tiers.repository.js";
+import type { PrismaTiersRepository } from "./tiers-repository.js";
 
-export async function findMembership(this: PrismaUsersRepository, userId: string): Promise<MembershipRecord | null> {
+export async function findMembershipByUserId(
+    this: PrismaTiersRepository,
+    userId: string,
+): Promise<MembershipRecord | null> {
     try {
         const row = await this.db.orm.public.Membership.where({ userId }).include("tier").first();
         if (row === null) return null;
@@ -24,6 +27,6 @@ export async function findMembership(this: PrismaUsersRepository, userId: string
             expiresAt: row.expiresAt,
         };
     } catch (cause) {
-        throw new UsersRepositoryFailureError("findMembership", cause);
+        throw new TiersRepositoryFailureError("findMembershipByUserId", cause);
     }
 }

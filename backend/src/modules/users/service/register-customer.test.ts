@@ -71,7 +71,7 @@ describe("UsersService.registerCustomer (unit)", () => {
     });
 
     it("stores each allergy once", async () => {
-        const { repository, service } = setup();
+        const { allergyLookup, repository, service } = setup();
 
         await service.registerCustomer({
             phone: "6281234567890",
@@ -79,7 +79,7 @@ describe("UsersService.registerCustomer (unit)", () => {
             allergyIds: [ALLERGY_A, ALLERGY_B, ALLERGY_A],
         });
 
-        expect(repository.findMissingAllergyIds).toHaveBeenCalledWith([ALLERGY_A, ALLERGY_B]);
+        expect(allergyLookup.findMissingAllergyIds).toHaveBeenCalledWith([ALLERGY_A, ALLERGY_B]);
         expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ allergyIds: [ALLERGY_A, ALLERGY_B] }));
     });
 
@@ -115,8 +115,8 @@ describe("UsersService.registerCustomer (unit)", () => {
     });
 
     it("rejects unknown allergies with their ids", async () => {
-        const { repository, service } = setup();
-        repository.findMissingAllergyIds.mockResolvedValue([ALLERGY_B]);
+        const { allergyLookup, repository, service } = setup();
+        allergyLookup.findMissingAllergyIds.mockResolvedValue([ALLERGY_B]);
 
         const attempt = service.registerCustomer({
             phone: "6281234567890",
@@ -130,11 +130,11 @@ describe("UsersService.registerCustomer (unit)", () => {
     });
 
     it("skips the allergy lookup when there are none", async () => {
-        const { repository, service } = setup();
+        const { allergyLookup, service } = setup();
 
         await service.registerCustomer({ phone: "6281234567890", password: "password123" });
 
-        expect(repository.findMissingAllergyIds).not.toHaveBeenCalled();
+        expect(allergyLookup.findMissingAllergyIds).not.toHaveBeenCalled();
     });
 
     it("passes on a conflict the repository detects (two sign-ups racing)", async () => {
