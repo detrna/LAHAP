@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildAllergyRecord } from "../../test-utils/factory/catalog.factory.js";
-import { createMockCatalogRepository } from "../../test-utils/mocks/catalog.mocks.js";
-import { CatalogService } from "../catalog.service.js";
+import { setupCatalogService } from "../../test-utils/setup/catalog.setup.js";
 
 describe("CatalogService.getAllergiesByIds (unit)", () => {
     it("maps the records in the repository's order with Jakarta timestamps", async () => {
-        const repository = createMockCatalogRepository();
-        const service = new CatalogService(repository);
+        const { repository, service } = setupCatalogService();
         repository.findAllergiesByIds.mockResolvedValue([
             buildAllergyRecord({ id: "00000000-0000-4000-8000-000000000002", name: "Kacang" }),
             buildAllergyRecord({ id: "00000000-0000-4000-8000-000000000001", name: "Susu" }),
@@ -39,9 +37,9 @@ describe("CatalogService.getAllergiesByIds (unit)", () => {
     });
 
     it("skips the repository for no ids", async () => {
-        const repository = createMockCatalogRepository();
+        const { repository, service } = setupCatalogService();
 
-        expect(await new CatalogService(repository).getAllergiesByIds([])).toEqual([]);
+        expect(await service.getAllergiesByIds([])).toEqual([]);
         expect(repository.findAllergiesByIds).not.toHaveBeenCalled();
     });
 });

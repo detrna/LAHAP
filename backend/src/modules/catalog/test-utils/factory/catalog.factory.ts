@@ -2,7 +2,7 @@ import type { Allergy } from "../../domain/allergy.domain.js";
 import type { MenuIngredient, Menu } from "../../domain/menu.domain.js";
 import type { Package } from "../../domain/package.domain.js";
 import type { ScheduleMenu, MenuSchedule, PublishMenuSchedulesResult } from "../../domain/schedule.domain.js";
-import type { AllergyRecord } from "../../service/interfaces/catalog.repository.js";
+import type { AllergyRecord, PackageRecord } from "../../service/interfaces/catalog.repository.js";
 
 export function buildAllergy(overrides: Partial<Allergy> = {}): Allergy {
     return {
@@ -62,6 +62,27 @@ export function buildPackage(overrides: Partial<Package> = {}): Package {
         isAvailable: false,
         createdAt: "2026-11-03T00:00:00.000+07:00",
         updatedAt: "2026-11-03T00:00:00.000+07:00",
+        ...overrides,
+    };
+}
+
+export function buildPackageRecord(overrides: Partial<PackageRecord> = {}): PackageRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Diet Sehat",
+        description: "test description",
+        basePrice: 20000,
+        periods: ["Harian", "Mingguan"],
+        deliveryTimes: [Temporal.PlainTime.from("07:00"), Temporal.PlainTime.from("12:00")],
+        deliveryFreeRadius: null,
+        deliveryMaxDistance: null,
+        deliveryPricePerKm: null,
+        photoKey: "packages/2026/11/3f2b6c1e.webp",
+        startAt: Temporal.PlainDateTime.from("2026-11-01T00:00:00"),
+        endAt: null,
+        isActive: true,
+        createdAt: Temporal.PlainDateTime.from("2026-11-01T00:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-01T00:00:00"),
         ...overrides,
     };
 }

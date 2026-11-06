@@ -2,6 +2,7 @@ import type { Varchar } from "@prisma/orm-postgres/contract-builder";
 import type { AllergyRecord } from "../../../service/interfaces/catalog.repository.js";
 import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
+import { toAllergyRecord } from "./to-allergy-record.js";
 
 export async function findAllergiesByIds(
     this: PrismaCatalogRepository,
@@ -13,12 +14,7 @@ export async function findAllergiesByIds(
         const rows = await this.db.orm.public.Allergy.where(allergy => allergy.id.in(ids as Varchar<36>[]))
             .orderBy([allergy => allergy.name.asc(), allergy => allergy.id.asc()])
             .all();
-        return rows.map(row => ({
-            id: row.id,
-            name: row.name,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-        }));
+        return rows.map(toAllergyRecord);
     } catch (cause) {
         throw new CatalogRepositoryFailureError("findAllergiesByIds", cause);
     }

@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { corsPolicy, errorHandler, requestLogger } from "./http/middleware/index.js";
 import { AuthContainer } from "./modules/auth/container/auth.container.js";
 import { CatalogContainer } from "./modules/catalog/container/catalog.container.js";
+import { noOrderActivity } from "./modules/catalog/service/interfaces/order-activity.js";
 import { DeliveryContainer } from "./modules/delivery/container/delivery.container.js";
 import { FilesContainer } from "./modules/files/container/files.container.js";
 import { IngredientsContainer } from "./modules/ingredients/container/ingredients.container.js";
@@ -22,7 +23,11 @@ export function createApp(deps: ModuleDeps): Express {
     const files: FilesContainer = new FilesContainer(deps);
     const realtime: RealtimeContainer = new RealtimeContainer(deps);
     const notifications: NotificationsContainer = new NotificationsContainer(deps);
-    const catalog: CatalogContainer = new CatalogContainer(deps);
+    const catalog: CatalogContainer = new CatalogContainer({
+        ...deps,
+        photoKeys: files.service,
+        orderActivity: noOrderActivity,
+    });
     const ingredients: IngredientsContainer = new IngredientsContainer(deps);
     const tiers: TiersContainer = new TiersContainer(deps);
     const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
