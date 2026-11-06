@@ -14,6 +14,9 @@ export interface HttpConfig {
     readonly AUTH_COOKIE_NAME: string;
     readonly AUTH_COOKIE_SAME_SITE: CookieSameSite;
     readonly AUTH_COOKIE_SECURE: boolean;
+    readonly REALTIME_PING_INTERVAL_SECONDS: number;
+    readonly REALTIME_MAX_CONNECTIONS_PER_USER: number;
+    readonly REALTIME_MAX_CONNECTIONS: number;
 }
 
 const isExactOrigin = (value: string): boolean => {
@@ -62,6 +65,9 @@ export const httpEnvSchema = z.object({
         .enum(["true", "false"])
         .default("false")
         .transform(value => value === "true"),
+    REALTIME_PING_INTERVAL_SECONDS: z.coerce.number().int().positive().default(25),
+    REALTIME_MAX_CONNECTIONS_PER_USER: z.coerce.number().int().positive().default(5),
+    REALTIME_MAX_CONNECTIONS: z.coerce.number().int().positive().default(1000),
 });
 
 export type HttpEnv = z.output<typeof httpEnvSchema>;
@@ -79,6 +85,9 @@ export const toHttpConfig = (env: HttpEnv): HttpConfig => {
         AUTH_COOKIE_NAME: env.AUTH_COOKIE_NAME,
         AUTH_COOKIE_SAME_SITE: env.AUTH_COOKIE_SAME_SITE,
         AUTH_COOKIE_SECURE: env.AUTH_COOKIE_SECURE,
+        REALTIME_PING_INTERVAL_SECONDS: env.REALTIME_PING_INTERVAL_SECONDS,
+        REALTIME_MAX_CONNECTIONS_PER_USER: env.REALTIME_MAX_CONNECTIONS_PER_USER,
+        REALTIME_MAX_CONNECTIONS: env.REALTIME_MAX_CONNECTIONS,
     };
 };
 

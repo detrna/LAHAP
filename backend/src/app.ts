@@ -21,7 +21,13 @@ import { TiersContainer } from "./modules/tiers/container/tiers.container.js";
 import { noOrderStats } from "./modules/tiers/service/interfaces/order-stats.js";
 import { UsersContainer } from "./modules/users/container/users.container.js";
 
-export function createApp(deps: ModuleDeps): Express {
+export interface App {
+    readonly app: Express;
+    start(): Promise<void>;
+    close(): Promise<void>;
+}
+
+export function createApp(deps: ModuleDeps): App {
     const settings: SettingsContainer = new SettingsContainer(deps);
     const files: FilesContainer = new FilesContainer(deps);
     const realtime: RealtimeContainer = new RealtimeContainer(deps);
@@ -89,5 +95,9 @@ export function createApp(deps: ModuleDeps): Express {
 
     app.use(errorHandler({ logger: deps.adapters.logger }));
 
-    return app;
+    return {
+        app,
+        start: () => realtime.service.start(),
+        close: () => realtime.service.close(),
+    };
 }

@@ -12,8 +12,33 @@ describe("loadHttpConfig", () => {
             AUTH_COOKIE_NAME: "lahap_refresh",
             AUTH_COOKIE_SAME_SITE: "lax",
             AUTH_COOKIE_SECURE: false,
+            REALTIME_PING_INTERVAL_SECONDS: 25,
+            REALTIME_MAX_CONNECTIONS_PER_USER: 5,
+            REALTIME_MAX_CONNECTIONS: 1000,
         });
     });
+
+    it("reads the realtime settings", () => {
+        const config = loadHttpConfig({
+            REALTIME_PING_INTERVAL_SECONDS: "15",
+            REALTIME_MAX_CONNECTIONS_PER_USER: "2",
+            REALTIME_MAX_CONNECTIONS: "50",
+        });
+
+        expect(config).toMatchObject({
+            REALTIME_PING_INTERVAL_SECONDS: 15,
+            REALTIME_MAX_CONNECTIONS_PER_USER: 2,
+            REALTIME_MAX_CONNECTIONS: 50,
+        });
+    });
+
+    it.each(["REALTIME_PING_INTERVAL_SECONDS", "REALTIME_MAX_CONNECTIONS_PER_USER", "REALTIME_MAX_CONNECTIONS"])(
+        "rejects a zero or fractional %s",
+        name => {
+            expect(() => loadHttpConfig({ [name]: "0" })).toThrow();
+            expect(() => loadHttpConfig({ [name]: "1.5" })).toThrow();
+        },
+    );
 
     it("reads the refresh cookie settings for a cross-site deployment", () => {
         const config = loadHttpConfig({

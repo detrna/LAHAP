@@ -1230,7 +1230,7 @@
           "Realtime"
         ],
         "summary": "Open the event stream (SSE)",
-        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nServer-Sent Events (UC-12, UC-42). Events are scoped to the user: customers get their own slots, notifications and relevant announcements; couriers their slots; kitchen and admins every slot change. A `: ping` comment is sent every 25 s. Reconnect with `Last-Event-ID` is not replayed; refetch state after reconnecting.",
+        "description": "**Roles:** `CUSTOMER`, `ADMIN`, `KITCHEN`, `COURIER`.\n\nServer-Sent Events (UC-12, UC-42). Events are scoped to the user: customers get their own slots, notifications and relevant announcements; couriers their slots; kitchen and admins every slot change. The stream starts with a `retry: 5000` reconnect hint, and a `: ping` comment is sent every 25 s. Reconnect with `Last-Event-ID` is not replayed; refetch state after reconnecting.\n\nThe server closes the stream when the access token expires (`JWT_EXPIRES_IN`): refresh the token and reconnect. A user keeps at most 5 open streams (opening a sixth closes the oldest), and the server refuses new streams with 503 when it holds 1000.",
         "x-roles": [
           "CUSTOMER",
           "ADMIN",
@@ -1284,6 +1284,9 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         },
         "security": [
@@ -13767,7 +13770,7 @@
       },
       "SlotMenuEvent": {
         "type": "object",
-        "description": "The kitchen switched a slot to (or back from) the alternative menu. Sent to the customer.",
+        "description": "The kitchen switched a slot to (or back from) the alternative menu. Sent to the slot's customer, kitchen and admins.",
         "required": [
           "event",
           "data"
@@ -14100,7 +14103,28 @@
           }
         }
       },
-      "InternalError": {
+      "ServiceUnavailable": {
+      "description": "The server already holds the maximum number of open event streams.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/ErrorResponseBody"
+          },
+          "examples": {
+            "SERVICE_UNAVAILABLE": {
+              "summary": "SERVICE_UNAVAILABLE",
+              "value": {
+                "error": {
+                  "code": "SERVICE_UNAVAILABLE",
+                  "message": "too many open event streams, try again later"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "InternalError": {
         "description": "Unexpected server, storage or gateway failure.",
         "content": {
           "application/json": {

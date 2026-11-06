@@ -17,14 +17,17 @@ async function bootstrap() {
         logger = adapters.logger;
         logger.info("Adapters and database initialized successfully");
 
-        const app = createApp({ db, adapters, http: config.HTTP });
+        const { app, start, close } = createApp({ db, adapters, http: config.HTTP });
+        await start();
         const server = app.listen(config.APP.PORT, () => {
             logger.info(`Server is running on port ${config.APP.PORT}`);
         });
 
         const shutdown = () => {
+            const streamsClosed = close();
             server.close(async () => {
-                await Promise.all([db.close(), adapters.cache.close()]);
+                await streamsClosed;
+                await Promise.all([db.close(), adapters.cache.close(), adapters.eventBus.close()]);
                 process.exit(0);
             });
         };

@@ -1,3 +1,4 @@
+import type { Role } from "../../../shared/auth/roles.js";
 import type { Menu } from "../../catalog/domain/menu.domain.js";
 import type { DeliveryObstacle } from "../../delivery/domain/delivery-obstacle.domain.js";
 import type { Announcement } from "../../notifications/domain/announcement.domain.js";
@@ -37,4 +38,15 @@ export interface NotificationEvent {
 export interface AnnouncementEvent {
     readonly event: "announcement";
     readonly data: Announcement;
+}
+
+export const REALTIME_EVENTS = ["slot.status", "slot.obstacle", "slot.menu", "notification", "announcement"] as const;
+
+export type RealtimeEventName = (typeof REALTIME_EVENTS)[number];
+
+export type RealtimeEvent = SlotStatusEvent | SlotObstacleEvent | SlotMenuEvent | NotificationEvent | AnnouncementEvent;
+
+export interface RealtimeAudience {
+    readonly userIds?: readonly string[] | undefined;
+    readonly roles?: readonly Role[] | undefined;
 }
