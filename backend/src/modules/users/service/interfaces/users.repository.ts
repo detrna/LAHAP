@@ -84,6 +84,7 @@ export interface UserListRecord {
 
 export interface UsersRepository {
     findById(id: string): Promise<UserRecord | null>;
+    findByIds(ids: readonly string[]): Promise<readonly UserRecord[]>;
     findCredentialsByPhone(phone: string): Promise<UserCredentialsRecord | null>;
     findCredentialsByEmail(email: string): Promise<UserCredentialsRecord | null>;
     findCredentialsById(id: string): Promise<UserCredentialsRecord | null>;

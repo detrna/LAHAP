@@ -19,6 +19,7 @@ export type MockedUsersService = Mocked<
 export function createMockUsersRepository(): Mocked<UsersRepository> {
     return {
         findById: vi.fn(async () => null),
+        findByIds: vi.fn(async () => []),
         findCredentialsByPhone: vi.fn(async () => null),
         findCredentialsByEmail: vi.fn(async () => null),
         findCredentialsById: vi.fn(async () => null),

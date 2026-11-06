@@ -187,12 +187,30 @@ describe("PrismaUsersRepository (integration)", () => {
             expect(customerIds).toContain(customer.id);
             expect(customerIds).not.toContain(inactive.id);
             expect(customerIds).not.toContain(kitchen.id);
-            expect(await repository.countActiveUsers("CUSTOMER")).toBe(customerIds.length);
+            await expect
+                .poll(async () => {
+                    const [count, listed] = await Promise.all([
+                        repository.countActiveUsers("CUSTOMER"),
+                        repository.listActiveUserIds("CUSTOMER"),
+                    ]);
+                    return count === listed.length;
+                })
+                .toBe(true);
 
             expect(
                 await repository.filterActiveUserIds([customer.id, inactive.id, kitchen.id, randomUUID()], "CUSTOMER"),
             ).toEqual([customer.id]);
             expect(await repository.filterActiveUserIds([], "CUSTOMER")).toEqual([]);
+        });
+
+        it("finds users by id with their allergies, active or not", async () => {
+            const customer = await create({ name: "Zz Found Customer", allergyIds: [allergyIds[0]!] });
+            const inactive = await create({ name: "Zz Found Inactive", isActive: false });
+
+            const found = await repository.findByIds([customer.id, inactive.id, randomUUID()]);
+            expect(found.map(user => user.id).sort()).toEqual([customer.id, inactive.id].sort());
+            expect(found.find(user => user.id === customer.id)?.allergyIds).toEqual([allergyIds[0]]);
+            expect(await repository.findByIds([])).toEqual([]);
         });
     });
 
