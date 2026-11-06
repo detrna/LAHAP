@@ -5,12 +5,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../../src/config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../src/infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../src/infrastructure/database/prisma/db.js";
+import type { SubscriptionPeriod } from "../../../../src/modules/catalog/domain/schedule-moves.js";
 import type { OrderActivity } from "../../../../src/modules/catalog/service/interfaces/order-activity.js";
 import { FilesService } from "../../../../src/modules/files/service/files.service.js";
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import { createCatalogContainer } from "../../../utils/app/catalog-container.js";
+import { createIngredientsContainer } from "../../../utils/app/ingredients-container.js";
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
 import { createTestPackage, createTestSubscription } from "../../../utils/fixtures/subscriptions.js";
 import { createTestUser } from "../../../utils/fixtures/users.js";
@@ -41,13 +43,25 @@ describe("catalog routes (e2e)", () => {
     const orderActivity = {
         subscriberCounts: new Map<string, number>(),
         schedulesWithOrders: [] as string[],
+        paidSchedules: [] as string[],
+        alternativesInUse: [] as string[],
+        periods: [] as SubscriptionPeriod[],
+        inactiveSlotsDeleted: [] as (readonly string[])[],
         asserted: [] as unknown[],
     };
     const activity: OrderActivity = {
         countActiveSubscribers: async ids => new Map(ids.map(id => [id, orderActivity.subscriberCounts.get(id) ?? 0])),
         findSchedulesWithOrders: async (ids, statuses) => {
             orderActivity.asserted.push(statuses);
-            return ids.filter(id => orderActivity.schedulesWithOrders.includes(id));
+            const held = statuses.includes("Pending")
+                ? [...orderActivity.schedulesWithOrders, ...orderActivity.paidSchedules]
+                : orderActivity.paidSchedules;
+            return ids.filter(id => held.includes(id));
+        },
+        findSchedulesUsingAlternative: async ids => ids.filter(id => orderActivity.alternativesInUse.includes(id)),
+        findSubscriptionPeriods: async ids => orderActivity.periods.filter(period => ids.includes(period.scheduleId)),
+        deleteInactiveSlots: async ids => {
+            orderActivity.inactiveSlotsDeleted.push(ids);
         },
     };
 
@@ -75,12 +89,19 @@ describe("catalog routes (e2e)", () => {
         testApp = await createTestApp({
             db,
             adapters: { objectStorage },
-            mount: deps => [
-                createCatalogContainer(deps, {
-                    photoKeys: new FilesService(objectStorage, deps.adapters.clock),
+            mount: deps => {
+                const photoKeys = new FilesService(objectStorage, deps.adapters.clock);
+                const catalog = createCatalogContainer(deps, {
+                    photoKeys,
+                    ingredients: {
+                        findMissingIngredientIds: ids => ingredients.service.findMissingIngredientIds(ids),
+                        getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
+                    },
                     orderActivity: activity,
-                }).router,
-            ],
+                });
+                const ingredients = createIngredientsContainer(deps, { photoKeys, allergies: catalog.service });
+                return [catalog.router];
+            },
         });
         app = testApp.app;
     });
@@ -103,6 +124,17 @@ describe("catalog routes (e2e)", () => {
             ["get", `/api/admin/packages/${randomUUID()}`],
             ["patch", `/api/admin/packages/${randomUUID()}`],
             ["delete", `/api/admin/packages/${randomUUID()}`],
+            ["get", "/api/admin/menus"],
+            ["post", "/api/admin/menus"],
+            ["patch", `/api/admin/menus/${randomUUID()}`],
+            ["delete", `/api/admin/menus/${randomUUID()}`],
+            ["get", "/api/admin/menu-schedules"],
+            ["post", "/api/admin/menu-schedules"],
+            ["patch", "/api/admin/menu-schedules"],
+            ["delete", "/api/admin/menu-schedules"],
+            ["post", "/api/admin/menu-schedules/publish"],
+            ["get", `/api/admin/menu-schedules/${randomUUID()}`],
+            ["patch", `/api/admin/menu-schedules/${randomUUID()}`],
         ] as const)("answers 401 to %s %s without a token", async (method, path) => {
             expect((await request(app)[method](path)).status).toBe(401);
         });
@@ -464,6 +496,406 @@ describe("catalog routes (e2e)", () => {
             expect(response.body.error.code).toBe("CONFLICT");
             expect(response.body.error.message).toContain("deactivate");
             expect((await request(app).get(`/api/admin/packages/${packageId}`).set(admin())).status).toBe(200);
+        });
+    });
+    describe("menus", () => {
+        let allergyId: string;
+        const ingredientIds: string[] = [];
+
+        const validMenu = (name: string, overrides: Record<string, unknown> = {}) => ({
+            name: `Zz E2E ${tag} ${name}`,
+            description: "e2e menu",
+            photoKey: "menus/2026/11/e2e.webp",
+            ingredients: [{ ingredientId: ingredientIds[0], quantityPerPortion: 0.25 }],
+            ...overrides,
+        });
+
+        beforeAll(async () => {
+            allergyId = await createAllergy(`Zz E2E ${tag} Telur`);
+            for (const name of ["Telur", "Beras"]) {
+                const ingredient = await db.orm.public.Ingredient.create({
+                    name: `Zz E2E ${tag} ${name}`,
+                    unit: "kg",
+                    photoKey: "ingredients/2026/11/e2e.webp",
+                });
+                ingredientIds.push(rows.track("Ingredient", ingredient.id));
+            }
+            const link = await db.orm.public.IngredientAllergy.create({
+                ingredientId: ingredientIds[0] ?? "",
+                allergyId,
+            });
+            rows.track("IngredientAllergy", link.id);
+        });
+
+        it("creates a menu whose allergies come from its ingredients", async () => {
+            const response = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send(
+                    validMenu("Nasi Telur", {
+                        tags: ["Pedas"],
+                        ingredients: [
+                            { ingredientId: ingredientIds[0], quantityPerPortion: 0.25 },
+                            { ingredientId: ingredientIds[1], quantityPerPortion: 0.1 },
+                        ],
+                    }),
+                );
+
+            expect(response.status).toBe(201);
+            const id = rows.track("Menu", response.body.data.id);
+            expect(response.body.data).toMatchObject({
+                id,
+                isAlternative: false,
+                tags: ["Pedas"],
+                photoUrl: "https://storage.test/menus/2026/11/e2e.webp",
+                allergies: [expect.objectContaining({ id: allergyId })],
+            });
+            expect(response.body.data.ingredients).toHaveLength(2);
+            expect(response.body.data.ingredients[0].ingredient).toMatchObject({ unit: "kg" });
+
+            const read = await request(app).get(`/api/admin/menus/${id}`).set(admin());
+            expect(read.status).toBe(200);
+            expect(read.body.data.allergies).toEqual(response.body.data.allergies);
+        });
+
+        it("answers 400 UNKNOWN_INGREDIENT for an ingredient that doesn't exist", async () => {
+            const response = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send(validMenu("Unknown", { ingredients: [{ ingredientId: randomUUID(), quantityPerPortion: 1 }] }));
+
+            expect(response.status).toBe(400);
+            expect(response.body.error.code).toBe("UNKNOWN_INGREDIENT");
+        });
+
+        it("lists menus with filters, updates and deletes one", async () => {
+            const created = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send(validMenu("Lifecycle", { isAlternative: true }));
+            const id = rows.track("Menu", created.body.data.id);
+
+            const listed = await request(app)
+                .get("/api/admin/menus")
+                .query({ search: `${tag} Lifecycle`, isAlternative: "true" })
+                .set(admin());
+            expect(listed.status).toBe(200);
+            expect(listed.body.data.map((menu: { id: string }) => menu.id)).toEqual([id]);
+
+            const updated = await request(app)
+                .patch(`/api/admin/menus/${id}`)
+                .set(admin())
+                .send({ ingredients: [{ ingredientId: ingredientIds[1], quantityPerPortion: 2 }] });
+            expect(updated.status).toBe(200);
+            expect(updated.body.data.allergies).toEqual([]);
+
+            expect((await request(app).delete(`/api/admin/menus/${id}`).set(admin())).status).toBe(204);
+            expect((await request(app).get(`/api/admin/menus/${id}`).set(admin())).status).toBe(404);
+        });
+    });
+
+    describe("menu schedules", () => {
+        let packageId: string;
+        let primaryId: string;
+        let alternativeId: string;
+        let otherId: string;
+
+        const createMenu = async (name: string, isAlternative: boolean) => {
+            const response = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send({
+                    name: `Zz E2E ${tag} Schedule ${name}`,
+                    description: "",
+                    isAlternative,
+                    photoKey: "menus/2026/11/e2e.webp",
+                    ingredients: [{ ingredientId, quantityPerPortion: 1 }],
+                });
+            expect(response.status).toBe(201);
+            return rows.track("Menu", response.body.data.id);
+        };
+        let ingredientId: string;
+
+        const createSchedules = async (items: Record<string, unknown>[]) => {
+            const response = await request(app)
+                .post("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: items.map(item => ({ packageId, deliveryTime: "07:00", primaryMenuId: primaryId, ...item })),
+                });
+            expect(response.status).toBe(201);
+            return (response.body.data as { id: string }[]).map(schedule => rows.track("Schedule", schedule.id));
+        };
+
+        beforeAll(async () => {
+            const ingredient = await db.orm.public.Ingredient.create({
+                name: `Zz E2E ${tag} Schedule ingredient`,
+                unit: "gram",
+                photoKey: "ingredients/2026/11/e2e.webp",
+            });
+            ingredientId = rows.track("Ingredient", ingredient.id);
+            primaryId = await createMenu("Primary", false);
+            alternativeId = await createMenu("Alternative", true);
+            otherId = await createMenu("Other", false);
+            packageId = (await createPackage("Schedules")).id;
+        });
+
+        it("creates schedules with menus, and reads them back", async () => {
+            const response = await request(app)
+                .post("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: [
+                        {
+                            packageId,
+                            date: "2099-03-01",
+                            deliveryTime: "12:00",
+                            primaryMenuId: primaryId,
+                            alternativeMenuId: alternativeId,
+                        },
+                    ],
+                });
+
+            expect(response.status).toBe(201);
+            const [schedule] = response.body.data;
+            const id = rows.track("Schedule", schedule.id);
+            expect(schedule).toMatchObject({
+                packageId,
+                date: "2099-03-01",
+                deliveryTime: { time: "12:00", range: "Siang" },
+                isPublished: false,
+                menus: [
+                    { menuId: primaryId, isPrimary: true },
+                    { menuId: alternativeId, isPrimary: false },
+                ],
+            });
+            expect(schedule.menus[0].menu).toMatchObject({ id: primaryId, allergies: [] });
+            expect(schedule.menus[0].menu).not.toHaveProperty("ingredients");
+
+            const read = await request(app).get(`/api/admin/menu-schedules/${id}`).set(admin());
+            expect(read.status).toBe(200);
+            expect(read.body.data.id).toBe(id);
+        });
+
+        it("answers 400 with item paths, UNKNOWN_MENU, and 409 for a taken slot", async () => {
+            const invalid = await request(app)
+                .post("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: [
+                        { packageId, date: "2020-01-01", deliveryTime: "09:00", primaryMenuId: primaryId },
+                        {
+                            packageId,
+                            date: "2099-03-02",
+                            deliveryTime: "07:00",
+                            primaryMenuId: primaryId,
+                            alternativeMenuId: otherId,
+                        },
+                    ],
+                });
+            expect(invalid.status).toBe(400);
+            expect(
+                invalid.body.error.issues.map((issue: { path: string; code: string }) => [issue.path, issue.code]),
+            ).toEqual([
+                ["items.0.deliveryTime", "unknown_delivery_time"],
+                ["items.0.date", "date_in_past"],
+                ["items.1.alternativeMenuId", "not_alternative"],
+            ]);
+
+            const unknown = await request(app)
+                .post("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: [{ packageId, date: "2099-03-02", deliveryTime: "07:00", primaryMenuId: randomUUID() }],
+                });
+            expect(unknown.status).toBe(400);
+            expect(unknown.body.error.code).toBe("UNKNOWN_MENU");
+
+            await createSchedules([{ date: "2099-03-03" }]);
+            const taken = await request(app)
+                .post("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: [
+                        { packageId, date: "2099-03-04", deliveryTime: "07:00", primaryMenuId: primaryId },
+                        { packageId, date: "2099-03-03", deliveryTime: "07:00", primaryMenuId: primaryId },
+                    ],
+                });
+            expect(taken.status).toBe(409);
+            const rolledBack = await request(app)
+                .get("/api/admin/menu-schedules")
+                .query({ packageId, from: "2099-03-04", to: "2099-03-04" })
+                .set(admin());
+            expect(rolledBack.body.data).toEqual([]);
+        });
+
+        it("publishes by id and range, then shows only published schedules to customers", async () => {
+            const [first, second] = await createSchedules([{ date: "2099-04-01" }, { date: "2099-04-02" }]);
+
+            const byId = await request(app)
+                .post("/api/admin/menu-schedules/publish")
+                .set(admin())
+                .send({ ids: [first] });
+            expect(byId.body.data).toEqual({ updatedCount: 1 });
+
+            const publicList = await request(app)
+                .get(`/api/packages/${packageId}/schedules`)
+                .query({ from: "2099-04-01", to: "2099-04-02" });
+            expect(publicList.status).toBe(200);
+            expect(publicList.body.data.map((schedule: { id: string }) => schedule.id)).toEqual([first]);
+
+            const byRange = await request(app)
+                .post("/api/admin/menu-schedules/publish")
+                .set(admin())
+                .send({ packageId, from: "2099-04-01", to: "2099-04-02" });
+            expect(byRange.body.data).toEqual({ updatedCount: 2 });
+
+            const drafts = await request(app)
+                .get("/api/admin/menu-schedules")
+                .query({ packageId, from: "2099-04-01", to: "2099-04-02", isPublished: "true" })
+                .set(admin());
+            expect(drafts.body.data.map((schedule: { id: string }) => schedule.id)).toEqual([first, second]);
+            expect(drafts.body.meta.total).toBe(2);
+
+            const tooLong = await request(app)
+                .get(`/api/packages/${packageId}/schedules`)
+                .query({ from: "2099-01-01", to: "2099-12-31" });
+            expect(tooLong.status).toBe(400);
+        });
+
+        it("updates schedules in a batch and alone", async () => {
+            const [first, second] = await createSchedules([
+                { date: "2099-05-01", alternativeMenuId: alternativeId },
+                { date: "2099-05-02" },
+            ]);
+
+            const batch = await request(app)
+                .patch("/api/admin/menu-schedules")
+                .set(admin())
+                .send({
+                    items: [
+                        { id: first, alternativeMenuId: null, packageId: randomUUID() },
+                        { id: second, deliveryTime: "18:30", primaryMenuId: otherId },
+                    ],
+                });
+            expect(batch.status).toBe(200);
+            expect(batch.body.data[0]).toMatchObject({ packageId, menus: [{ menuId: primaryId, isPrimary: true }] });
+            expect(batch.body.data[1]).toMatchObject({ deliveryTime: { time: "18:30" }, menus: [{ menuId: otherId }] });
+
+            const single = await request(app)
+                .patch(`/api/admin/menu-schedules/${first}`)
+                .set(admin())
+                .send({ date: "2099-05-05" });
+            expect(single.status).toBe(200);
+            expect(single.body.data.date).toBe("2099-05-05");
+
+            const missing = await request(app)
+                .patch(`/api/admin/menu-schedules/${randomUUID()}`)
+                .set(admin())
+                .send({ isPublished: true });
+            expect(missing.status).toBe(404);
+            expect(missing.body.error.code).toBe("MENU_SCHEDULE_NOT_FOUND");
+        });
+
+        it("guards schedules that have orders", async () => {
+            const [held] = await createSchedules([{ date: "2099-06-10", alternativeMenuId: alternativeId }]);
+            orderActivity.paidSchedules.push(held ?? "");
+            orderActivity.alternativesInUse.push(held ?? "");
+            orderActivity.periods.push({
+                scheduleId: held ?? "",
+                startDate: Temporal.PlainDate.from("2099-06-08"),
+                endDate: Temporal.PlainDate.from("2099-06-14"),
+            });
+
+            const noReason = await request(app)
+                .patch(`/api/admin/menu-schedules/${held}`)
+                .set(admin())
+                .send({ primaryMenuId: otherId });
+            expect(noReason.status).toBe(400);
+            expect(noReason.body.error.issues[0]).toMatchObject({
+                path: "changeReason",
+                code: "change_reason_required",
+            });
+
+            const outside = await request(app)
+                .patch(`/api/admin/menu-schedules/${held}`)
+                .set(admin())
+                .send({ date: "2099-06-20", changeReason: "libur" });
+            expect(outside.status).toBe(422);
+            expect(outside.body.error.message).toBe("new date is outside a subscription period");
+
+            const removeAlternative = await request(app)
+                .patch(`/api/admin/menu-schedules/${held}`)
+                .set(admin())
+                .send({ alternativeMenuId: null, changeReason: "habis" });
+            expect(removeAlternative.status).toBe(422);
+            expect(removeAlternative.body.error.message).toBe("alternative menu is used by orders");
+
+            const moved = await request(app)
+                .patch(`/api/admin/menu-schedules/${held}`)
+                .set(admin())
+                .send({ date: "2099-06-12", changeReason: "libur" });
+            expect(moved.status).toBe(200);
+
+            const deleted = await request(app)
+                .delete("/api/admin/menu-schedules")
+                .set(admin())
+                .send({ ids: [held] });
+            expect(deleted.status).toBe(409);
+        });
+
+        it("deletes schedules without active orders after dropping their dead slots", async () => {
+            const ids = await createSchedules([{ date: "2099-07-01" }, { date: "2099-07-02" }]);
+
+            const response = await request(app).delete("/api/admin/menu-schedules").set(admin()).send({ ids });
+
+            expect(response.status).toBe(200);
+            expect(response.body.data).toEqual({ deletedCount: 2 });
+            expect(orderActivity.inactiveSlotsDeleted.at(-1)).toEqual(ids);
+            const gone = await request(app).delete("/api/admin/menu-schedules").set(admin()).send({ ids });
+            expect(gone.status).toBe(404);
+        });
+
+        it("refuses to delete a menu a schedule uses", async () => {
+            await createSchedules([{ date: "2099-08-01" }]);
+
+            const response = await request(app).delete(`/api/admin/menus/${primaryId}`).set(admin());
+
+            expect(response.status).toBe(409);
+        });
+
+        it("renames a package meal time and moves its future schedules", async () => {
+            const renamed = (await createPackage("Rename")).id;
+            const [schedule] = (
+                await request(app)
+                    .post("/api/admin/menu-schedules")
+                    .set(admin())
+                    .send({
+                        items: [
+                            { packageId: renamed, date: "2099-09-01", deliveryTime: "12:00", primaryMenuId: primaryId },
+                        ],
+                    })
+            ).body.data.map((item: { id: string }) => rows.track("Schedule", item.id));
+
+            const response = await request(app)
+                .patch(`/api/admin/packages/${renamed}`)
+                .set(admin())
+                .send({ deliveryTimeChanges: [{ from: "12:00", to: "12:30" }] });
+
+            expect(response.status).toBe(200);
+            expect(response.body.data.deliveryTimes.map((time: { time: string }) => time.time)).toEqual([
+                "07:00",
+                "12:30",
+                "18:30",
+            ]);
+            const moved = await request(app).get(`/api/admin/menu-schedules/${schedule}`).set(admin());
+            expect(moved.body.data.deliveryTime.time).toBe("12:30");
+
+            const both = await request(app)
+                .patch(`/api/admin/packages/${renamed}`)
+                .set(admin())
+                .send({ deliveryTimes: ["07:00"], deliveryTimeChanges: [{ from: "07:00", to: "08:00" }] });
+            expect(both.status).toBe(400);
         });
     });
 });

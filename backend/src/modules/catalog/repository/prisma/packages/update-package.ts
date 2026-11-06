@@ -1,5 +1,8 @@
 import { InvalidStateError } from "../../../../../shared/errors/invalid-state-error.js";
-import { getForeignKeyViolationConstraint } from "../../../../../infrastructure/database/prisma/sql-errors.js";
+import {
+    getForeignKeyViolationConstraint,
+    getUniqueViolationConstraint,
+} from "../../../../../infrastructure/database/prisma/sql-errors.js";
 import { toNumeric, toNumericOrNull } from "../../../../../infrastructure/database/prisma/numeric.js";
 import { MEAL_TIME_IN_USE_MESSAGE } from "../../../domain/meal-times.js";
 import type {
@@ -7,7 +10,10 @@ import type {
     PackageRecord,
     UpdatePackageOptions,
 } from "../../../service/interfaces/catalog.repository.js";
-import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
+import {
+    CatalogRepositoryFailureError,
+    ScheduleAlreadyExistsError,
+} from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
 import { toPackageRecord } from "./to-package-record.js";
 
@@ -54,11 +60,25 @@ export async function updatePackage(
                     .where(schedule => schedule.deliveryTime.in([...removed.times]))
                     .deleteAll();
             }
+
+            const moved = options.moveSchedulesAt;
+            if (moved !== undefined) {
+                const movedFrom = moved.from;
+                for (const change of moved.changes) {
+                    await tx.orm.public.Schedule.where({ packageId: id })
+                        .where(schedule => schedule.date.gte(movedFrom))
+                        .where(schedule => schedule.deliveryTime.eq(change.from))
+                        .updateAndCount({ deliveryTime: change.to });
+                }
+            }
             return toPackageRecord(row);
         });
     } catch (cause) {
         if (getForeignKeyViolationConstraint(cause) === "order_menu_schedule_id_fkey") {
             throw new InvalidStateError(MEAL_TIME_IN_USE_MESSAGE, { cause });
+        }
+        if (getUniqueViolationConstraint(cause) === "schedule_package_id_date_delivery_time_key") {
+            throw new ScheduleAlreadyExistsError({ cause });
         }
         throw new CatalogRepositoryFailureError("updatePackage", cause);
     }

@@ -4561,7 +4561,51 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. `photoKey` must point to an uploaded object (`photo_not_found`), and every `ingredientId` must exist (`UNKNOWN_INGREDIENT`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_INGREDIENT": {
+                    "summary": "UNKNOWN_INGREDIENT",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_INGREDIENT",
+                        "message": "unknown ingredient ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -4652,7 +4696,7 @@
           "Admin · Catalog"
         ],
         "summary": "Update a menu",
-        "description": "**Roles:** `ADMIN`.\n\nName, description and photo can always change. Changing ingredients of a menu used by schedules with `Success` orders requires `changeReason` and notifies affected customers (UC-23).",
+        "description": "**Roles:** `ADMIN`.\n\nName, description and photo can always change. Changing ingredients of a menu used by schedules with `Success` orders requires `changeReason` and notifies affected customers (UC-23). 422 when turning `isAlternative` off while the menu is some schedule's alternative.",
         "x-roles": [
           "ADMIN"
         ],
@@ -4695,7 +4739,68 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`), every `ingredientId` must exist (`UNKNOWN_INGREDIENT`), and changing the recipe of a menu on schedules with `Success` orders needs `changeReason` (`change_reason_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_INGREDIENT": {
+                    "summary": "UNKNOWN_INGREDIENT",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_INGREDIENT",
+                        "message": "unknown ingredient ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  },
+                  "CHANGE_REASON_REQUIRED": {
+                    "summary": "VALIDATION_ERROR (change_reason_required)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "changeReason",
+                            "message": "is required when the schedule has paid orders",
+                            "code": "change_reason_required"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -4708,6 +4813,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -4933,7 +5041,63 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. Issues carry the item path and one of `package_not_found`, `date_in_past`, `unknown_delivery_time`, `same_as_primary` or `not_alternative`; unknown menu ids give `UNKNOWN_MENU`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "ITEM_ISSUES": {
+                    "summary": "VALIDATION_ERROR (item issues)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "items.0.date",
+                            "message": "must be today or later",
+                            "code": "date_in_past"
+                          },
+                          {
+                            "target": "body",
+                            "path": "items.0.deliveryTime",
+                            "message": "must be one of the package's meal times",
+                            "code": "unknown_delivery_time"
+                          },
+                          {
+                            "target": "body",
+                            "path": "items.0.alternativeMenuId",
+                            "message": "must be an alternative menu",
+                            "code": "not_alternative"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_MENU": {
+                    "summary": "UNKNOWN_MENU",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_MENU",
+                        "message": "unknown menu ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -4961,7 +5125,7 @@
           "Admin · Schedules"
         ],
         "summary": "Update schedules",
-        "description": "**Roles:** `ADMIN`.\n\nSchedules with orders: changing the menu requires `changeReason` and sends a `SCHEDULE` announcement to affected customers; recalculates allergy clashes (UC-23, BR-26).",
+        "description": "**Roles:** `ADMIN`.\n\nSchedules with orders: changing the menu requires `changeReason` and sends a `SCHEDULE` announcement to affected customers; recalculates allergy clashes (UC-23, BR-26). Moving a schedule with `Pending` or `Success` orders (new `date` or `deliveryTime`) is only allowed between dates after today, and the new date must stay inside every affected subscription's period (422).",
         "x-roles": [
           "ADMIN"
         ],
@@ -5018,7 +5182,80 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. Issues carry the item path and one of `package_not_found`, `date_in_past`, `unknown_delivery_time`, `same_as_primary` or `not_alternative`; unknown menu ids give `UNKNOWN_MENU`. A menu, date or time change on a schedule with `Success` orders needs `changeReason` (`change_reason_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "ITEM_ISSUES": {
+                    "summary": "VALIDATION_ERROR (item issues)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "items.0.date",
+                            "message": "must be today or later",
+                            "code": "date_in_past"
+                          },
+                          {
+                            "target": "body",
+                            "path": "items.0.deliveryTime",
+                            "message": "must be one of the package's meal times",
+                            "code": "unknown_delivery_time"
+                          },
+                          {
+                            "target": "body",
+                            "path": "items.0.alternativeMenuId",
+                            "message": "must be an alternative menu",
+                            "code": "not_alternative"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_MENU": {
+                    "summary": "UNKNOWN_MENU",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_MENU",
+                        "message": "unknown menu ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  },
+                  "CHANGE_REASON_REQUIRED": {
+                    "summary": "VALIDATION_ERROR (change_reason_required)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "items.0.changeReason",
+                            "message": "is required when the schedule has paid orders",
+                            "code": "change_reason_required"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -5031,6 +5268,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -5049,7 +5289,7 @@
           "Admin · Schedules"
         ],
         "summary": "Delete schedules",
-        "description": "**Roles:** `ADMIN`.\n\n409 when any schedule already has orders (UC-23).",
+        "description": "**Roles:** `ADMIN`.\n\n409 when any schedule has slots from `Pending` or `Success` subscriptions (BR-05, BR-26). Slots of `Expire` or `Dibatalkan` subscriptions don't block it: they are removed first, and their subscriptions and payments stay.",
         "x-roles": [
           "ADMIN"
         ],
@@ -5292,7 +5532,80 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. Issues carry the field path and one of `package_not_found`, `date_in_past`, `unknown_delivery_time`, `same_as_primary` or `not_alternative`; unknown menu ids give `UNKNOWN_MENU`. A menu, date or time change on a schedule with `Success` orders needs `changeReason` (`change_reason_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "ITEM_ISSUES": {
+                    "summary": "VALIDATION_ERROR (item issues)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "date",
+                            "message": "must be today or later",
+                            "code": "date_in_past"
+                          },
+                          {
+                            "target": "body",
+                            "path": "deliveryTime",
+                            "message": "must be one of the package's meal times",
+                            "code": "unknown_delivery_time"
+                          },
+                          {
+                            "target": "body",
+                            "path": "alternativeMenuId",
+                            "message": "must be an alternative menu",
+                            "code": "not_alternative"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_MENU": {
+                    "summary": "UNKNOWN_MENU",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_MENU",
+                        "message": "unknown menu ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  },
+                  "CHANGE_REASON_REQUIRED": {
+                    "summary": "VALIDATION_ERROR (change_reason_required)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "changeReason",
+                            "message": "is required when the schedule has paid orders",
+                            "code": "change_reason_required"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -5305,6 +5618,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -5534,7 +5850,7 @@
           "Admin · Catalog"
         ],
         "summary": "Update a package",
-        "description": "**Roles:** `ADMIN`.\n\nPrice and fee changes apply to new orders only (UC-21). Set `isActive = false` to deactivate (UC-22). 422 when removing a meal time still used by active orders' slots.",
+        "description": "**Roles:** `ADMIN`.\n\nPrice and fee changes apply to new orders only (UC-21). Set `isActive = false` to deactivate (UC-22). 422 when removing a meal time still used by active orders' slots. Renaming a time (`deliveryTimeChanges`) moves its future schedules; 409 when one would collide with an existing schedule at the new time.",
         "x-roles": [
           "ADMIN"
         ],
@@ -5577,7 +5893,59 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`); `endAt` must be after `startAt` (`end_before_start`); in `deliveryTimeChanges`, `from` must be one of the package's times (`unknown_delivery_time`) and `to` must not be (`delivery_time_exists`); renaming a time used by schedules with `Success` orders needs `changeReason` (`change_reason_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "CHANGE_REASON_REQUIRED": {
+                    "summary": "VALIDATION_ERROR (change_reason_required)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "changeReason",
+                            "message": "is required when the schedule has paid orders",
+                            "code": "change_reason_required"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -5587,6 +5955,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           },
           "422": {
             "$ref": "#/components/responses/InvalidState"
@@ -9856,14 +10227,9 @@
       },
       "MenuScheduleUpdate": {
         "type": "object",
-        "description": "Admin partially updates a schedule.",
+        "description": "Admin partially updates a schedule. `packageId` can't change: to serve the slot on another package, create a schedule there.",
         "minProperties": 1,
         "properties": {
-          "packageId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Package ID."
-          },
           "date": {
             "type": "string",
             "format": "date",
@@ -9883,7 +10249,7 @@
               "null"
             ],
             "format": "uuid",
-            "description": "Optional alternative menu; must differ from the primary. `null` removes it."
+            "description": "Optional alternative menu; must differ from the primary. `null` removes it (422 while slots use it)."
           },
           "isPublished": {
             "type": "boolean",
@@ -9891,7 +10257,7 @@
           },
           "changeReason": {
             "type": "string",
-            "description": "Required when the schedule already has `Success` orders and the menu or time changes; sent as a `SCHEDULE` announcement (BR-26).",
+            "description": "Required when the schedule already has `Success` orders and the menu, date or time changes; sent as a `SCHEDULE` announcement (BR-26).",
             "minLength": 1
           }
         },
@@ -9899,7 +10265,7 @@
       },
       "MenuScheduleBatchUpdateItem": {
         "type": "object",
-        "description": "One schedule change inside a batch update. `id` selects the record.",
+        "description": "One schedule change inside a batch update. `id` selects the record. `packageId` can't change.",
         "required": [
           "id"
         ],
@@ -9909,11 +10275,6 @@
             "format": "uuid",
             "description": "Schedule to update."
           },
-          "packageId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Package ID."
-          },
           "date": {
             "type": "string",
             "format": "date",
@@ -9933,7 +10294,7 @@
               "null"
             ],
             "format": "uuid",
-            "description": "Optional alternative menu; must differ from the primary. `null` removes it."
+            "description": "Optional alternative menu; must differ from the primary. `null` removes it (422 while slots use it)."
           },
           "isPublished": {
             "type": "boolean",
@@ -9941,7 +10302,7 @@
           },
           "changeReason": {
             "type": "string",
-            "description": "Required when the schedule already has `Success` orders and the menu or time changes; sent as a `SCHEDULE` announcement (BR-26).",
+            "description": "Required when the schedule already has `Success` orders and the menu, date or time changes; sent as a `SCHEDULE` announcement (BR-26).",
             "minLength": 1
           }
         },
@@ -10286,9 +10647,17 @@
             "items": {
               "$ref": "#/components/schemas/ClockTime"
             },
-            "description": "Meal times. Removing a time still used by slots of active orders is rejected (UC-20).",
+            "description": "Meal times. Removing a time still used by slots of active orders is rejected (UC-20). Can't be sent together with `deliveryTimeChanges`.",
             "minItems": 1,
             "uniqueItems": true
+          },
+          "deliveryTimeChanges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryTimeChange"
+            },
+            "minItems": 1,
+            "description": "Renames meal times (BR-05): each `from` must be one of the package's times and each `to` must not be. Schedules at `from` dated after today move to `to`; today's and past schedules keep the old time. Can't be sent together with `deliveryTimes`."
           },
           "deliveryFreeRadius": {
             "type": [
@@ -10341,6 +10710,11 @@
           "isActive": {
             "type": "boolean",
             "description": "Manual switch."
+          },
+          "changeReason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Required when `deliveryTimeChanges` moves a schedule that has `Success` orders; sent as a `SCHEDULE` announcement (BR-26)."
           }
         },
         "x-apidog-folder": "Catalog"
@@ -13403,6 +13777,23 @@
           "status"
         ],
         "x-apidog-folder": "Common"
+      },
+      "DeliveryTimeChange": {
+        "type": "object",
+        "description": "Renames one of a package's meal times (BR-05). The package's schedules at `from` dated after today move to `to`, and their slots with them.",
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/ClockTime"
+          },
+          "to": {
+            "$ref": "#/components/schemas/ClockTime"
+          }
+        },
+        "x-apidog-folder": "Catalog"
       }
     },
     "responses": {

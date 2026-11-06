@@ -16,10 +16,22 @@ import {
     allergyListQuerySchema,
     allergyUpdateSchema,
     availablePackageListQuerySchema,
+    menuCreateSchema,
+    menuIdParamsSchema,
+    menuListQuerySchema,
+    menuScheduleBatchCreateSchema,
+    menuScheduleBatchDeleteSchema,
+    menuScheduleBatchUpdateSchema,
+    menuScheduleIdParamsSchema,
+    menuScheduleListQuerySchema,
+    menuScheduleUpdateSchema,
+    menuUpdateSchema,
     packageCreateSchema,
     packageIdParamsSchema,
     packageListQuerySchema,
+    packageScheduleQuerySchema,
     packageUpdateSchema,
+    publishMenuSchedulesSchema,
 } from "../schema/catalog.schemas.js";
 
 export interface CatalogRouterDeps {
@@ -40,6 +52,11 @@ export function createCatalogRouter({ controller, tokenProvider }: CatalogRouter
         controller.listAvailablePackages,
     );
     router.get("/packages/:id", validateParams(packageIdParamsSchema), controller.getAvailablePackage);
+    router.get(
+        "/packages/:id/schedules",
+        validateRequest({ params: packageIdParamsSchema, query: packageScheduleQuerySchema }),
+        controller.listPackageSchedules,
+    );
 
     router.get(
         "/admin/allergies",
@@ -89,6 +106,69 @@ export function createCatalogRouter({ controller, tokenProvider }: CatalogRouter
         admin,
         validateParams(packageIdParamsSchema),
         controller.deletePackage,
+    );
+
+    router.get("/admin/menus", signedIn, admin, validateQuery(menuListQuerySchema), paginate(), controller.listMenus);
+    router.post("/admin/menus", signedIn, admin, validateBody(menuCreateSchema), controller.createMenu);
+    router.get("/admin/menus/:id", signedIn, admin, validateParams(menuIdParamsSchema), controller.getMenu);
+    router.patch(
+        "/admin/menus/:id",
+        signedIn,
+        admin,
+        validateRequest({ params: menuIdParamsSchema, body: menuUpdateSchema }),
+        controller.updateMenu,
+    );
+    router.delete("/admin/menus/:id", signedIn, admin, validateParams(menuIdParamsSchema), controller.deleteMenu);
+
+    router.get(
+        "/admin/menu-schedules",
+        signedIn,
+        admin,
+        validateQuery(menuScheduleListQuerySchema),
+        paginate(),
+        controller.listSchedules,
+    );
+    router.post(
+        "/admin/menu-schedules",
+        signedIn,
+        admin,
+        validateBody(menuScheduleBatchCreateSchema),
+        controller.createSchedules,
+    );
+    router.patch(
+        "/admin/menu-schedules",
+        signedIn,
+        admin,
+        validateBody(menuScheduleBatchUpdateSchema),
+        controller.updateSchedules,
+    );
+    router.delete(
+        "/admin/menu-schedules",
+        signedIn,
+        admin,
+        validateBody(menuScheduleBatchDeleteSchema),
+        controller.deleteSchedules,
+    );
+    router.post(
+        "/admin/menu-schedules/publish",
+        signedIn,
+        admin,
+        validateBody(publishMenuSchedulesSchema),
+        controller.publishSchedules,
+    );
+    router.get(
+        "/admin/menu-schedules/:id",
+        signedIn,
+        admin,
+        validateParams(menuScheduleIdParamsSchema),
+        controller.getSchedule,
+    );
+    router.patch(
+        "/admin/menu-schedules/:id",
+        signedIn,
+        admin,
+        validateRequest({ params: menuScheduleIdParamsSchema, body: menuScheduleUpdateSchema }),
+        controller.updateSchedule,
     );
 
     return router;

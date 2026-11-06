@@ -3,11 +3,13 @@ import type { ObjectStorage } from "../../../../shared/ports/object-storage/obje
 import { CatalogController } from "../../controller/catalog.controller.js";
 import { CatalogService } from "../../service/catalog.service.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
+import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
 import {
     createMockCatalogRepository,
     createMockCatalogService,
+    createMockIngredientLookup,
     createMockObjectStorage,
     createMockOrderActivity,
     createMockPhotoKeys,
@@ -21,6 +23,7 @@ export interface CatalogServiceSetup {
     readonly objectStorage: MockedObjectStorage;
     readonly clock: FixedClock;
     readonly photoKeys: Mocked<PhotoKeys>;
+    readonly ingredients: Mocked<IngredientLookup>;
     readonly orderActivity: Mocked<OrderActivity>;
     readonly service: CatalogService;
 }
@@ -35,18 +38,21 @@ export function setupCatalogService(): CatalogServiceSetup {
     const objectStorage = createMockObjectStorage();
     const clock = createFixedClock();
     const photoKeys = createMockPhotoKeys();
+    const ingredients = createMockIngredientLookup();
     const orderActivity = createMockOrderActivity();
     return {
         repository,
         objectStorage,
         clock,
         photoKeys,
+        ingredients,
         orderActivity,
         service: new CatalogService(
             repository,
             objectStorage as unknown as ObjectStorage,
             clock,
             photoKeys,
+            ingredients,
             orderActivity,
         ),
     };

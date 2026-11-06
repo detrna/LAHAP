@@ -20,3 +20,15 @@ export interface Menu {
     readonly ingredients?: readonly MenuIngredient[] | undefined;
     readonly allergies?: readonly Allergy[] | undefined;
 }
+
+export interface RecipeLine {
+    readonly menuId: string;
+    readonly ingredientId: string;
+    readonly quantityPerPortion: number;
+}
+
+export interface MenuIngredientUsage {
+    readonly ingredientId: string;
+    readonly menuId: string;
+    readonly menuName: string;
+}

@@ -4,9 +4,19 @@ import {
     allergyListQuerySchema,
     allergyUpdateSchema,
     availablePackageListQuerySchema,
+    menuCreateSchema,
+    menuListQuerySchema,
+    menuScheduleBatchCreateSchema,
+    menuScheduleBatchDeleteSchema,
+    menuScheduleBatchUpdateSchema,
+    menuScheduleListQuerySchema,
+    menuScheduleUpdateSchema,
+    menuUpdateSchema,
     packageCreateSchema,
     packageListQuerySchema,
+    packageScheduleQuerySchema,
     packageUpdateSchema,
+    publishMenuSchedulesSchema,
 } from "./catalog.schemas.js";
 
 const validPackage = {
@@ -133,5 +143,147 @@ describe("package list queries", () => {
             page: 1,
             limit: 20,
         });
+    });
+});
+
+const INGREDIENT_ID = "00000000-0000-4000-8000-000000000001";
+const MENU_ID = "00000000-0000-4000-8000-000000000002";
+const PACKAGE_ID = "00000000-0000-4000-8000-000000000003";
+
+describe("packageUpdateSchema meal-time renames", () => {
+    it("parses the changes", () => {
+        const parsed = packageUpdateSchema.parse({
+            deliveryTimeChanges: [{ from: "12:00", to: "12:30" }],
+            changeReason: " jam baru ",
+        });
+
+        expect(parsed.deliveryTimeChanges?.[0]?.to.toString({ smallestUnit: "minute" })).toBe("12:30");
+        expect(parsed.changeReason).toBe("jam baru");
+    });
+
+    it("refuses renames sent with deliveryTimes, or two renames of one time or onto one time", () => {
+        const rename = { from: "12:00", to: "12:30" };
+        expect(packageUpdateSchema.safeParse({ deliveryTimes: ["07:00"], deliveryTimeChanges: [rename] }).success).toBe(
+            false,
+        );
+        expect(
+            packageUpdateSchema.safeParse({ deliveryTimeChanges: [rename, { from: "12:00", to: "13:00" }] }).success,
+        ).toBe(false);
+        expect(
+            packageUpdateSchema.safeParse({ deliveryTimeChanges: [rename, { from: "07:00", to: "12:30" }] }).success,
+        ).toBe(false);
+        expect(packageUpdateSchema.safeParse({ deliveryTimeChanges: [] }).success).toBe(false);
+    });
+});
+
+describe("menu schemas", () => {
+    const validMenu = {
+        name: " Ayam Bakar ",
+        description: "",
+        photoKey: "menus/2026/11/3f2b6c1e.webp",
+        ingredients: [{ ingredientId: INGREDIENT_ID, quantityPerPortion: 0.25 }],
+    };
+
+    it("accepts a menu and trims the name", () => {
+        const parsed = menuCreateSchema.parse(validMenu);
+
+        expect(parsed.name).toBe("Ayam Bakar");
+        expect(parsed.isAlternative).toBeUndefined();
+    });
+
+    it("needs at least one ingredient line, each once, with a positive quantity", () => {
+        expect(menuCreateSchema.safeParse({ ...validMenu, ingredients: [] }).success).toBe(false);
+        expect(
+            menuCreateSchema.safeParse({
+                ...validMenu,
+                ingredients: [...validMenu.ingredients, ...validMenu.ingredients],
+            }).success,
+        ).toBe(false);
+        expect(
+            menuCreateSchema.safeParse({
+                ...validMenu,
+                ingredients: [{ ingredientId: INGREDIENT_ID, quantityPerPortion: 0 }],
+            }).success,
+        ).toBe(false);
+    });
+
+    it("takes the photo from the menus folder only", () => {
+        expect(menuCreateSchema.safeParse({ ...validMenu, photoKey: "packages/2026/11/x.webp" }).success).toBe(false);
+    });
+
+    it("needs a real change to update; a change reason alone is not one", () => {
+        expect(menuUpdateSchema.safeParse({ changeReason: "x" }).success).toBe(false);
+        expect(menuUpdateSchema.safeParse({}).success).toBe(false);
+        expect(menuUpdateSchema.parse({ tags: [] })).toEqual({ tags: [] });
+    });
+
+    it("reads the list filters", () => {
+        expect(menuListQuerySchema.parse({ isAlternative: "false" }).isAlternative).toBe(false);
+    });
+});
+
+describe("menu schedule schemas", () => {
+    const validItem = { packageId: PACKAGE_ID, date: "2026-11-10", deliveryTime: "07:00", primaryMenuId: MENU_ID };
+
+    it("parses a batch of 1 to 100 schedules", () => {
+        const parsed = menuScheduleBatchCreateSchema.parse({ items: [validItem] });
+
+        expect(parsed.items[0]?.date.toString()).toBe("2026-11-10");
+        expect(menuScheduleBatchCreateSchema.safeParse({ items: [] }).success).toBe(false);
+        expect(menuScheduleBatchCreateSchema.safeParse({ items: Array(101).fill(validItem) }).success).toBe(false);
+    });
+
+    it("refuses an impossible date", () => {
+        expect(menuScheduleBatchCreateSchema.safeParse({ items: [{ ...validItem, date: "2026-02-30" }] }).success).toBe(
+            false,
+        );
+    });
+
+    it("drops packageId from updates and keeps null to remove the alternative", () => {
+        const parsed = menuScheduleUpdateSchema.parse({ packageId: PACKAGE_ID, alternativeMenuId: null });
+
+        expect(parsed).toEqual({ alternativeMenuId: null });
+        expect(menuScheduleUpdateSchema.safeParse({ packageId: PACKAGE_ID }).success).toBe(false);
+    });
+
+    it("needs unique ids and a change on each batch item", () => {
+        const id = "00000000-0000-4000-8000-000000000009";
+        expect(menuScheduleBatchUpdateSchema.safeParse({ items: [{ id, isPublished: true }] }).success).toBe(true);
+        expect(menuScheduleBatchUpdateSchema.safeParse({ items: [{ id }] }).success).toBe(false);
+        expect(
+            menuScheduleBatchUpdateSchema.safeParse({
+                items: [
+                    { id, isPublished: true },
+                    { id, isPublished: false },
+                ],
+            }).success,
+        ).toBe(false);
+        expect(menuScheduleBatchDeleteSchema.safeParse({ ids: [id, id] }).success).toBe(false);
+    });
+
+    it("publishes by ids or by package and range, defaulting to publish", () => {
+        expect(publishMenuSchedulesSchema.parse({ ids: [MENU_ID] })).toEqual({ ids: [MENU_ID], publish: true });
+        const range = publishMenuSchedulesSchema.parse({
+            packageId: PACKAGE_ID,
+            from: "2026-11-09",
+            to: "2026-11-15",
+            publish: false,
+        });
+        expect(range).toMatchObject({ packageId: PACKAGE_ID, publish: false });
+        expect(publishMenuSchedulesSchema.safeParse({}).success).toBe(false);
+        expect(publishMenuSchedulesSchema.safeParse({ ids: [MENU_ID], packageId: PACKAGE_ID }).success).toBe(false);
+        expect(publishMenuSchedulesSchema.safeParse({ packageId: PACKAGE_ID, from: "2026-11-09" }).success).toBe(false);
+        expect(
+            publishMenuSchedulesSchema.safeParse({ packageId: PACKAGE_ID, from: "2026-11-15", to: "2026-11-09" })
+                .success,
+        ).toBe(false);
+    });
+
+    it("reads the list and public range filters", () => {
+        expect(menuScheduleListQuerySchema.parse({ isPublished: "true", from: "2026-11-01" })).toMatchObject({
+            isPublished: true,
+        });
+        expect(menuScheduleListQuerySchema.safeParse({ from: "2026-11-10", to: "2026-11-01" }).success).toBe(false);
+        expect(packageScheduleQuerySchema.parse({}).from).toBeUndefined();
     });
 });

@@ -26,6 +26,10 @@ export function createApp(deps: ModuleDeps): Express {
     const catalog: CatalogContainer = new CatalogContainer({
         ...deps,
         photoKeys: files.service,
+        ingredients: {
+            findMissingIngredientIds: ids => ingredients.service.findMissingIngredientIds(ids),
+            getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
+        },
         orderActivity: noOrderActivity,
     });
     const ingredients: IngredientsContainer = new IngredientsContainer({

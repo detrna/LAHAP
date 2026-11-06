@@ -2,9 +2,17 @@ import { InvalidStateError } from "../../../../shared/errors/invalid-state-error
 import { findRemovedMealTimes, MEAL_TIME_IN_USE_MESSAGE, sortMealTimes } from "../../domain/meal-times.js";
 import type { OrderPeriod, Package } from "../../domain/package.domain.js";
 import type { CatalogService } from "../catalog.service.js";
-import type { PackageChanges, RemovedMealTimes } from "../interfaces/catalog.repository.js";
+import { assertChangeReason } from "../change-reason.js";
+import type {
+    MealTimeChange,
+    PackageChanges,
+    PackageRecord,
+    RemovedMealTimes,
+    UpdatePackageOptions,
+} from "../interfaces/catalog.repository.js";
 import { PackageNotFoundError } from "../interfaces/catalog.repository.js";
 import { assertSalesWindow } from "./assert-sales-window.js";
+import { renameMealTimes } from "./rename-meal-times.js";
 
 export interface UpdatePackageInput {
     readonly name?: string | undefined;
@@ -19,6 +27,47 @@ export interface UpdatePackageInput {
     readonly startAt?: Temporal.PlainDateTime | undefined;
     readonly endAt?: Temporal.PlainDateTime | null | undefined;
     readonly isActive?: boolean | undefined;
+    readonly deliveryTimeChanges?: readonly MealTimeChange[] | undefined;
+    readonly changeReason?: string | undefined;
+}
+
+async function planRemoval(
+    service: CatalogService,
+    existing: PackageRecord,
+    deliveryTimes: readonly Temporal.PlainTime[] | undefined,
+    today: Temporal.PlainDate,
+): Promise<RemovedMealTimes | undefined> {
+    const times = deliveryTimes === undefined ? [] : findRemovedMealTimes(existing.deliveryTimes, deliveryTimes);
+    if (times.length === 0) return undefined;
+
+    const removal: RemovedMealTimes = { times, from: today };
+    const scheduleIds = await service.catalogRepository.findScheduleIdsAtTimes(existing.id, removal);
+    if (scheduleIds.length > 0) {
+        const withOrders = await service.orderActivity.findSchedulesWithOrders(scheduleIds, ["Pending", "Success"]);
+        if (withOrders.length > 0) throw new InvalidStateError(MEAL_TIME_IN_USE_MESSAGE);
+        await service.orderActivity.deleteInactiveSlots(scheduleIds);
+    }
+    return removal;
+}
+
+async function planRename(
+    service: CatalogService,
+    existing: PackageRecord,
+    input: UpdatePackageInput,
+    today: Temporal.PlainDate,
+): Promise<UpdatePackageOptions["moveSchedulesAt"]> {
+    if (input.deliveryTimeChanges === undefined) return undefined;
+
+    const from = today.add({ days: 1 });
+    const scheduleIds = await service.catalogRepository.findScheduleIdsAtTimes(existing.id, {
+        times: input.deliveryTimeChanges.map(change => change.from),
+        from,
+    });
+    if (scheduleIds.length > 0) {
+        const paid = await service.orderActivity.findSchedulesWithOrders(scheduleIds, ["Success"]);
+        if (paid.length > 0) assertChangeReason(input.changeReason, "changeReason");
+    }
+    return { changes: input.deliveryTimeChanges, from };
 }
 
 export async function updatePackage(this: CatalogService, id: string, input: UpdatePackageInput): Promise<Package> {
@@ -32,27 +81,24 @@ export async function updatePackage(this: CatalogService, id: string, input: Upd
         await this.photoKeys.assertPhotoKeyExists(input.photoKey);
     }
 
-    const removedTimes =
-        input.deliveryTimes === undefined ? [] : findRemovedMealTimes(existing.deliveryTimes, input.deliveryTimes);
-    const removal: RemovedMealTimes = { times: removedTimes, from: this.clock.now().toPlainDate() };
-    if (removedTimes.length > 0) {
-        const scheduleIds = await this.catalogRepository.findScheduleIdsAtTimes(id, removal);
-        if (scheduleIds.length > 0) {
-            const withOrders = await this.orderActivity.findSchedulesWithOrders(scheduleIds, ["Pending", "Success"]);
-            if (withOrders.length > 0) throw new InvalidStateError(MEAL_TIME_IN_USE_MESSAGE);
-        }
-    }
+    const today = this.clock.now().toPlainDate();
+    const renamedTimes =
+        input.deliveryTimeChanges !== undefined
+            ? renameMealTimes(existing.deliveryTimes, input.deliveryTimeChanges)
+            : undefined;
+    const removal = await planRemoval(this, existing, input.deliveryTimes, today);
+    const move = await planRename(this, existing, input, today);
 
-    const { deliveryTimes, ...rest } = input;
+    const { deliveryTimes, deliveryTimeChanges: _changes, changeReason: _reason, ...rest } = input;
+    const nextTimes = renamedTimes ?? deliveryTimes;
     const changes: PackageChanges = {
         ...rest,
-        ...(deliveryTimes !== undefined ? { deliveryTimes: sortMealTimes(deliveryTimes) } : {}),
+        ...(nextTimes !== undefined ? { deliveryTimes: sortMealTimes(nextTimes) } : {}),
     };
-    const record = await this.catalogRepository.updatePackage(
-        id,
-        changes,
-        removedTimes.length > 0 ? { deleteSchedulesAt: removal } : {},
-    );
+    const record = await this.catalogRepository.updatePackage(id, changes, {
+        ...(removal !== undefined ? { deleteSchedulesAt: removal } : {}),
+        ...(move !== undefined ? { moveSchedulesAt: move } : {}),
+    });
     if (record === null) throw new PackageNotFoundError(id);
     return this.presentPackage(record, { withSubscriberCount: true });
 }

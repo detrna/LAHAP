@@ -12,6 +12,19 @@ import { getPackage } from "./packages/get-package.js";
 import { listAvailablePackages } from "./packages/list-available-packages.js";
 import { listPackages } from "./packages/list-packages.js";
 import { updatePackage } from "./packages/update-package.js";
+import { listMenus } from "./menus/list-menus.js";
+import { getMenu } from "./menus/get-menu.js";
+import { createMenu } from "./menus/create-menu.js";
+import { updateMenu } from "./menus/update-menu.js";
+import { deleteMenu } from "./menus/delete-menu.js";
+import { listPackageSchedules } from "./schedules/list-package-schedules.js";
+import { listSchedules } from "./schedules/list-schedules.js";
+import { getSchedule } from "./schedules/get-schedule.js";
+import { createSchedules } from "./schedules/create-schedules.js";
+import { updateSchedules } from "./schedules/update-schedules.js";
+import { updateSchedule } from "./schedules/update-schedule.js";
+import { deleteSchedules } from "./schedules/delete-schedules.js";
+import { publishSchedules } from "./schedules/publish-schedules.js";
 
 export class CatalogController {
     constructor(readonly catalogService: CatalogService) {}
@@ -30,4 +43,19 @@ export class CatalogController {
     createPackage = createPackage.bind(this);
     updatePackage = updatePackage.bind(this);
     deletePackage = deletePackage.bind(this);
+
+    listMenus = listMenus.bind(this);
+    getMenu = getMenu.bind(this);
+    createMenu = createMenu.bind(this);
+    updateMenu = updateMenu.bind(this);
+    deleteMenu = deleteMenu.bind(this);
+
+    listPackageSchedules = listPackageSchedules.bind(this);
+    listSchedules = listSchedules.bind(this);
+    getSchedule = getSchedule.bind(this);
+    createSchedules = createSchedules.bind(this);
+    updateSchedules = updateSchedules.bind(this);
+    updateSchedule = updateSchedule.bind(this);
+    deleteSchedules = deleteSchedules.bind(this);
+    publishSchedules = publishSchedules.bind(this);
 }

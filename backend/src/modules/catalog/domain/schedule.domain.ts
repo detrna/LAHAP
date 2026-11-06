@@ -21,3 +21,13 @@ export interface MenuSchedule {
 export interface PublishMenuSchedulesResult {
     readonly updatedCount: number;
 }
+
+export interface ScheduleSummary {
+    readonly id: string;
+    readonly packageId: string;
+    readonly date: string;
+    readonly deliveryTime: MealTimeView;
+    readonly isPublished: boolean;
+    readonly primaryMenuId: string | null;
+    readonly alternativeMenuId: string | null;
+}

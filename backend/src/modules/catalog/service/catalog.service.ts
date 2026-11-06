@@ -9,6 +9,7 @@ import { listAllergies } from "./allergies/list-allergies.js";
 import { listAllergyPage } from "./allergies/list-allergy-page.js";
 import { updateAllergy } from "./allergies/update-allergy.js";
 import type { CatalogRepository } from "./interfaces/catalog.repository.js";
+import type { IngredientLookup } from "./interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "./interfaces/order-activity.js";
 import type { PhotoKeys } from "./interfaces/photo-keys.js";
 import { createPackage } from "./packages/create-package.js";
@@ -21,6 +22,25 @@ import { listAvailablePackages } from "./packages/list-available-packages.js";
 import { listPackages } from "./packages/list-packages.js";
 import { presentPackage, presentPackages } from "./packages/present-packages.js";
 import { updatePackage } from "./packages/update-package.js";
+import { presentMenu, presentMenus } from "./menus/present-menus.js";
+import { listMenus } from "./menus/list-menus.js";
+import { getMenu } from "./menus/get-menu.js";
+import { getMenusByIds } from "./menus/get-menus-by-ids.js";
+import { createMenu } from "./menus/create-menu.js";
+import { updateMenu } from "./menus/update-menu.js";
+import { deleteMenu } from "./menus/delete-menu.js";
+import { getRecipeLines } from "./menus/get-recipe-lines.js";
+import { findMenusUsingIngredients } from "./menus/find-menus-using-ingredients.js";
+import { presentSchedule, presentSchedules } from "./schedules/present-schedules.js";
+import { listSchedules } from "./schedules/list-schedules.js";
+import { getSchedule } from "./schedules/get-schedule.js";
+import { listPublishedSchedules } from "./schedules/list-published-schedules.js";
+import { findSchedules } from "./schedules/find-schedules.js";
+import { findMissingScheduleIds } from "./schedules/find-missing-schedule-ids.js";
+import { createSchedules } from "./schedules/create-schedules.js";
+import { updateSchedule, updateSchedules } from "./schedules/update-schedules.js";
+import { deleteSchedules } from "./schedules/delete-schedules.js";
+import { publishSchedules } from "./schedules/publish-schedules.js";
 
 export class CatalogService {
     constructor(
@@ -28,6 +48,7 @@ export class CatalogService {
         readonly objectStorage: ObjectStorage,
         readonly clock: Clock,
         readonly photoKeys: PhotoKeys,
+        readonly ingredients: IngredientLookup,
         readonly orderActivity: OrderActivity,
     ) {}
 
@@ -51,4 +72,28 @@ export class CatalogService {
     deletePackage = deletePackage;
     getPackagesByIds = getPackagesByIds;
     findMissingPackageIds = findMissingPackageIds;
+
+    presentMenus = presentMenus;
+    presentMenu = presentMenu;
+    listMenus = listMenus;
+    getMenu = getMenu;
+    getMenusByIds = getMenusByIds;
+    createMenu = createMenu;
+    updateMenu = updateMenu;
+    deleteMenu = deleteMenu;
+    getRecipeLines = getRecipeLines;
+    findMenusUsingIngredients = findMenusUsingIngredients;
+
+    presentSchedules = presentSchedules;
+    presentSchedule = presentSchedule;
+    listSchedules = listSchedules;
+    getSchedule = getSchedule;
+    listPublishedSchedules = listPublishedSchedules;
+    findSchedules = findSchedules;
+    findMissingScheduleIds = findMissingScheduleIds;
+    createSchedules = createSchedules;
+    updateSchedules = updateSchedules;
+    updateSchedule = updateSchedule;
+    deleteSchedules = deleteSchedules;
+    publishSchedules = publishSchedules;
 }

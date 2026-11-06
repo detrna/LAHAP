@@ -129,6 +129,7 @@ describe("CatalogService.updatePackage (unit)", () => {
                 from: TODAY,
             });
             expect(orderActivity.findSchedulesWithOrders).toHaveBeenCalledWith(["s-1", "s-2"], ["Pending", "Success"]);
+            expect(orderActivity.deleteInactiveSlots).toHaveBeenCalledWith(["s-1", "s-2"]);
             expect(repository.updatePackage).toHaveBeenCalledWith(
                 "p-1",
                 { deliveryTimes: [time("07:00"), time("12:00")] },
@@ -160,6 +161,66 @@ describe("CatalogService.updatePackage (unit)", () => {
 
             expect(error).toBeInstanceOf(InvalidStateError);
             expect((error as InvalidStateError).message).toBe("meal time is still used by schedules with orders");
+            expect(orderActivity.deleteInactiveSlots).not.toHaveBeenCalled();
+            expect(repository.updatePackage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("renaming meal times", () => {
+        const TOMORROW = Temporal.PlainDate.from("2026-11-04");
+        const RENAME = [{ from: time("12:00"), to: time("12:30") }];
+
+        it("replaces the time and moves the schedules from tomorrow on", async () => {
+            const { repository, orderActivity, service } = setup();
+            repository.findScheduleIdsAtTimes.mockResolvedValue(["s-1"]);
+
+            await service.updatePackage("p-1", { deliveryTimeChanges: RENAME });
+
+            expect(repository.findScheduleIdsAtTimes).toHaveBeenCalledWith("p-1", {
+                times: [time("12:00")],
+                from: TOMORROW,
+            });
+            expect(orderActivity.findSchedulesWithOrders).toHaveBeenCalledWith(["s-1"], ["Success"]);
+            expect(repository.updatePackage).toHaveBeenCalledWith(
+                "p-1",
+                { deliveryTimes: [time("07:00"), time("12:30"), time("18:30")] },
+                { moveSchedulesAt: { changes: RENAME, from: TOMORROW } },
+            );
+        });
+
+        it("requires a change reason when a moved schedule has paid orders", async () => {
+            const { repository, orderActivity, service } = setup();
+            repository.findScheduleIdsAtTimes.mockResolvedValue(["s-1"]);
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-1"]);
+
+            const error = await service
+                .updatePackage("p-1", { deliveryTimeChanges: RENAME })
+                .catch((caught: unknown) => caught);
+            expect((error as ValidationError).issues[0]).toMatchObject({
+                path: "changeReason",
+                code: "change_reason_required",
+            });
+
+            await service.updatePackage("p-1", { deliveryTimeChanges: RENAME, changeReason: "jam baru" });
+            expect(repository.updatePackage).toHaveBeenCalledTimes(1);
+        });
+
+        it("refuses a time the package doesn't have, or a target it already has", async () => {
+            const { repository, service } = setup();
+
+            const error = await service
+                .updatePackage("p-1", {
+                    deliveryTimeChanges: [
+                        { from: time("09:00"), to: time("09:30") },
+                        { from: time("07:00"), to: time("18:30") },
+                    ],
+                })
+                .catch((caught: unknown) => caught);
+
+            expect((error as ValidationError).issues.map(issue => [issue.path, issue.code])).toEqual([
+                ["deliveryTimeChanges.0.from", "unknown_delivery_time"],
+                ["deliveryTimeChanges.1.to", "delivery_time_exists"],
+            ]);
             expect(repository.updatePackage).not.toHaveBeenCalled();
         });
     });
