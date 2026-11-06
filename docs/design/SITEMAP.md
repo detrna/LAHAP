@@ -205,7 +205,7 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_mvrkwwol7y88ym` | `sm-section` | FAQ Section | `/#faq` | Public | - | Daftar tanya-jawab seputar perubahan jadwal, alergi, dan pengantaran. |
 | `sm_mvrkx7hj80ozge` | `sm-section` | Footer | - (Global Component) | Public | - | Informasi kontak katering, jam operasional dapur, alamat, dan hak cipta. |
 | `sm_mvrtdkug9539et` | `sm-section` | Menu Showcase | `/menu` | Public | `u3` | Katalog eksplorasi menu mingguan dan kandungan nutrisi/alergen. |
-| `sm_mvrtwcaiaghuup` | `sm-section` | Tier Showcase | `/tiers` | Public | `u20` | Penjelasan level loyalitas pelanggan (Bronze, Silver, Gold, Platinum). |
+| `sm_mvrtwcaiaghuup` | `sm-section` | Tier Showcase | `/tiers` | Public | `u20` | Penjelasan level loyalitas pelanggan (Biasa, Silver, Gold). |
 | `sm_mvrthfth9p49e6` | `sm-page` | **Authentication Gateway**| `/auth` (`/login`, `/register`) | Public / Guest | `u2` | Portal masuk dan pendaftaran nomor HP + password pelanggan. |
 | `sm_mvrtctjw92kh84` | `sm-page` | **Customer Home Dashboard**| `/dashboard` | Customer | `u9` | Beranda utama pelanggan login: status pesanan aktif hari ini & pintasan. |
 | `sm_mvrtfmv89cry4b` | `sm-page` | **Today's Status** | `/dashboard/today` | Customer | `u9` | Layar pelacakan pengantaran slot makanan harian secara real-time. |

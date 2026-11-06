@@ -381,7 +381,7 @@ Konfigurasi tingkatan reward loyalitas pelanggan berdasarkan akumulasi hari pesa
   | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
   | :--- | :--- | :---: | :--- | :--- |
   | `id` | `VARCHAR(36)` | No | PK | UUID v4 identitas tingkat loyalitas. |
-  | `name` | `VARCHAR(50)` | No | UNIQUE | Nama tier: `'Bronze'`, `'Silver'`, `'Gold'`, `'Platinum'`. |
+  | `name` | `VARCHAR(50)` | No | UNIQUE | Nama tier, mis. `'Biasa'`, `'Silver'`, `'Gold'`. |
   | `description` | `TEXT` | Yes | - | Deskripsi tier untuk pelanggan dan admin (PRD UC-35). |
   | `required_subscription_days` | `INT` | No | UNIQUE, ≥ 0 | Syarat minimal akumulasi hari pesanan `Success` untuk naik ke tier ini (PRD BR-18); tier dasar boleh `0` (UC-36). Unik agar "tier sebelumnya" (UC-38) tidak ambigu. |
   | `duration_days` | `INT` | No | - | Masa aktif benefit tier (default: 30 hari). |
@@ -815,7 +815,7 @@ Catatan Kendala pengantaran ber-timestamp (ban bocor, hujan). **Bukan status slo
 ---
 
 ### 3.21. `membership` (`t21`)
-Keanggotaan loyalitas aktif pelanggan: **maksimal satu baris per pengguna** (relasi 1:0..1). Tier berlaku selama `expires_at` > sekarang; evaluasi ulang tier memperbarui baris yang sama (PRD BR-18).
+Keanggotaan loyalitas aktif pelanggan: **maksimal satu baris per pengguna** (relasi 1:0..1). Baris menyimpan tier terakhir yang diberikan beserta masa berlakunya; evaluasi ulang tier (setiap pembayaran) memperbarui baris yang sama (PRD BR-18). Jika masa berlaku habis, pelanggan **turun satu tingkat** dengan masa berlaku baru yang dimulai saat masa lama berakhir; turunnya dihitung aplikasi saat dibaca, bukan disimpan (keputusan PM 2026-11-06).
 - **Primary Key:** `id` (`VARCHAR(36)`)
 - **Foreign Keys:**
   - `user_id` $\rightarrow$ `user(id)` (ON DELETE CASCADE)
@@ -827,7 +827,7 @@ Keanggotaan loyalitas aktif pelanggan: **maksimal satu baris per pengguna** (rel
   | `user_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id`, UNIQUE | Pelanggan pemilik keanggotaan (satu keanggotaan per pengguna). |
   | `tier_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t2.id` | Tier loyalitas yang diperoleh. |
   | `started_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu tier mulai berlaku. |
-  | `expires_at` | `TIMESTAMP` | No | - | Waktu tier berakhir (`started_at` + `tier.duration_days`). Diskon tier hanya berlaku jika `expires_at` > sekarang. |
+  | `expires_at` | `TIMESTAMP` | No | - | Waktu tier berakhir (`started_at` + `tier.duration_days`). Setelah lewat, tier efektif turun satu tingkat per masa berlaku yang habis; diskon diambil dari tier efektif selama masih aktif. |
   | `created_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu pembuatan baris. |
   | `updated_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu perubahan terakhir; diperbarui otomatis setiap update (`@onUpdate(now())`). |
 - **Indexes:**
@@ -1771,7 +1771,7 @@ model Announcement {
 | **BR-14 s.d. BR-16 (Ongkir Haversine)** | Jarak dihitung dari pin pesanan `subscription.delivery_latitude`/`delivery_longitude` (bukan pin profil `user`) ke koordinat dapur `business.latitude`/`longitude`, dibulatkan ke atas dan disimpan pada `subscription.delivery_distance_km`. Parameter tarif (`delivery_free_radius`, `delivery_max_distance`, `delivery_price_per_km`) dibaca dari `package` sebagai override, atau dari `business` jika bernilai `NULL`. Ongkir disnapshot terpisah pada `subscription.delivery_fee_per_slot` dan `delivery_fee_total` (tidak didiskon; perubahan tarif hanya berlaku untuk pesanan baru). |
 | **BR-17 & UC-52 (Rincian Harga)** | Rincian harga disnapshot saat checkout pada `subscription`: `price_per_portion`, `food_subtotal`, `tier_id`/`tier_discount`, `promo_discount`, `delivery_fee_per_slot`, `delivery_fee_total`, dan `total_price = food_subtotal − tier_discount − promo_discount + delivery_fee_total`. Laporan pemasukan (UC-31) menjumlahkan kolom-kolom ini dari pesanan `Success`. |
 | **UC-38 (Hapus Tier)** | `membership.tier_id` bersifat RESTRICT. Dalam satu transaksi: anggota tier dipindah ke tier sebelumnya (`required_subscription_days` tertinggi di bawahnya, unik) dengan `started_at`/`expires_at` tetap; tanpa tier lebih rendah, keanggotaan dihapus; lalu tier dihapus. `subscription.tier_id` menjadi `NULL` dan nominal `tier_discount` tetap. |
-| **BR-18 (Tier & Promo Stacking)** | Tier aktif pelanggan dibaca dari `membership` (maksimal 1 baris per pengguna, berlaku selama `expires_at` > sekarang). `tier.discount_percent` dipotong terlebih dahulu dari subtotal makanan. `promo_code.allow_stack_with_tier = true` mengizinkan pemotongan kupon bertingkat; jika `false`, sistem hanya memotong diskon terbesar. Jenis potongan kupon ditentukan `promo_code.discount_type` (`'Persen'`/`'Nominal'`) dengan nilai `discount_value`; kupon hanya berlaku jika subtotal makanan ≥ `min_purchase`. |
+| **BR-18 (Tier & Promo Stacking)** | Tier aktif pelanggan dibaca dari `membership` (maksimal 1 baris per pengguna), dengan turun satu tingkat per masa berlaku yang habis. `tier.discount_percent` dipotong terlebih dahulu dari subtotal makanan. `promo_code.allow_stack_with_tier = true` mengizinkan pemotongan kupon bertingkat; jika `false`, sistem hanya memotong diskon terbesar. Jenis potongan kupon ditentukan `promo_code.discount_type` (`'Persen'`/`'Nominal'`) dengan nilai `discount_value`; kupon hanya berlaku jika subtotal makanan ≥ `min_purchase`. |
 | **BR-19 & UC-03 (Online/Offline)** | Jenis pembelian disimpan sekali pada `subscription.purchase_type` (`'Online'`/`'Offline'`). Pesanan `'Online'` hanya boleh dibayar lewat gateway (`payment.method <> 'CASH'`, divalidasi aplikasi); `'Offline'` boleh gateway atau `'CASH'` yang diverifikasi admin. `doneOnline` pada respons API diturunkan dari `payment.method`, tidak disimpan. |
 | **BR-19 & BR-20 (Payment Timeout)** | Transaksi `payment.status = 'Pending'` yang melebihi `business.payment_timeout_minutes` (default 15 menit) otomatis diubah menjadi `'Expire'` oleh cron worker database, membatalkan `subscription.status` menjadi `'Expire'`. |
 | **BR-21 (Derived vs Persisted Status)** | `subscription.status` hanya menyimpan `'Pending'`, `'Success'`, `'Expire'`, `'Dibatalkan'`. Label tampilan `"Akan Datang"`, `"Aktif"`, `"Selesai"` dihitung dari relasi tanggal `start_date` dan `end_date`. |

@@ -526,13 +526,13 @@ classDiagram
 ### 3.18 `Membership` (`c_membership`)
 
 - **Stereotype:** `«entity»`
-- **Domain Role:** A customer's current loyalty tier. At most **one per user** (`user.membership`). Active while `expiresAt` is in the future; tier re-evaluation updates the row in place (PRD BR-18).
+- **Domain Role:** A customer's current loyalty tier. At most **one per user** (`user.membership`). It stores the last tier granted and its window; tier re-evaluation (every payment) updates the row in place (PRD BR-18). When the window runs out, the customer drops one tier, with a fresh window starting when the old one ended; the step-down is computed on read, never stored (PM decision 2026-11-06).
 - **Attributes:**
   | Attribute | Type | Nullable | Description & Invariants |
   | :--- | :--- | :---: | :--- |
   | `id` | `String` | No | Primary Key. |
   | `startedAt` | `Date` | No | When the tier took effect. |
-  | `expiresAt` | `Date` | No | `startedAt + tier.durationDays`; the tier discount applies only while `expiresAt > now`. |
+  | `expiresAt` | `Date` | No | `startedAt + tier.durationDays`; after it passes, the effective tier steps down one level per lapsed window, and the discount comes from the effective tier while it's active. |
   | _(user)_ | `User` | No | Owner; unique, so a user has 0..1 membership. |
   | _(tier)_ | `Tier` | No | The earned tier. |
 

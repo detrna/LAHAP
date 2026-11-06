@@ -8451,7 +8451,7 @@
       },
       "Membership": {
         "type": "object",
-        "description": "The user's current loyalty tier (0..1 per user). The tier discount applies only while `expiresAt` is in the future. Computed by the system, never edited directly.",
+        "description": "The user's current loyalty tier (0..1 per user), as it stands now: when a window runs out, the tier drops one level with a fresh window starting when the old one ended, until the lowest tier's window has also passed. Every paid order re-evaluates the tier and restarts the window. Computed by the system, never edited directly.",
         "required": [
           "tierId",
           "startedAt",
@@ -8471,7 +8471,7 @@
           "startedAt": {
             "type": "string",
             "format": "date-time",
-            "description": "When the tier was granted.",
+            "description": "When the effective tier's window started (a step-down starts when the previous window ended).",
             "readOnly": true
           },
           "expiresAt": {
@@ -8482,7 +8482,7 @@
           },
           "isActive": {
             "type": "boolean",
-            "description": "Derived: `expiresAt > now`.",
+            "description": "Derived: the effective window (after stepping down) hasn't passed. `false` only once the lowest tier's window has also run out.",
             "readOnly": true
           }
         },
