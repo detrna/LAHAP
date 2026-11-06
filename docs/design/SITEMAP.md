@@ -305,7 +305,7 @@ Formulir pemesanan langganan dirancang sebagai alur interaktif (*progressive dis
    - Sistem menjalankan perhitungan jarak Haversine ke titik koordinat dapur (maksimal radius 15 km). Jika $\le 3	ext{ km}$, ongkir = Rp 0; jika $> 3	ext{ km}$, ongkir = $(	ext{jarak} - 3) 	imes 	ext{Rp } 3.000$ per slot pengantaran.
 5. **Validasi Alergen Otomatis (`sm_nm_allergywarning`):**
    - Jika pelanggan telah memiliki profil alergi, sistem mengecek matriks bahan pada menu yang terjadwal dalam paket.
-   - Jika ditemukan bentrok (contoh: pelanggan alergi `Udang` dan paket menyajikan `Tom Yum Udang`), muncul peringatan *Allergy Conflict Warning* dengan keterangan: *"Menu utama bentrok dengan profil alergi Anda. Dapur akan otomatis menyiapkan menu alternatif yang aman saat verifikasi pesanan."*
+   - Jika ditemukan bentrok (contoh: pelanggan alergi `Udang` dan paket menyajikan `Tom Yum Udang`), muncul peringatan *Allergy Conflict Warning* dengan keterangan: *"Menu utama bentrok dengan profil alergi Anda. Dapur akan memeriksa ketersediaan menu alternatif yang aman. Jika slot tidak memiliki menu alternatif, Anda dapat melakukan skip slot tanpa refund."*
 6. **Kalkulasi & Pembayaran (`sm_nm_promocode`, `sm_nm_pricesummary`, `sm_nm_midtrans`, `sm_nm_cashpay`):**
    - Ringkasan kalkulasi matematis:
      $$	ext{Total} = (	ext{Subtotal Makanan} - 	ext{Diskon Tier} - 	ext{Diskon Promo}) + 	ext{Total Ongkir}$$
