@@ -30,4 +30,3 @@ main().catch((error: unknown) => {
     logger.error({ error }, "clean-seed failed; the transaction was rolled back and nothing was deleted");
     process.exitCode = 1;
 });
-
