@@ -25,9 +25,13 @@ export interface AuthenticatedRequest extends Request {
 
 export interface AuthenticateOptions {
     readonly tokenProvider: TokenProvider;
+    readonly allowQueryToken?: boolean | undefined;
 }
 
-export function extractBearerToken(req: Request): string | null {
+export function extractBearerToken(
+    req: Request,
+    options: { readonly allowQueryToken?: boolean | undefined } = {},
+): string | null {
     const authHeader = req.headers.authorization;
     if (authHeader !== undefined) {
         const trimmed = authHeader.trim();
@@ -48,6 +52,13 @@ export function extractBearerToken(req: Request): string | null {
         return customHeader.trim();
     }
 
+    if (options.allowQueryToken === true) {
+        const queryToken = req.query["accessToken"];
+        if (typeof queryToken === "string" && queryToken.trim()) {
+            return queryToken.trim();
+        }
+    }
+
     return null;
 }
 
@@ -62,7 +73,7 @@ export function extractBearerToken(req: Request): string | null {
 export function authenticate(options: AuthenticateOptions): RequestHandler {
     return (req: Request, _res: Response, next: NextFunction): void => {
         try {
-            const token = extractBearerToken(req);
+            const token = extractBearerToken(req, { allowQueryToken: options.allowQueryToken });
             if (!token) {
                 next(new MissingTokenError());
                 return;

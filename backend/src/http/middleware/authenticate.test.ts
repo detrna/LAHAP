@@ -48,6 +48,41 @@ describe("Authentication Middleware", () => {
             expect(extractBearerToken(req)).toBeNull();
         });
 
+        it("ignores ?accessToken= unless allowQueryToken is on", () => {
+            const req = createMockRequest({ query: { accessToken: "query-token" } });
+
+            expect(extractBearerToken(req)).toBeNull();
+            expect(extractBearerToken(req, { allowQueryToken: false })).toBeNull();
+        });
+
+        it("reads ?accessToken= when allowQueryToken is on", () => {
+            const req = createMockRequest({ query: { accessToken: " query-token " } });
+
+            expect(extractBearerToken(req, { allowQueryToken: true })).toBe("query-token");
+        });
+
+        it("prefers both headers over ?accessToken=", () => {
+            const bearer = createMockRequest({
+                headers: { authorization: "Bearer header-token" },
+                query: { accessToken: "query-token" },
+            });
+            const custom = createMockRequest({
+                headers: { "x-access-token": "custom-token" },
+                query: { accessToken: "query-token" },
+            });
+
+            expect(extractBearerToken(bearer, { allowQueryToken: true })).toBe("header-token");
+            expect(extractBearerToken(custom, { allowQueryToken: true })).toBe("custom-token");
+        });
+
+        it("ignores an empty or repeated ?accessToken=", () => {
+            const empty = createMockRequest({ query: { accessToken: "  " } });
+            const repeated = createMockRequest({ query: { accessToken: ["a", "b"] } });
+
+            expect(extractBearerToken(empty, { allowQueryToken: true })).toBeNull();
+            expect(extractBearerToken(repeated, { allowQueryToken: true })).toBeNull();
+        });
+
         it("throws InvalidAuthorizationHeaderError when header is malformed", () => {
             const req1 = createMockRequest({ headers: { authorization: "Basic dXNlcjpwYXNz" } });
             expect(() => extractBearerToken(req1)).toThrow(InvalidAuthorizationHeaderError);
@@ -84,6 +119,23 @@ describe("Authentication Middleware", () => {
                 role: "ADMIN",
                 sub: { userId: "user-42", name: "Siti Rahma" },
             });
+        });
+
+        it("authenticates a query token only on a route that allows it", () => {
+            const accessToken = tokenProvider.signAccessToken(sampleUser);
+            const query = { accessToken };
+
+            const allowed = createMockNext();
+            authenticate({ tokenProvider, allowQueryToken: true })(
+                createMockRequest({ query }),
+                createMockResponse(),
+                allowed,
+            );
+            const refused = createMockNext();
+            authenticate({ tokenProvider })(createMockRequest({ query }), createMockResponse(), refused);
+
+            expect(allowed).toHaveBeenCalledWith();
+            expect(refused.mock.calls[0]?.[0]).toBeInstanceOf(MissingTokenError);
         });
 
         it("fails with MissingTokenError (401) when no token is present", () => {
