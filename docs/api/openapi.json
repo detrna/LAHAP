@@ -2373,7 +2373,7 @@
             "name": "lowStock",
             "in": "query",
             "required": false,
-            "description": "`true` = only `stock <= minimumThreshold`.",
+            "description": "`true` = only low-stock items (`stock <= minimumThreshold`); `false` = only items that are not low. Leave it out for no filter.",
             "schema": {
               "type": "boolean"
             }
@@ -3788,7 +3788,7 @@
             "name": "lowStock",
             "in": "query",
             "required": false,
-            "description": "`true` = only low-stock items.",
+            "description": "`true` = only low-stock items (`stock <= minimumThreshold`); `false` = only items that are not low. Leave it out for no filter.",
             "schema": {
               "type": "boolean"
             }
@@ -3903,7 +3903,51 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. `photoKey` must point to an uploaded object (`photo_not_found`, with the item path), and `allergyIds` must exist (`UNKNOWN_ALLERGY`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "items.0.photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_ALLERGY": {
+                    "summary": "UNKNOWN_ALLERGY",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_ALLERGY",
+                        "message": "unknown allergy ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3988,7 +4032,51 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`, with the item path), and `allergyIds` must exist (`UNKNOWN_ALLERGY`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "items.0.photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_ALLERGY": {
+                    "summary": "UNKNOWN_ALLERGY",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_ALLERGY",
+                        "message": "unknown allergy ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -4275,7 +4363,51 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`), and `allergyIds` must exist (`UNKNOWN_ALLERGY`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_ALLERGY": {
+                    "summary": "UNKNOWN_ALLERGY",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_ALLERGY",
+                        "message": "unknown allergy ids: 00000000-0000-4000-8000-000000000999"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -9099,9 +9231,9 @@
           },
           "photoKey": {
             "type": "string",
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL.",
+            "description": "Object-storage key returned by `POST /files` in the `ingredients` folder (e.g. `ingredients/2026/11/<uuid>.webp`). Never a URL.",
             "examples": [
-              "menus/2026/11/3f2b6c1e.webp"
+              "ingredients/2026/11/3f2b6c1e.webp"
             ]
           },
           "photoUrl": {
@@ -9167,7 +9299,7 @@
           },
           "photoKey": {
             "type": "string",
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL.",
+            "description": "Object-storage key returned by `POST /files` in the `ingredients` folder (e.g. `ingredients/2026/11/<uuid>.webp`). Never a URL.",
             "minLength": 1
           },
           "allergyIds": {
@@ -9210,7 +9342,7 @@
           },
           "photoKey": {
             "type": "string",
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL.",
+            "description": "Object-storage key returned by `POST /files` in the `ingredients` folder (e.g. `ingredients/2026/11/<uuid>.webp`). Never a URL.",
             "minLength": 1
           },
           "allergyIds": {
@@ -9257,7 +9389,7 @@
           },
           "photoKey": {
             "type": "string",
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL.",
+            "description": "Object-storage key returned by `POST /files` in the `ingredients` folder (e.g. `ingredients/2026/11/<uuid>.webp`). Never a URL.",
             "minLength": 1
           },
           "allergyIds": {

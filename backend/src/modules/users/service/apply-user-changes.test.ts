@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildUserRecord } from "../test-utils/factory/users.factory.js";
 import { setupUsersService } from "../test-utils/setup/users.setup.js";
-import { UnknownAllergyError, UserAlreadyExistsError, UserNotFoundError } from "./interfaces/users.repository.js";
+import { UnknownAllergyError } from "../../../shared/errors/unknown-allergy-error.js";
+import { UserAlreadyExistsError, UserNotFoundError } from "./interfaces/users.repository.js";
 
 const USER_ID = buildUserRecord().id;
 const ALLERGY_A = "00000002-0000-4000-8000-000000000001";

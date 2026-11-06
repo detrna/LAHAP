@@ -11,3 +11,33 @@ export class IngredientsRepositoryFailureError extends AppError {
         super(`ingredients repository operation failed: ${operation}`, { cause });
     }
 }
+
+export class IngredientNotFoundError extends AppError {
+    readonly code = "INGREDIENT_NOT_FOUND";
+    readonly statusCode = 404;
+
+    constructor(public readonly ingredientId: string) {
+        super(`ingredient not found: "${ingredientId}"`);
+    }
+}
+
+export class IngredientAlreadyExistsError extends AppError {
+    readonly code = "CONFLICT";
+    readonly statusCode = 409;
+
+    constructor(
+        public readonly name: string,
+        options?: { cause?: unknown },
+    ) {
+        super(`ingredient already exists: "${name}"`, options);
+    }
+}
+
+export class IngredientInUseError extends AppError {
+    readonly code = "CONFLICT";
+    readonly statusCode = 409;
+
+    constructor(options?: { cause?: unknown }) {
+        super("ingredient is used by menus, remove it from them first", options);
+    }
+}

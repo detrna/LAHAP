@@ -28,7 +28,11 @@ export function createApp(deps: ModuleDeps): Express {
         photoKeys: files.service,
         orderActivity: noOrderActivity,
     });
-    const ingredients: IngredientsContainer = new IngredientsContainer(deps);
+    const ingredients: IngredientsContainer = new IngredientsContainer({
+        ...deps,
+        photoKeys: files.service,
+        allergies: catalog.service,
+    });
     const tiers: TiersContainer = new TiersContainer(deps);
     const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
     const orders: OrdersContainer = new OrdersContainer(deps);

@@ -1,5 +1,5 @@
+import { UnknownAllergyError } from "../../../shared/errors/unknown-allergy-error.js";
 import type { AllergyLookup } from "./interfaces/allergy-lookup.js";
-import { UnknownAllergyError } from "./interfaces/users.repository.js";
 
 export async function ensureKnownAllergies(allergies: AllergyLookup, allergyIds: readonly string[]): Promise<void> {
     if (allergyIds.length === 0) return;
