@@ -94,4 +94,7 @@ export interface UsersRepository {
     update(id: string, changes: UserChanges, options?: UpdateUserOptions): Promise<UserRecord | null>;
     updatePasswordHash(id: string, passwordHash: string): Promise<boolean>;
     list(query: UserListQuery): Promise<UserListRecord>;
+    listActiveUserIds(role: Role): Promise<readonly string[]>;
+    countActiveUsers(role: Role): Promise<number>;
+    filterActiveUserIds(ids: readonly string[], role: Role): Promise<readonly string[]>;
 }

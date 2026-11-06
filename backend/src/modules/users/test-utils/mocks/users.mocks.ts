@@ -29,6 +29,9 @@ export function createMockUsersRepository(): Mocked<UsersRepository> {
         update: vi.fn(async () => null),
         updatePasswordHash: vi.fn(async () => true),
         list: vi.fn(async () => ({ items: [], total: 0 })),
+        listActiveUserIds: vi.fn(async () => []),
+        countActiveUsers: vi.fn(async () => 0),
+        filterActiveUserIds: vi.fn(async () => []),
     } as Mocked<UsersRepository>;
 }
 

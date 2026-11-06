@@ -177,6 +177,25 @@ describe("PrismaUsersRepository (integration)", () => {
         expect(await repository.updatePasswordHash(randomUUID(), "new-hash")).toBe(false);
     });
 
+    describe("active user lookups", () => {
+        it("lists, counts and filters only the active users of the role", async () => {
+            const customer = await create({ name: "Zz Active Customer" });
+            const inactive = await create({ name: "Zz Inactive Customer", isActive: false });
+            const kitchen = await create({ name: "Zz Active Kitchen", role: "KITCHEN" });
+
+            const customerIds = await repository.listActiveUserIds("CUSTOMER");
+            expect(customerIds).toContain(customer.id);
+            expect(customerIds).not.toContain(inactive.id);
+            expect(customerIds).not.toContain(kitchen.id);
+            expect(await repository.countActiveUsers("CUSTOMER")).toBe(customerIds.length);
+
+            expect(
+                await repository.filterActiveUserIds([customer.id, inactive.id, kitchen.id, randomUUID()], "CUSTOMER"),
+            ).toEqual([customer.id]);
+            expect(await repository.filterActiveUserIds([], "CUSTOMER")).toEqual([]);
+        });
+    });
+
     describe("the last active admin", () => {
         it("refuses to demote or deactivate the only active admin", async () => {
             const admin = await create({ role: "ADMIN" });
