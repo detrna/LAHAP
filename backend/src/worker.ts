@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadConfig } from "./config/index.js";
 import { DEFAULT_LOGGER_CONFIG } from "./config/logger.js";
 import { loadDatabase } from "./infrastructure/database/prisma/db.js";
+import { createAdapters } from "./infrastructure/index.js";
 import { PrismaJobRunRepository } from "./infrastructure/database/prisma/job-run-repository.js";
 import { PinoLogger } from "./infrastructure/logger/pino/pino.js";
 import { createBullMqConnection } from "./infrastructure/scheduler/bullmq/connection.js";
@@ -10,8 +11,13 @@ import {
     createQueues,
     SCHEDULED_CHECKS_QUEUE_NAME,
 } from "./infrastructure/scheduler/bullmq/queues.js";
-import { HEARTBEAT_JOB_NAME, registerSchedules } from "./infrastructure/scheduler/bullmq/register-schedules.js";
+import {
+    HEARTBEAT_JOB_NAME,
+    PREPARE_DUE_SLOTS_JOB_NAME,
+    registerSchedules,
+} from "./infrastructure/scheduler/bullmq/register-schedules.js";
 import { startWorkers } from "./infrastructure/scheduler/bullmq/worker.js";
+import { createModules } from "./modules/create-modules.js";
 import type { Logger } from "./shared/ports/logger/logger.js";
 
 /**
@@ -51,8 +57,10 @@ async function bootstrapWorker(): Promise<void> {
             return;
         }
 
-        const db = await loadDatabase(config.DATABASE);
-        logger.info("[Worker] Database connected successfully");
+        const [loadedAdapters, db] = await Promise.all([createAdapters(config), loadDatabase(config.DATABASE)]);
+        const adapters = { ...loadedAdapters, logger };
+        logger.info("[Worker] Adapters and database connected successfully");
+        const { orders } = createModules({ db, adapters, http: config.HTTP });
 
         const jobRunRepository = new PrismaJobRunRepository(db);
 
@@ -75,9 +83,14 @@ async function bootstrapWorker(): Promise<void> {
             redisConfig: config.REDIS,
             jobRunRepository,
             logger,
+            handlers: {
+                expirePendingPayments: () => orders.service.expirePendingPayments(),
+                prepareDueSlots: () => orders.service.prepareDueSlots(config.SCHEDULER.SLOT_PREPARATION_LEAD_MINUTES),
+            },
         });
 
         logger.info(`[Worker] Worker started for queue "${SCHEDULED_CHECKS_QUEUE_NAME}"`);
+        await scheduler.enqueue(SCHEDULED_CHECKS_QUEUE_NAME, PREPARE_DUE_SLOTS_JOB_NAME, { catchUp: true });
 
         let isShuttingDown = false;
         const shutdown = async (signal: string) => {
@@ -91,7 +104,7 @@ async function bootstrapWorker(): Promise<void> {
                 await workers.closeAll();
                 await queues.closeAll();
                 await queueConnection.quit();
-                await db.close();
+                await Promise.all([db.close(), adapters.cache.close(), adapters.eventBus.close()]);
                 logger.info("[Worker] Graceful shutdown complete");
                 process.exit(0);
             } catch (shutdownErr) {
