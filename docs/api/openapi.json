@@ -3192,7 +3192,7 @@
           "Admin · Tiers"
         ],
         "summary": "Create a tier",
-        "description": "**Roles:** `ADMIN`.\n\nValidation: `requiredSubscriptionDays ≥ 0` and unique, `durationDays > 0`, `0 ≤ discountPercent ≤ 100` (UC-36).",
+        "description": "**Roles:** `ADMIN`.\n\nValidation: `requiredSubscriptionDays ≥ 0` and unique, `1 ≤ durationDays ≤ 3650`, `0 ≤ discountPercent ≤ 100` (UC-36). A duplicate name or threshold answers 409.",
         "x-roles": [
           "ADMIN"
         ],
@@ -3230,7 +3230,42 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3364,7 +3399,42 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Malformed request or failed validation. A new `photoKey` must point to an uploaded object (`photo_not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed"
+                      }
+                    }
+                  },
+                  "PHOTO_NOT_FOUND": {
+                    "summary": "VALIDATION_ERROR (photo_not_found)",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "photoKey",
+                            "message": "photo does not exist",
+                            "code": "photo_not_found"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3395,7 +3465,7 @@
           "Admin · Tiers"
         ],
         "summary": "Delete a tier",
-        "description": "**Roles:** `ADMIN`.\n\nUC-38: members move to the previous tier (highest `requiredSubscriptionDays` below it), keeping their dates; without a lower tier their membership is removed. Past orders keep their discount amounts.",
+        "description": "**Roles:** `ADMIN`.\n\nUC-38: members move to the previous tier (highest `requiredSubscriptionDays` below it), keeping their dates; without a lower tier their membership is removed. Past orders keep their discount amounts. Deleting always succeeds: there is no 409.",
         "x-roles": [
           "ADMIN"
         ],
@@ -3419,9 +3489,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -8954,7 +9021,7 @@
       },
       "Membership": {
         "type": "object",
-        "description": "The user's current loyalty tier (0..1 per user), as it stands now: when a window runs out, the tier drops one level with a fresh window starting when the old one ended, until the lowest tier's window has also passed. Every paid order re-evaluates the tier and restarts the window. Computed by the system, never edited directly.",
+        "description": "The user's current loyalty tier (0..1 per user), as it stands now: when a window runs out, the tier drops one level with a fresh window starting when the old one ended, until the lowest tier's window has also passed. Every paid order re-evaluates the tier and restarts the window. Computed by the system, never edited directly. A cancellation can lower the tier but never extends the window.",
         "required": [
           "tierId",
           "startedAt",
@@ -9330,7 +9397,8 @@
             "format": "int32",
             "description": "Days the tier stays valid once granted (> 0).",
             "minimum": 1,
-            "default": 30
+            "default": 30,
+            "maximum": 3650
           },
           "discountPercent": {
             "type": "number",
@@ -9344,7 +9412,7 @@
               "string",
               "null"
             ],
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL."
+            "description": "Object-storage key returned by `POST /files` (e.g. `tiers/2026/11/<uuid>.webp`). Never a URL."
           },
           "photoUrl": {
             "type": [
@@ -9370,7 +9438,7 @@
           "memberCount": {
             "type": "integer",
             "format": "int32",
-            "description": "Admin only: users currently holding this tier (UC-35).",
+            "description": "Admin only: customers who hold this tier right now (UC-35). Counts active memberships only, after stepping down one level per lapsed window.",
             "minimum": 0,
             "readOnly": true
           },
@@ -9417,7 +9485,8 @@
             "format": "int32",
             "description": "Validity in days (> 0).",
             "minimum": 1,
-            "default": 30
+            "default": 30,
+            "maximum": 3650
           },
           "discountPercent": {
             "type": "number",
@@ -9431,7 +9500,7 @@
               "string",
               "null"
             ],
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL. `null` removes the photo."
+            "description": "Object-storage key returned by `POST /files` (e.g. `tiers/2026/11/<uuid>.webp`). Never a URL. `null` removes the photo."
           }
         },
         "x-apidog-folder": "Tiers"
@@ -9464,7 +9533,8 @@
             "type": "integer",
             "format": "int32",
             "description": "Validity in days (> 0).",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 3650
           },
           "discountPercent": {
             "type": "number",
@@ -9478,7 +9548,7 @@
               "string",
               "null"
             ],
-            "description": "Object-storage key returned by `POST /files` (e.g. `menus/2026/11/<uuid>.webp`). Never a URL. `null` removes the photo."
+            "description": "Object-storage key returned by `POST /files` (e.g. `tiers/2026/11/<uuid>.webp`). Never a URL. `null` removes the photo."
           }
         },
         "x-apidog-folder": "Tiers"
@@ -12649,7 +12719,7 @@
           "subscriptionDays": {
             "type": "integer",
             "format": "int32",
-            "description": "Accumulated paid service days that count towards tiers (UC-50).",
+            "description": "Accumulated paid service days that count towards tiers (UC-50): the distinct service dates of the customer's slots in `Success` orders. Skipped slots and future paid dates count; `Dibatalkan`, `Expire` and `Pending` orders do not.",
             "minimum": 0
           },
           "daysRemaining": {

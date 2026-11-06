@@ -17,6 +17,7 @@ import { RealtimeContainer } from "./modules/realtime/container/realtime.contain
 import { RetentionContainer } from "./modules/retention/container/retention.container.js";
 import { SettingsContainer } from "./modules/settings/container/settings.container.js";
 import { TiersContainer } from "./modules/tiers/container/tiers.container.js";
+import { noOrderStats } from "./modules/tiers/service/interfaces/order-stats.js";
 import { UsersContainer } from "./modules/users/container/users.container.js";
 
 export function createApp(deps: ModuleDeps): Express {
@@ -40,7 +41,11 @@ export function createApp(deps: ModuleDeps): Express {
         menus: catalog.service,
         portions: noPortionCounts,
     });
-    const tiers: TiersContainer = new TiersContainer(deps);
+    const tiers: TiersContainer = new TiersContainer({
+        ...deps,
+        photoKeys: files.service,
+        orderStats: noOrderStats,
+    });
     const promoCodes: PromoCodesContainer = new PromoCodesContainer(deps);
     const orders: OrdersContainer = new OrdersContainer(deps);
     const users: UsersContainer = new UsersContainer({
