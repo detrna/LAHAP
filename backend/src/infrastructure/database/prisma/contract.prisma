@@ -381,6 +381,7 @@ model Order {
   id             VarChar(36) @id @onCreate(uuid())
   subscriptionId VarChar(36) @map("subscription_id")
   menuScheduleId VarChar(36) @map("menu_schedule_id")
+  serviceDate    Date        @map("service_date")
   courierId      VarChar(36)? @map("courier_id") // assigned per slot by the admin (UC-27); no shift table
   status         VarChar(30) // "Terjadwal" | "Disiapkan" | "Diantar" | "Siap Diambil" | "Selesai" | "Dilewati" (PRD BR-23)
   // true = kitchen assigned the schedule's alternative menu (ScheduleMenu.isPrimary = false) for an allergy clash (BR-24)
@@ -398,6 +399,7 @@ model Order {
   // One slot per order per schedule (package + date + meal time), BR-06; also serves lookups by subscriptionId
   @@unique([subscriptionId, menuScheduleId])
   @@index([menuScheduleId])
+  @@index([serviceDate])
   @@index([courierId])
   @@index([status])
   @@map("order")
@@ -442,7 +444,7 @@ model Payment {
   id             VarChar(36)    @id @onCreate(uuid())
   subscriptionId VarChar(36)    @map("subscription_id")
   userId         VarChar(36)    @map("user_id")
-  // "CASH" (offline cashier, verified by admin) | "MIDTRANS" (gateway, channel not chosen yet)
+  // "CASH" (offline cashier, verified by admin) | "FREE" (total 0, paid at checkout) | "MIDTRANS" (gateway, channel not chosen yet)
   // | "MIDTRANS_<PAYMENT_TYPE>" from the webhook, e.g. "MIDTRANS_QRIS", "MIDTRANS_BANK_TRANSFER".
   // API responses add a derived doneOnline = method !== "CASH"; it is not stored.
   method         VarChar(50)

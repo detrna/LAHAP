@@ -209,6 +209,7 @@ erDiagram
         VARCHAR_36 id PK
         VARCHAR_36 subscription_id FK
         VARCHAR_36 menu_schedule_id FK
+        DATE service_date
         VARCHAR_36 courier_id FK "nullable"
         VARCHAR_30 status
         BOOLEAN uses_alternative_menu
@@ -562,7 +563,7 @@ Pencatatan mutasi finansial pembayaran dan pengembalian dana (*refund*) pesanan 
   | `id` | `VARCHAR(36)` | No | PK | UUID v4 transaksi pembayaran. |
   | `subscription_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t8.id` | Langganan yang dibayar. |
   | `user_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id` | Pelanggan pembayar. |
-  | `method` | `VARCHAR(50)` | No | - | Metode pembayaran: `'CASH'` (tunai di kasir, diverifikasi admin), `'MIDTRANS'` (gateway, kanal belum dipilih), atau `'MIDTRANS_<PAYMENT_TYPE>'` dari webhook (e.g., `'MIDTRANS_QRIS'`, `'MIDTRANS_BANK_TRANSFER'`) (PRD BR-19). Respons API menyertakan `doneOnline = method <> 'CASH'` (turunan, tidak disimpan). |
+  | `method` | `VARCHAR(50)` | No | - | Metode pembayaran: `'CASH'` (tunai di kasir, diverifikasi admin), `'FREE'` (total 0, lunas saat checkout tanpa gateway), `'MIDTRANS'` (gateway, kanal belum dipilih), atau `'MIDTRANS_<PAYMENT_TYPE>'` dari webhook (e.g., `'MIDTRANS_QRIS'`, `'MIDTRANS_BANK_TRANSFER'`) (PRD BR-19). Respons API menyertakan `doneOnline = method <> 'CASH'` (turunan, tidak disimpan). |
   | `type` | `VARCHAR(30)` | No | - | Jenis transaksi: `'SUBSCRIPTION'` (pembayaran langganan) atau `'DELIVERY_SERVICE_UPGRADE'` (dicadangkan untuk fitur ganti metode pasca-rilis, PRD §7.5: tambahan ongkir saat Ambil Sendiri → Diantar). MVP hanya membuat `'SUBSCRIPTION'`; ganti metode di MVP = batalkan lalu pesan ulang (BR-13). |
   | `amount` | `DECIMAL(12,2)` | No | - | Nominal rupiah yang ditransaksikan. |
   | `status` | `VARCHAR(30)` | No | - | Status pembayaran: `'Pending'`, `'Success'`, `'Expire'` (PRD BR-20), atau `'Refund'` (refund manual telah dikonfirmasi admin). |
@@ -591,6 +592,7 @@ Unit operasional terkecil dari katering: **1 Slot = 1 Porsi = 1 Pengiriman** (PR
   | `id` | `VARCHAR(36)` | No | PK | UUID v4 slot pesanan harian. |
   | `subscription_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t8.id` | Paket langganan induk pemilik slot. |
   | `menu_schedule_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t11.id` | Jadwal kalender menu harian yang dipenuhi (PRD BR-04). |
+  | `service_date` | `DATE` | No | - | Salinan `schedule.date` saat checkout, agar filter dan urutan tanggal cukup membaca tabel `order` sendiri. Tidak bisa basi karena tanggal jadwal tidak boleh diubah setelah ada pesanan. |
   | `courier_id` | `VARCHAR(36)` | Yes | FK $\rightarrow$ `t1.id` | Kurir yang ditugaskan admin **per slot** (UC-27; tanpa tabel shift), khusus `subscription.is_delivery = true`. Memindahkan satu pengantaran = mengubah kolom ini. |
   | `status` | `VARCHAR(30)` | No | - | Mesin status slot: `'Terjadwal'`, `'Disiapkan'`, `'Diantar'`, `'Siap Diambil'`, `'Selesai'`, `'Dilewati'` (PRD BR-23). |
   | `uses_alternative_menu` | `BOOLEAN` | No | DEFAULT `false` | `true` jika dapur mengalokasikan Menu Alternatif (`schedule_menu.is_primary = false`) karena bentrok alergi (PRD BR-24). |
@@ -600,6 +602,7 @@ Unit operasional terkecil dari katering: **1 Slot = 1 Porsi = 1 Pengiriman** (PR
 - **Indexes:**
   - `uq_order_slot` UNIQUE (`subscription_id`, `menu_schedule_id`): satu slot per pesanan per jadwal (PRD BR-06)
   - `idx_order_sched_id` (`menu_schedule_id`)
+  - `idx_order_service_date` (`service_date`)
   - `idx_order_courier_id` (`courier_id`)
   - `idx_order_status` (`status`)
 
@@ -1183,6 +1186,7 @@ CREATE TABLE IF NOT EXISTS "order" (
     id VARCHAR(36) PRIMARY KEY,
     subscription_id VARCHAR(36) NOT NULL REFERENCES subscription(id) ON DELETE CASCADE,
     menu_schedule_id VARCHAR(36) NOT NULL REFERENCES schedule(id) ON DELETE RESTRICT,
+    service_date DATE NOT NULL,
     courier_id VARCHAR(36) REFERENCES "user"(id) ON DELETE SET NULL,
     status VARCHAR(30) NOT NULL CHECK (status IN ('Terjadwal', 'Disiapkan', 'Diantar', 'Siap Diambil', 'Selesai', 'Dilewati')),
     uses_alternative_menu BOOLEAN NOT NULL DEFAULT false,
@@ -1193,6 +1197,7 @@ CREATE TABLE IF NOT EXISTS "order" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_order_slot ON "order"(subscription_id, menu_schedule_id);
 CREATE INDEX IF NOT EXISTS idx_order_menu_schedule_id ON "order"(menu_schedule_id);
+CREATE INDEX IF NOT EXISTS idx_order_service_date ON "order"(service_date);
 CREATE INDEX IF NOT EXISTS idx_order_courier_id ON "order"(courier_id);
 CREATE INDEX IF NOT EXISTS idx_order_status ON "order"(status);
 
@@ -1651,6 +1656,7 @@ model Order {
   id             VarChar(36) @id @onCreate(uuid())
   subscriptionId VarChar(36) @map("subscription_id")
   menuScheduleId VarChar(36) @map("menu_schedule_id")
+  serviceDate    Date        @map("service_date")
   courierId      VarChar(36)? @map("courier_id") // assigned per slot by the admin (UC-27); no shift table
   status         VarChar(30) // "Terjadwal" | "Disiapkan" | "Diantar" | "Siap Diambil" | "Selesai" | "Dilewati" (PRD BR-23)
   // true = kitchen assigned the schedule's alternative menu (ScheduleMenu.isPrimary = false) for an allergy clash (BR-24)
@@ -1668,6 +1674,7 @@ model Order {
   // One slot per order per schedule (package + date + meal time), BR-06; also serves lookups by subscriptionId
   @@unique([subscriptionId, menuScheduleId])
   @@index([menuScheduleId])
+  @@index([serviceDate])
   @@index([courierId])
   @@index([status])
   @@map("order")
@@ -1712,7 +1719,7 @@ model Payment {
   id             VarChar(36)    @id @onCreate(uuid())
   subscriptionId VarChar(36)    @map("subscription_id")
   userId         VarChar(36)    @map("user_id")
-  // "CASH" (offline cashier, verified by admin) | "MIDTRANS" (gateway, channel not chosen yet)
+  // "CASH" (offline cashier, verified by admin) | "FREE" (total 0, paid at checkout) | "MIDTRANS" (gateway, channel not chosen yet)
   // | "MIDTRANS_<PAYMENT_TYPE>" from the webhook, e.g. "MIDTRANS_QRIS", "MIDTRANS_BANK_TRANSFER".
   // API responses add a derived doneOnline = method !== "CASH"; it is not stored.
   method         VarChar(50)
