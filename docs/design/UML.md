@@ -249,6 +249,14 @@ classDiagram
         - fee: double
     }
 
+    class IngredientStockHistory {
+        - id: String
+        - previousStock: double
+        - newStock: double
+        - /delta: double
+        - changedAt: Date
+    }
+
     %% Relationships
     Notification "0..*" --> "1" User : notifies
     User "1" --> "0..1" Membership : holds
@@ -285,14 +293,16 @@ classDiagram
     DeliveryMethodChange "0..1" --> "0..1" Payment : paid via
     DeliveryMethodChange "1" *-- "1..*" DeliveryMethodChangeSlot : switches
     DeliveryMethodChangeSlot "0..*" --> "1" Order : switched in
+    Ingredient "1" *-- "0..*" IngredientStockHistory : tracked by
+    IngredientStockHistory "0..*" --> "1" User : changed by
     %% Business is a singleton settings entity with no associations (tenant scoping deferred)
 ```
 
 ---
 
-## 3. Entity Data Dictionary (22 Domain Entities)
+## 3. Entity Data Dictionary (23 Domain Entities)
 
-> Mutable entities also carry `createdAt` and `updatedAt` (auto-maintained), omitted from the tables below. Link tables and append-only logs (`OrderStatusHistory`, `DeliveryObstacle`) have no `updatedAt`.
+> Mutable entities also carry `createdAt` and `updatedAt` (auto-maintained), omitted from the tables below. Link tables and append-only logs (`OrderStatusHistory`, `DeliveryObstacle`, `IngredientStockHistory`) have no `updatedAt`.
 
 ### 3.1 `User` (`c_user`)
 
@@ -631,11 +641,26 @@ classDiagram
   | _(change)_ | `DeliveryMethodChange` | No | Parent method change. |
   | _(order)_ | `Order` | No | The switched slot. |
 
+### 3.23 `IngredientStockHistory` (`c_ing_stock_history`)
+
+- **Stereotype:** `«entity»`
+- **Domain Role:** Append-only audit log of every change to an ingredient's stock quantity (PRD UC-40). Inserted in the same transaction when an ingredient is created with `stock > 0` (`previousStock = 0`) or when `stock` is updated by an admin or kitchen staff to a different value.
+- **Attributes:**
+  | Attribute | Type | Nullable | Description & Invariants |
+  | :--- | :--- | :---: | :--- |
+  | `id` | `String` | No | Primary Key. |
+  | `previousStock` | `double` | No | Stock quantity before the change (`0` on initial creation). |
+  | `newStock` | `double` | No | Stock quantity after the change (`newStock != previousStock`). |
+  | `/delta` | `double` | No | **Derived, not stored:** `roundHalfUp(newStock - previousStock, 2)`. Included in API responses. |
+  | `changedAt` | `Date` | No | Timestamp of the stock change. |
+  | _(ingredient)_ | `Ingredient` | No | The updated ingredient. |
+  | _(changedBy)_ | `User` | No | Kitchen staff or admin who changed the stock. |
+
 ---
 
-## 4. Relationship & Multiplicity Matrix (30 Edges)
+## 4. Relationship & Multiplicity Matrix (32 Edges)
 
-The following matrix documents all 30 edges connecting the 22 entities in the class model:
+The following matrix documents all 32 edges connecting the 23 entities in the class model:
 
 | Edge ID             | Source Node      |  Mult  | Relation Type | Target Node    |  Mult  | Label               | Foreign Key / Cascade Semantics                                                                                                                 |
 | :------------------ | :--------------- | :----: | :-----------: | :------------- | :----: | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -669,6 +694,8 @@ The following matrix documents all 30 edges connecting the 22 entities in the cl
 | `e_method_change_payment` | `DeliveryMethodChange` | `0..1` | `association` | `Payment` | `0..1` | `paid via` | `DeliveryMethodChange.paymentId -> Payment.id` (UNIQUE, ON DELETE RESTRICT). Upgrade payment (`DELIVERY_SERVICE_UPGRADE`); `null` for downgrades. |
 | `e_method_change_slot_comp` | `DeliveryMethodChange` | `1` | `composition` | `DeliveryMethodChangeSlot` | `1..*` | `switches` | `DeliveryMethodChangeSlot.changeId -> DeliveryMethodChange.id` (ON DELETE CASCADE). Slots covered by the switch. |
 | `e_method_change_slot_order` | `DeliveryMethodChangeSlot` | `0..*` | `association` | `Order` | `1` | `switched in` | `DeliveryMethodChangeSlot.orderId -> Order.id` (ON DELETE CASCADE). References the switched daily slot. |
+| `e_ing_stock_hist` | `Ingredient` | `1` | `composition` | `IngredientStockHistory` | `0..*` | `tracked by` | `IngredientStockHistory.ingredientId -> Ingredient.id` (ON DELETE CASCADE). One row per stock quantity change (PRD UC-40). |
+| `e_ing_stock_hist_user` | `IngredientStockHistory` | `0..*` | `association` | `User` | `1` | `changed by` | `IngredientStockHistory.changedById -> User.id` (ON DELETE RESTRICT). Kitchen staff or admin actor who changed the stock. |
 
 ---
 

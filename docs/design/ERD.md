@@ -32,10 +32,10 @@ This document constitutes the authoritative Entity Relationship Diagram (ERD) an
      - `ON DELETE RESTRICT` for financial and historical audit records (e.g., `user` $\rightarrow$ `subscription`, `package` $\rightarrow$ `subscription`, `user` $\rightarrow$ `payment`).
      - `ON DELETE SET NULL` for optional references (e.g., `promo_code` $\rightarrow$ `subscription`, `courier` $\rightarrow$ `order`).
      - `ON DELETE RESTRICT` for `tier` $\rightarrow$ `membership`: the app moves members to the previous tier before deleting a tier (PRD UC-38).
-     - `ON DELETE RESTRICT` for audit actors (`user` $\rightarrow$ `order_status_history`, `user` $\rightarrow$ `delivery_obstacle`); accounts are deactivated via `is_active`, never deleted.
+     - `ON DELETE RESTRICT` for audit actors (`user` $\rightarrow$ `order_status_history`, `user` $\rightarrow$ `delivery_obstacle`, `user` $\rightarrow$ `ingredient_stock_history`); accounts are deactivated via `is_active`, never deleted.
 
 5. **Audit Timestamps & Media Keys:**
-   - Tabel entitas yang dapat berubah menyimpan `created_at` dan `updated_at` (diperbarui otomatis). Tabel penghubung (`user_allergy`, `schedule_menu`, `menu_ingredient`, `ingredient_allergy`, `delivery_method_change_slot`) dan log append-only (`order_status_history`, `delivery_obstacle`, `job_run`) tidak memakai `updated_at`.
+   - Tabel entitas yang dapat berubah menyimpan `created_at` dan `updated_at` (diperbarui otomatis). Tabel penghubung (`user_allergy`, `schedule_menu`, `menu_ingredient`, `ingredient_allergy`, `delivery_method_change_slot`) dan log append-only (`order_status_history`, `delivery_obstacle`, `ingredient_stock_history`, `job_run`) tidak memakai `updated_at`.
    - Kolom foto menyimpan **kunci objek** (`photo_key`), bukan URL: adapter object storage hanya menerbitkan URL bertanda tangan yang kedaluwarsa, sehingga API menandatangani `photoUrl` setiap kali dibaca.
 
 6. **Single-Tenant MVP, Multi-Tenant Ready:**
@@ -81,6 +81,8 @@ erDiagram
     payment |o--o| delivery_method_change : "pays_upgrade (r31)"
     delivery_method_change ||--|{ delivery_method_change_slot : "switches (r32)"
     order ||--o{ delivery_method_change_slot : "switched_in (r33)"
+    ingredient ||--o{ ingredient_stock_history : "tracked_by (r34)"
+    user ||--o{ ingredient_stock_history : "changed_by (r35)"
 
     user {
         VARCHAR_36 id PK
@@ -376,11 +378,20 @@ erDiagram
         VARCHAR_36 order_id FK
         DECIMAL fee
     }
+
+    ingredient_stock_history {
+        VARCHAR_36 id PK
+        VARCHAR_36 ingredient_id FK
+        VARCHAR_36 changed_by_id FK
+        DECIMAL previous_stock
+        DECIMAL new_stock
+        TIMESTAMP changed_at
+    }
 ```
 
 ---
 
-## 3. Entity Data Dictionary (25 Relational Tables)
+## 3. Entity Data Dictionary (26 Relational Tables)
 
 ### 3.1. `user` (`t1`)
 Pusat identitas seluruh pengguna sistem (Pelanggan, Administrator, Koki Dapur, Kurir Pengantar).
@@ -966,7 +977,28 @@ Tabel penghubung yang mencatat rincian slot (`order`) yang tercakup dalam satu `
 
 ---
 
-## 4. Relationship & Cardinality Matrix (33 Relational Edges)
+### 3.26. `ingredient_stock_history` (`t26`)
+Jejak audit append-only setiap perubahan stok bahan baku dapur (PRD UC-40). Disisipkan dalam transaksi yang sama saat pembuatan bahan dengan `stock > 0` (`previous_stock = 0`) maupun saat pembaruan stok oleh admin atau dapur ketika `new_stock <> previous_stock`.
+- **Primary Key:** `id` (`VARCHAR(36)`)
+- **Foreign Keys:**
+  - `ingredient_id` $\rightarrow$ `ingredient(id)` (ON DELETE CASCADE)
+  - `changed_by_id` $\rightarrow$ `user(id)` (ON DELETE RESTRICT)
+- **Columns:**
+  | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `id` | `VARCHAR(36)` | No | PK | UUID v4 entri riwayat perubahan stok. |
+  | `ingredient_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t15.id` | Bahan baku yang stoknya berubah. |
+  | `changed_by_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id` | Staf (dapur atau admin) yang mengubah stok. |
+  | `previous_stock` | `DECIMAL(10,2)` | No | - | Kuantitas stok sebelum perubahan (`0.00` pada pencatatan stok awal saat bahan dibuat). |
+  | `new_stock` | `DECIMAL(10,2)` | No | - | Kuantitas stok sesudah perubahan (`new_stock <> previous_stock`). Selisih `delta = new_stock − previous_stock` diturunkan saat dibaca. |
+  | `changed_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu perubahan stok. |
+- **Indexes:**
+  - `idx_ingredient_stock_history_ingredient` (`ingredient_id`, `changed_at`)
+  - `idx_ingredient_stock_history_actor` (`changed_by_id`)
+
+---
+
+## 4. Relationship & Cardinality Matrix (35 Relational Edges)
 
 | ID | Parent / From Entity (`Card`) | Child / To Entity (`Card`) | Foreign Key Column | Referential Action | Business Semantics & Invariants |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -1003,6 +1035,8 @@ Tabel penghubung yang mencatat rincian slot (`order`) yang tercakup dalam satu `
 | **`r31`**| `payment` (`0..1`) | `delivery_method_change` (`0..1`) | `delivery_method_change.payment_id` (UNIQUE) | `ON DELETE RESTRICT` | Perubahan Ambil Sendiri → Diantar terikat pada satu pembayaran `'DELIVERY_SERVICE_UPGRADE'`; perubahan Diantar → Ambil Sendiri bernilai `NULL`. |
 | **`r32`**| `delivery_method_change` (`1`) | `delivery_method_change_slot` (`1..N`) | `delivery_method_change_slot.change_id` | `ON DELETE CASCADE` | Satu perubahan metode merinci minimal satu slot `'Terjadwal'` yang beralih. |
 | **`r33`**| `order` (`1`) | `delivery_method_change_slot` (`0..N`) | `delivery_method_change_slot.order_id` | `ON DELETE CASCADE` | Satu slot dapat tercatat pada riwayat perubahan metode apabila pesanan diubah lebih dari sekali sebelum cut-off slot tersebut. |
+| **`r34`**| `ingredient` (`1`) | `ingredient_stock_history` (`0..N`) | `ingredient_stock_history.ingredient_id` | `ON DELETE CASCADE` | Setiap perubahan kuantitas stok bahan baku dicatat sebagai satu baris histori (PRD UC-40). Jika bahan dihapus, historinya ikut terhapus. |
+| **`r35`**| `user` (`1`) | `ingredient_stock_history` (`0..N`) | `ingredient_stock_history.changed_by_id` | `ON DELETE RESTRICT` | Staf dapur atau admin yang melakukan perubahan stok tercatat sebagai aktor audit. |
 
 ---
 
@@ -1399,6 +1433,19 @@ CREATE TABLE IF NOT EXISTS delivery_method_change_slot (
 );
 
 CREATE INDEX IF NOT EXISTS idx_delivery_method_change_slot_order ON delivery_method_change_slot(order_id);
+
+-- 24. Table: ingredient_stock_history (t26)
+CREATE TABLE IF NOT EXISTS ingredient_stock_history (
+    id VARCHAR(36) PRIMARY KEY,
+    ingredient_id VARCHAR(36) NOT NULL REFERENCES ingredient(id) ON DELETE CASCADE,
+    changed_by_id VARCHAR(36) NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
+    previous_stock DECIMAL(10,2) NOT NULL CHECK (previous_stock >= 0.00),
+    new_stock DECIMAL(10,2) NOT NULL CHECK (new_stock >= 0.00 AND new_stock <> previous_stock),
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingredient_stock_history_ingredient ON ingredient_stock_history(ingredient_id, changed_at);
+CREATE INDEX IF NOT EXISTS idx_ingredient_stock_history_actor ON ingredient_stock_history(changed_by_id);
 ```
 
 ---
@@ -1472,6 +1519,7 @@ model User {
   obstacles     DeliveryObstacle[]
   refreshTokens RefreshToken[]
   deliveryMethodChanges DeliveryMethodChange[]
+  stockChanges  IngredientStockHistory[]
 
   @@index([role])
   @@map("user")
@@ -1704,9 +1752,26 @@ model Ingredient {
 
   menuIngredients   MenuIngredient[]
   ingredientAllergy IngredientAllergy[]
+  stockHistory      IngredientStockHistory[]
 
   @@index([stock, minimumThreshold])
   @@map("ingredient")
+}
+
+model IngredientStockHistory {
+  id            VarChar(36)    @id @onCreate(uuid())
+  ingredientId  VarChar(36)    @map("ingredient_id")
+  changedById   VarChar(36)    @map("changed_by_id")
+  previousStock Numeric(10, 2) @map("previous_stock")
+  newStock      Numeric(10, 2) @map("new_stock")
+  changedAt     Timestamp      @default(now()) @onCreate(now()) @map("changed_at")
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  changedBy  User       @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([ingredientId, changedAt])
+  @@index([changedById])
+  @@map("ingredient_stock_history")
 }
 
 model MenuIngredient {
@@ -1972,6 +2037,7 @@ model Announcement {
 | **BR-22 (Production Zero Waste)** | Query agregasi dapur *ToCook* hanya menjumlahkan baris `order` yang memiliki `subscription.status = 'Success'` dan `order.status != 'Dilewati'`. Porsi Menu Utama dan Menu Alternatif dipisah berdasarkan `order.uses_alternative_menu`. |
 | **BR-23 & PRD §9.4 (Transisi Status & Audit Trail)** | Status slot hanya bergerak maju. Setiap perubahan `order.status` wajib menyisipkan baris `order_status_history` (`from_status`, `to_status`, `changed_by_id`, `changed_at`) dalam transaksi yang sama; koreksi admin (UC-27) wajib menyertakan `admin_note`. Kendala pengantaran dicatat pada `delivery_obstacle`, bukan sebagai status baru. |
 | **BR-24 (Allergen Inheritance)** | Relasi `ingredient_allergy` mengikat alergen pada bahan. Tag alergen menu dikompilasi secara otomatis melalui query `UNION` dari seluruh `ingredient` yang terikat pada `menu_ingredient`. Penugasan Menu Alternatif oleh dapur dicatat sebagai `order.uses_alternative_menu = true` (menu diambil dari `schedule_menu` dengan `is_primary = false`). Alergi di luar daftar dicatat sebagai teks bebas pada `user.allergy_note`; karena tidak dapat dicocokkan otomatis, pelanggan dengan catatan terisi selalu dimasukkan ke kategori khusus dapur (UC-39). |
+| **UC-40 (Riwayat Perubahan Stok Bahan)** | Setiap perubahan kuantitas `ingredient.stock` (baik stok awal `> 0` saat pembuatan bahan dengan `previous_stock = 0` maupun pembaruan stok oleh admin atau dapur ketika `new_stock <> previous_stock`) menyisipkan baris `ingredient_stock_history` (`ingredient_id`, `changed_by_id`, `previous_stock`, `new_stock`, `changed_at`) dalam transaksi yang sama; selisih `delta` diturunkan saat dibaca. |
 | **BR-27 (3-Level Notifications)** | Notifikasi Level Pelanggan disimpan pada `notification.user_id`. Notifikasi Level Paket dan Global dicatat pada `announcement` dengan `scope = 'PACKAGE'` atau `scope = 'GLOBAL'`; pengumuman yang hanya menyasar satu hari jadwal (perubahan menu, BR-26) memakai `scope = 'SCHEDULE'`. |
 | **UC-13 & Logout (Sesi Login)** | Setiap refresh token yang diterbitkan (register, login, refresh) dicatat pada `refresh_token` dengan `id` = klaim `jti`. Refresh hanya berhasil jika baris token masih aktif (`revoked_at IS NULL`); pencabutan memakai `UPDATE ... WHERE revoked_at IS NULL` sehingga dua permintaan bersamaan tidak dapat merotasi token yang sama. Token yang sudah dicabut tetapi dipakai lagi mencabut seluruh token aktif pengguna. Logout mencabut token yang dikirim. `user.is_active = false` tetap menolak refresh. |
 | **BR-28 (Churn Identification)** | Algoritma churn menyeleksi pelanggan di mana `user.role = 'CUSTOMER'` dengan riwayat `subscription.status = 'Success'`, tidak memiliki pesanan `Aktif`, dan `MAX(subscription.end_date) < CURRENT_DATE - INTERVAL '14 days'`. Follow-up memakai `message_template` yang placeholdernya (`{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`) diisi aplikasi lalu dibuka lewat `wa.me` (UC-29, UC-48). |

@@ -17,7 +17,7 @@ Sistem antarmuka LAHAP dirancang modular dengan model B2B2C terpadu yang membagi
 4. **Courier Mobile Portal (`/courier`):** Antarmuka operasional kurir pengantar berbasis peta/pin alamat, catatan kendala perjalanan, dan aksi konfirmasi *Pengantaran Selesai*.
 5. **Admin Back-Office Portal (`/admin`):** Pusat manajemen katering untuk pemilik usaha yang mencakup 10 subsistem (Dashboard analitik, Pengguna, Pelanggan & Churn WA, Menu, Paket & Jadwal, Tier & Promo, Kasir Pembayaran/Refund, Inventaris & OCR, Logistik Pengantaran, serta Pusat Pengumuman).
 
-Total entitas antarmuka dalam model arsitektur mencakup **98 node** (1 Beranda Utama, 27 Halaman Layar, 69 Seksi Komponen Form/Tabel/Aksi, dan 1 Integrasi Eksternal).
+Total entitas antarmuka dalam model arsitektur mencakup **99 node** (1 Beranda Utama, 32 Halaman Layar, 65 Seksi Komponen Form/Tabel/Aksi, dan 1 Integrasi Eksternal).
 
 ---
 
@@ -119,8 +119,10 @@ flowchart LR
         K_Stock["Kitchen Stock (sm_nm_kitchenstock)"]
         K_OCR["AI Recognition Ingredient (sm_mvrt7s8y8rabc0)"]
         K_Manual["Manual Stock Adjustment (sm_nm_stockadjust)"]
+        K_History["Stock Change History (sm_nm_stockhistory)"]
         K_Stock --> K_OCR
         K_Stock --> K_Manual
+        K_Stock --> K_History
 
         K_ToDo["Kitchen To-Do (sm_mvrt9ett8z7wye)"]
         K_Dishes["Daily Dishes & Allergy Clashes (sm_nm_dailydishes)"]
@@ -204,8 +206,8 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_mvrksa6v7xut5g` | `sm-section` | Why Us | `/#why-us` | Public | - | Ulasan keunggulan: higienis, tepat waktu, bahan segar tanpa MSG berlebih. |
 | `sm_mvrkwwol7y88ym` | `sm-section` | FAQ Section | `/#faq` | Public | - | Daftar tanya-jawab seputar perubahan jadwal, alergi, dan pengantaran. |
 | `sm_mvrkx7hj80ozge` | `sm-section` | Footer | - (Global Component) | Public | - | Informasi kontak katering, jam operasional dapur, alamat, dan hak cipta. |
-| `sm_mvrtdkug9539et` | `sm-section` | Menu Showcase | `/menu` | Public | `u3` | Katalog eksplorasi menu mingguan dan kandungan nutrisi/alergen. |
-| `sm_mvrtwcaiaghuup` | `sm-section` | Tier Showcase | `/tiers` | Public | `u20` | Penjelasan level loyalitas pelanggan (Biasa, Silver, Gold). |
+| `sm_mvrtdkug9539et` | `sm-page` | Menu Showcase | `/menu` | Public | `u3` | Katalog eksplorasi menu mingguan dan kandungan nutrisi/alergen. |
+| `sm_mvrtwcaiaghuup` | `sm-page` | Tier Showcase | `/tiers` | Public | `u20` | Penjelasan level loyalitas pelanggan (Biasa, Silver, Gold). |
 | `sm_mvrthfth9p49e6` | `sm-page` | **Authentication Gateway**| `/auth` (`/login`, `/register`) | Public / Guest | `u2` | Portal masuk dan pendaftaran nomor HP + password pelanggan. |
 | `sm_mvrtctjw92kh84` | `sm-page` | **Customer Home Dashboard**| `/dashboard` | Customer | `u9` | Beranda utama pelanggan login: status pesanan aktif hari ini & pintasan. |
 | `sm_mvrtfmv89cry4b` | `sm-page` | **Today's Status** | `/dashboard/today` | Customer | `u9` | Layar pelacakan pengantaran slot makanan harian secara real-time. |
@@ -222,7 +224,7 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_mvrtg75c9fkxcx` | `sm-page` | **Customer Account** | `/account` | Customer | `u2`, `uc_mvwigh0g84y0lg` | Pusat pengelolaan profil pelanggan, loyalitas tier, dan alamat tersimpan. |
 | `sm_mvrtkau8a3hsdl` | `sm-section` | Tier Overview Card | `/account` | Customer | `u2` | Ringkasan level tier saat ini, persentase diskon, dan akumulasi poin. |
 | `sm_mvrtgctp9gmk7d` | `sm-section` | Account Details Form | `/account` | Customer | `u2` | Formulir data profil (Nama, Nomor HP, Email, Alamat Pengantaran utama). |
-| `sm_nm_allergycheck` | `sm-section` | Allergy Checklist Matrix | `/account/allergies` | Customer | `uc_mvwigh0g84y0lg` | Checklist alergen resmi (kacang, seafood, telur, susu) & catatan bebas. |
+| `sm_nm_allergycheck` | `sm-page` | Allergy Checklist Matrix | `/account/allergies` | Customer | `uc_mvwigh0g84y0lg` | Checklist alergen resmi (kacang, seafood, telur, susu) & catatan bebas. |
 | `sm_mvrtgy1b9junut` | `sm-page` | **Payment History** | `/account/payments` | Customer | `u8` | Halaman riwayat seluruh invoice tagihan pembayaran langganan. |
 | `sm_nm_paymentlist` | `sm-section` | Payment Table / Cards | `/account/payments` | Customer | `u8` | Daftar transaksi pembayaran: kode invoice, nominal, tanggal, status bayar. |
 | `sm_mvrtim9n9v6knv` | `sm-page` | **Payment History Details**| `/account/payments/:invId` | Customer | `u8` | Halaman struk digital / invoice bukti pembayaran resmi. |
@@ -230,8 +232,9 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_mvrtgk6s9hyiql` | `sm-section` | Log Out Action | Header / Account | Customer | `u2` | Aksi pengakhiran sesi login dan pembersihan cookie / token otorisasi. |
 | `sm_mvrt1z4z82i435` | `sm-page` | **Kitchen Portal Hub** | `/kitchen` | Kitchen | `u13`, `u16` | Halaman utama portal dapur; mengarahkan ke To-Do Masak dan Stok Bahan. |
 | `sm_nm_kitchenstock` | `sm-page` | **Kitchen Stock Management**| `/kitchen/stock` | Kitchen | `u16`, `u_ocr` | Antarmuka pemantauan dan pembaruan stok bahan baku dapur. |
-| `sm_mvrt7s8y8rabc0` | `sm-section` | AI Recognition Ingredient | `/kitchen/stock/ai-detect` | Kitchen | `u_ocr` | Komponen unggah foto bahan cair untuk estimasi otomatis sisa volume. |
+| `sm_mvrt7s8y8rabc0` | `sm-page` | AI Recognition Ingredient | `/kitchen/stock/ai-detect` | Kitchen | `u_ocr` | Komponen unggah foto bahan cair untuk estimasi otomatis sisa volume. |
 | `sm_nm_stockadjust` | `sm-section` | Manual Stock Adjustment | `/kitchen/stock` | Kitchen | `u16` | Form input numerik untuk penyesuaian stok bahan masuk dan keluar. |
+| `sm_nm_stockhistory` | `sm-section` | Stock Change History | `/kitchen/stock` | Kitchen, Admin | `u16` | Riwayat paginasi perubahan stok per bahan: stok sebelumnya dan terbaru, selisih, aktor, dan waktu; dimuat dari `GET /kitchen/ingredients/{id}/stock-history`. |
 | `sm_mvrt9ett8z7wye` | `sm-page` | **Kitchen To-Do Production**| `/kitchen/todo` | Kitchen | `u13`, `u15`, `u14` | Antarmuka utama produksi harian dapur (*ToCook*) per waktu makan. |
 | `sm_nm_dailydishes` | `sm-section` | Daily Dishes & Allergy Clashes| `/kitchen/todo` | Kitchen | `u13`, `u14` | Tabel ringkasan porsi menu utama dan daftar pesanan bentrok alergi. |
 | `sm_nm_fooddone` | `sm-section` | Mark Food Ready Action | `/kitchen/todo` | Kitchen | `u15` | Tombol status untuk menandai porsi hidangan telah matang dan siap diambil. |
@@ -253,7 +256,7 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_nm_extwa` | `sm-external`| **WhatsApp API Integration** | `https://wa.me/:phone` | Admin | `u25` | Integrasi tautan luar ke WhatsApp Web/App dengan draf sapaan promo churn. |
 | `sm_mvrsze0r7qirm0` | `sm-page` | **Menu Management** | `/admin/menus` | Admin | `u21`, `u23`, `u14` | Halaman master katalog makanan dan penyusunan kalender menu. |
 | `sm_mvrt3pgu84wpkc` | `sm-section` | CRUD Menu Component | `/admin/menus` | Admin | `u21` | Form tambah/ubah menu: nama masakan, upload foto hidangan (`photo_url`), deskripsi, takaran bahan baku. |
-| `sm_uc06publish` | `sm-section` | Publish Menu Schedule | `/admin/menus/schedule` | Admin | `u23` | Antarmuka kalender publikasi menu mingguan/bulanan kepada pelanggan. |
+| `sm_uc06publish` | `sm-page` | Publish Menu Schedule | `/admin/menus/schedule` | Admin | `u23` | Antarmuka kalender publikasi menu mingguan/bulanan kepada pelanggan. |
 | `sm_nm_adminaltmenu` | `sm-section` | Alternative Menu Assignment | `/admin/menus/schedule` | Admin | `u14` | Form penetapan menu pengganti untuk pesanan pelanggan terdeteksi alergi. |
 | `sm_mvrszhts7riy10` | `sm-page` | **Package Management** | `/admin/packages` | Admin | `u20` | Pusat manajemen paket katering, durasi langganan, dan penugasan PIC. |
 | `sm_mvrt3tqu852106` | `sm-section` | CRUD Package Component | `/admin/packages` | Admin | `u20` | Formulir buat paket baru: harga dasar, deskripsi, durasi, upload foto cover paket (`photo_url`), dan jam pengantaran menu (`delivery_time`). |
@@ -350,6 +353,9 @@ Formulir pemesanan langganan dirancang sebagai alur interaktif (*progressive dis
      - Koki dapat mengambil foto wadah minyak goreng atau stok bumbu cair.
      - Model Vision AI mendeteksi estimasi ketinggian cairan wadah dan mengusulkan estimasi sisa volume (mis. *"Perkiraan sisa 3.5 Liter dari jerigen 5 Liter"*).
      - Koki memverifikasi dan menyetujui angka tersebut untuk memperbarui master stok secara instan.
+   - **Stock Change History (`sm_nm_stockhistory`):**
+     - Staf melihat perubahan stok bahan secara paginasi, termasuk stok sebelum dan sesudah, selisih, aktor, dan waktu perubahan.
+     - Data disediakan oleh `GET /kitchen/ingredients/{id}/stock-history` untuk peran `KITCHEN` dan `ADMIN`.
 
 ---
 

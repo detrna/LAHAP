@@ -2748,6 +2748,97 @@
         "x-apidog-folder": "Kitchen"
       }
     },
+    "/kitchen/ingredients/{id}/stock-history": {
+      "get": {
+        "operationId": "listIngredientStockHistory",
+        "tags": [
+          "Kitchen"
+        ],
+        "summary": "List ingredient stock history",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nPaginated stock changes for an ingredient, newest first, including the actor when available. Returns `INGREDIENT_NOT_FOUND` if the ingredient does not exist.",
+        "x-roles": [
+          "KITCHEN",
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/IngredientStockChange"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Ingredient not found (`INGREDIENT_NOT_FOUND`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "INGREDIENT_NOT_FOUND": {
+                    "summary": "INGREDIENT_NOT_FOUND",
+                    "value": {
+                      "error": {
+                        "code": "INGREDIENT_NOT_FOUND",
+                        "message": "ingredient not found: \"00000000-0000-4000-8000-000000000001\""
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Kitchen"
+      }
+    },
     "/kitchen/ingredients/{id}/photo-estimate": {
       "post": {
         "operationId": "estimateIngredientStock",
@@ -10347,6 +10438,70 @@
             },
             "description": "Allergens contained in this ingredient.",
             "readOnly": true
+          }
+        },
+        "x-apidog-folder": "Inventory"
+      },
+      "IngredientStockChange": {
+        "type": "object",
+        "description": "A recorded change to an ingredient stock quantity.",
+        "required": [
+          "id",
+          "ingredientId",
+          "previousStock",
+          "newStock",
+          "delta",
+          "changedById",
+          "changedBy",
+          "changedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Stock history record ID."
+          },
+          "ingredientId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ingredient ID."
+          },
+          "previousStock": {
+            "type": "number",
+            "format": "double",
+            "description": "Stock quantity before the change."
+          },
+          "newStock": {
+            "type": "number",
+            "format": "double",
+            "description": "Stock quantity after the change."
+          },
+          "delta": {
+            "type": "number",
+            "format": "double",
+            "description": "Change amount (`newStock - previousStock`), rounded to two decimal places."
+          },
+          "changedById": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the user who changed the stock."
+          },
+          "changedBy": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Actor summary, or null if the user is no longer available.",
+            "readOnly": true
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the stock change was recorded."
           }
         },
         "x-apidog-folder": "Inventory"
