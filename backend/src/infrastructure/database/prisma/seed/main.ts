@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { loadConfig } from "../../../../config/index.js";
 import { loadAppConfig } from "../../../../config/app.js";
 import { dbEnvSchema, toDatabaseConfig } from "../../../../config/db.js";
 import { loadHasherConfig } from "../../../../config/hasher.js";
@@ -13,6 +14,7 @@ import { seedAllergies } from "./modules/allergies/allergies.seed.js";
 import { seedBusiness } from "./modules/business/business.seed.js";
 import { seedIngredients } from "./modules/ingredients/ingredients.seed.js";
 import { seedMenus } from "./modules/menus/menus.seed.js";
+import { seedOrders } from "./modules/orders/orders.seed.js";
 import { seedMessageTemplates } from "./modules/message-templates/message-templates.seed.js";
 import { seedPackages } from "./modules/packages/packages.seed.js";
 import { seedPromoCodes } from "./modules/promo-codes/promo-codes.seed.js";
@@ -71,6 +73,13 @@ async function main(): Promise<void> {
                 logger.info({ module: module.name, count }, "module seeded");
             }
         });
+        totals["orders"] = await seedOrders({
+            db,
+            logger: logger.child({ module: "orders" }),
+            today,
+            config: loadConfig(),
+        });
+        logger.info({ module: "orders", count: totals["orders"] }, "module seeded");
     } finally {
         await db.close();
     }

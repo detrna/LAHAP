@@ -8,7 +8,8 @@ import { MENUS } from "./modules/menus/menus.data.js";
 import { MESSAGE_TEMPLATES } from "./modules/message-templates/message-templates.data.js";
 import { PACKAGES } from "./modules/packages/packages.data.js";
 import { PROMO_CODES } from "./modules/promo-codes/promo-codes.data.js";
-import { ALTERNATIVES_BY_MEAL, WEEKLY_PLANS } from "./modules/schedules/schedules.data.js";
+import { PACKAGE_OPEN_DAYS_AGO } from "./modules/packages/packages.data.js";
+import { ALTERNATIVES_BY_MEAL, PAST_DAYS, WEEKLY_PLANS } from "./modules/schedules/schedules.data.js";
 import { TIERS } from "./modules/tiers/tiers.data.js";
 import { USERS } from "./modules/users/users.data.js";
 
@@ -34,6 +35,11 @@ describe("seed data (unit)", () => {
         const phones = USERS.map(u => u.phone);
         expect(new Set(phones).size).toBe(phones.length);
         for (const phone of phones) expect(isNormalizedPhone(phone)).toBe(true);
+    });
+
+    it("keeps packages open and schedules published far enough back for the seeded order history", () => {
+        expect(PAST_DAYS).toBeGreaterThanOrEqual(40);
+        expect(PACKAGE_OPEN_DAYS_AGO).toBeGreaterThan(PAST_DAYS);
     });
 
     it("plans 7 days with one primary menu per package meal time", () => {

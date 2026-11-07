@@ -1,6 +1,7 @@
 import type { MenuKey } from "../menus/menus.data.js";
 import type { PackageKey } from "../packages/packages.data.js";
 
+export const PAST_DAYS = 40;
 export const PUBLISHED_DAYS = 35;
 export const DRAFT_DAYS = 7;
 

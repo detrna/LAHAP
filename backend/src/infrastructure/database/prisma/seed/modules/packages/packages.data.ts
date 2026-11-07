@@ -31,4 +31,6 @@ export const PACKAGES = {
 
 export type PackageKey = keyof typeof PACKAGES;
 
+export const PACKAGE_OPEN_DAYS_AGO = 60;
+
 export const packagePhotoKey = (id: string) => `packages/seed/${id}.webp`;

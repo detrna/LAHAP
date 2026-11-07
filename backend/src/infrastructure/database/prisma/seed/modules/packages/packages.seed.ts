@@ -1,5 +1,5 @@
 import type { SeedContext } from "../../seed-context.js";
-import { PACKAGES, packagePhotoKey } from "./packages.data.js";
+import { PACKAGE_OPEN_DAYS_AGO, PACKAGES, packagePhotoKey } from "./packages.data.js";
 
 export async function seedPackages({ tx, logger, today }: SeedContext): Promise<number> {
     const packages = Object.values(PACKAGES);
@@ -10,7 +10,7 @@ export async function seedPackages({ tx, logger, today }: SeedContext): Promise<
             periods: [...pkg.periods],
             deliveryTimes: pkg.deliveryTimes.map(time => Temporal.PlainTime.from(time)),
             photoKey: packagePhotoKey(id),
-            startAt: today.subtract({ days: 1 }).toPlainDateTime(),
+            startAt: today.subtract({ days: PACKAGE_OPEN_DAYS_AGO }).toPlainDateTime(),
             endAt: null,
             isActive: true,
             deliveryFreeRadius: null,
