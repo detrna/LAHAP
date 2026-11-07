@@ -18,6 +18,18 @@ import { findStatusHistory, listSlots } from "./slots/list-slots.js";
 import { transitionSlots } from "./slots/transition-slots.js";
 import { cancelSubscription } from "./subscriptions/cancel-subscription.js";
 import { countPromoUses, countPromoUsesByUser, hasSubscriptionsWithPromo } from "./provided/count-promo-uses.js";
+import {
+    findAnnouncementTargets,
+    findCustomerIdsByPackage,
+    findCustomerIdsBySchedule,
+} from "./provided/announcement-audience.js";
+import {
+    countActiveSubscribers,
+    deleteSlotsOfSubscriptions,
+    findScheduleIdsUsingAlternative,
+    findScheduleIdsWithSlots,
+    findSubscriptionPeriods,
+} from "./provided/order-activity.js";
 import { findLastSuccessEndDates } from "./provided/find-last-success-end-dates.js";
 import { findUserIdsWithLastSuccessEndBefore } from "./provided/find-user-ids-with-last-success-end-before.js";
 import { countPaidServiceDays, sumTierDiscounts } from "./provided/order-stats.js";
@@ -57,4 +69,12 @@ export class PrismaOrdersRepository implements OrdersRepository {
     sumTierDiscounts = sumTierDiscounts;
     findLastSuccessEndDates = findLastSuccessEndDates;
     findUserIdsWithLastSuccessEndBefore = findUserIdsWithLastSuccessEndBefore;
+    countActiveSubscribers = countActiveSubscribers;
+    findScheduleIdsWithSlots = findScheduleIdsWithSlots;
+    findScheduleIdsUsingAlternative = findScheduleIdsUsingAlternative;
+    findSubscriptionPeriods = findSubscriptionPeriods;
+    deleteSlotsOfSubscriptions = deleteSlotsOfSubscriptions;
+    findCustomerIdsByPackage = findCustomerIdsByPackage;
+    findCustomerIdsBySchedule = findCustomerIdsBySchedule;
+    findAnnouncementTargets = findAnnouncementTargets;
 }

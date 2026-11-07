@@ -78,6 +78,14 @@ export function createMockOrdersRepository(): Mocked<OrdersRepository> {
         hasSubscriptionsWithPromo: vi.fn(async () => false),
         findLastSuccessEndDates: vi.fn(async () => new Map()),
         findUserIdsWithLastSuccessEndBefore: vi.fn(async () => []),
+        countActiveSubscribers: vi.fn(async () => new Map()),
+        findScheduleIdsWithSlots: vi.fn(async () => []),
+        findScheduleIdsUsingAlternative: vi.fn(async () => []),
+        findSubscriptionPeriods: vi.fn(async () => []),
+        deleteSlotsOfSubscriptions: vi.fn(async () => undefined),
+        findCustomerIdsByPackage: vi.fn(async () => []),
+        findCustomerIdsBySchedule: vi.fn(async () => []),
+        findAnnouncementTargets: vi.fn(async () => ({ packageIds: [], scheduleIds: [] })),
     } as Mocked<OrdersRepository>;
 }
 

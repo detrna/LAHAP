@@ -264,6 +264,42 @@ export interface IncomeRecord {
     readonly byPurchaseType: readonly (IncomeTotals & { readonly purchaseType: PurchaseType })[];
 }
 
+export interface ActiveSubscriberQuery {
+    readonly packageIds: readonly string[];
+    readonly subscriptionStatuses: readonly SubscriptionStatus[];
+    readonly endDateFrom: Temporal.PlainDate;
+}
+
+export interface SubscriptionPeriodRecord {
+    readonly scheduleId: string;
+    readonly startDate: Temporal.PlainDate;
+    readonly endDate: Temporal.PlainDate;
+}
+
+export interface PackageAudienceQuery {
+    readonly packageId: string;
+    readonly subscriptionStatuses: readonly SubscriptionStatus[];
+    readonly endDateFrom: Temporal.PlainDate;
+}
+
+export interface ScheduleAudienceQuery {
+    readonly scheduleId: string;
+    readonly subscriptionStatuses: readonly SubscriptionStatus[];
+    readonly excludedSlotStatuses: readonly OrderStatus[];
+}
+
+export interface AnnouncementTargetQuery {
+    readonly userId: string;
+    readonly subscriptionStatuses: readonly SubscriptionStatus[];
+    readonly packageEndDateFrom: Temporal.PlainDate;
+    readonly excludedSlotStatuses: readonly OrderStatus[];
+}
+
+export interface AnnouncementTargetRecord {
+    readonly packageIds: readonly string[];
+    readonly scheduleIds: readonly string[];
+}
+
 export interface OrdersRepository {
     createCheckout(write: CheckoutWrite): Promise<CheckoutRecord>;
     findSubscriptionById(id: string): Promise<SubscriptionRecord | null>;
@@ -302,4 +338,24 @@ export interface OrdersRepository {
     ): Promise<ReadonlyMap<string, number>>;
     findLastSuccessEndDates(userIds: readonly string[]): Promise<ReadonlyMap<string, Temporal.PlainDate>>;
     findUserIdsWithLastSuccessEndBefore(date: Temporal.PlainDate): Promise<readonly string[]>;
+    countActiveSubscribers(query: ActiveSubscriberQuery): Promise<ReadonlyMap<string, number>>;
+    findScheduleIdsWithSlots(
+        scheduleIds: readonly string[],
+        subscriptionStatuses: readonly SubscriptionStatus[],
+    ): Promise<readonly string[]>;
+    findScheduleIdsUsingAlternative(
+        scheduleIds: readonly string[],
+        subscriptionStatuses: readonly SubscriptionStatus[],
+    ): Promise<readonly string[]>;
+    findSubscriptionPeriods(
+        scheduleIds: readonly string[],
+        subscriptionStatuses: readonly SubscriptionStatus[],
+    ): Promise<readonly SubscriptionPeriodRecord[]>;
+    deleteSlotsOfSubscriptions(
+        scheduleIds: readonly string[],
+        subscriptionStatuses: readonly SubscriptionStatus[],
+    ): Promise<void>;
+    findCustomerIdsByPackage(query: PackageAudienceQuery): Promise<readonly string[]>;
+    findCustomerIdsBySchedule(query: ScheduleAudienceQuery): Promise<readonly string[]>;
+    findAnnouncementTargets(query: AnnouncementTargetQuery): Promise<AnnouncementTargetRecord>;
 }

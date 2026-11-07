@@ -44,6 +44,18 @@ import { skipSlot } from "./slots/skip-slot.js";
 import { cancelSubscription } from "./subscriptions/cancel-subscription.js";
 import { getMySubscription } from "./subscriptions/get-my-subscription.js";
 import { listMySubscriptions } from "./subscriptions/list-my-subscriptions.js";
+import {
+    findAnnouncementTargetsOf,
+    findCustomerIdsForPackage,
+    findCustomerIdsForSchedule,
+} from "./provided/announcement-audience.js";
+import {
+    countActiveSubscribers,
+    deleteInactiveSlots,
+    findSchedulesUsingAlternative,
+    findSchedulesWithOrders,
+    findSubscriptionPeriods,
+} from "./provided/order-activity.js";
 import { findLastSuccessEndDates } from "./provided/find-last-success-end-dates.js";
 import { findUserIdsWithLastSuccessEndBefore } from "./provided/find-user-ids-with-last-success-end-before.js";
 import { countPaidServiceDays, sumTierDiscounts } from "./provided/order-stats.js";
@@ -156,4 +168,12 @@ export class OrdersService {
     countPortionsBySchedule = countPortionsBySchedule;
     findLastSuccessEndDates = findLastSuccessEndDates;
     findUserIdsWithLastSuccessEndBefore = findUserIdsWithLastSuccessEndBefore;
+    countActiveSubscribers = countActiveSubscribers;
+    findSchedulesWithOrders = findSchedulesWithOrders;
+    findSchedulesUsingAlternative = findSchedulesUsingAlternative;
+    findSubscriptionPeriods = findSubscriptionPeriods;
+    deleteInactiveSlots = deleteInactiveSlots;
+    findCustomerIdsForPackage = findCustomerIdsForPackage;
+    findCustomerIdsForSchedule = findCustomerIdsForSchedule;
+    findAnnouncementTargetsOf = findAnnouncementTargetsOf;
 }
