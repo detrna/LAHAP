@@ -11,8 +11,9 @@ describe("OrdersService.getSlotForObstacle (unit)", () => {
                 courierId: "c-1",
                 status: "Diantar",
                 menuScheduleId: "s-1",
+                isDelivery: true,
             }),
-            subscription: buildSubscriptionRecord({ userId: "u-1", isDelivery: true, status: "Success" }),
+            subscription: buildSubscriptionRecord({ userId: "u-1", isDelivery: false, status: "Success" }),
         });
 
         expect(await service.getSlotForObstacle("o-1")).toEqual({

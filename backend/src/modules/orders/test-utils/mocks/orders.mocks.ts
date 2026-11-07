@@ -46,6 +46,11 @@ export type MockedOrdersService = Mocked<
         | "listPaymentsForAdmin"
         | "getIncomeReport"
         | "getDashboard"
+        | "previewMethodChange"
+        | "changeDeliveryMethod"
+        | "getMethodChangePaymentSession"
+        | "listMethodChangesForAdmin"
+        | "confirmMethodChangeRefund"
     >
 >;
 
@@ -58,6 +63,7 @@ export function createMockOrdersRepository(): Mocked<OrdersRepository> {
         expirePendingPayments: vi.fn(async () => []),
         countPortions: vi.fn(async () => []),
         sumIncome: vi.fn(async () => ({ byPackage: [], byPurchaseType: [] })),
+        sumMethodChangeIncome: vi.fn(async () => ({ byPackage: [], byPurchaseType: [] })),
         countPaidServiceDays: vi.fn(async () => 0),
         sumTierDiscounts: vi.fn(async () => new Map()),
         listSubscriptions: vi.fn(async () => ({ items: [], total: 0 })),
@@ -73,6 +79,11 @@ export function createMockOrdersRepository(): Mocked<OrdersRepository> {
         setUsesAlternativeMenu: vi.fn(async () => null),
         assignCourier: vi.fn(async () => 0),
         cancelSubscription: vi.fn(async () => null),
+        createMethodChange: vi.fn(),
+        findMethodChangeById: vi.fn(async () => null),
+        findMethodChangesBySubscriptionIds: vi.fn(async () => []),
+        listMethodChanges: vi.fn(async () => ({ items: [], total: 0 })),
+        confirmMethodChangeRefund: vi.fn(async () => null),
         countPromoUses: vi.fn(async () => new Map()),
         countPromoUsesByUser: vi.fn(async () => 0),
         hasSubscriptionsWithPromo: vi.fn(async () => false),
@@ -192,5 +203,10 @@ export function createMockOrdersService(): MockedOrdersService {
         listPaymentsForAdmin: vi.fn(),
         getIncomeReport: vi.fn(),
         getDashboard: vi.fn(),
+        previewMethodChange: vi.fn(),
+        changeDeliveryMethod: vi.fn(),
+        getMethodChangePaymentSession: vi.fn(),
+        listMethodChangesForAdmin: vi.fn(),
+        confirmMethodChangeRefund: vi.fn(),
     } as MockedOrdersService;
 }

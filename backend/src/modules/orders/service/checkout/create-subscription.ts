@@ -68,6 +68,8 @@ export async function createSubscription(
             id: this.generateId(),
             menuScheduleId: schedule.id,
             serviceDate: Temporal.PlainDate.from(schedule.date),
+            isDelivery: input.isDelivery,
+            deliveryFee: total.deliveryFeePerSlot,
         })),
         payment: {
             id: paymentId,

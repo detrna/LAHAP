@@ -62,9 +62,10 @@ export async function getSlotForAdmin(this: OrdersController, req: Request, res:
 
 export async function listPaymentsForAdmin(this: OrdersController, req: Request, res: Response): Promise<void> {
     const { page, limit, skip, take } = pageOf(req);
-    const { status, method, userId, needsRefund, from, to } = req.query as unknown as AdminPaymentListQuery;
+    const { status, type, method, userId, needsRefund, from, to } = req.query as unknown as AdminPaymentListQuery;
     const { items, total } = await this.ordersService.listPaymentsForAdmin({
         status,
+        type,
         method: method as PaymentMethod | undefined,
         userId,
         needsRefund,

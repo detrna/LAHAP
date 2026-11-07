@@ -2,7 +2,7 @@ import type { Subscription, SubscriptionStatus, PurchaseType } from "../../domai
 import type { Page, SubscriptionRecord } from "../interfaces/orders.repository.js";
 import { SubscriptionNotFoundError } from "../interfaces/orders.repository.js";
 import type { OrdersService } from "../orders.service.js";
-import { toPayment, toSubscription } from "../present.js";
+import { toDeliveryMethodChange, toPayment, toSubscription } from "../present.js";
 import { toCreatedRange, type DateFilter } from "./created-range.js";
 
 export interface AdminSubscriptionFilter extends DateFilter {
@@ -43,10 +43,16 @@ export async function listSubscriptionsForAdmin(
 export async function getSubscriptionForAdmin(this: OrdersService, id: string): Promise<Subscription> {
     const record = await this.ordersRepository.findSubscriptionById(id);
     if (record === null) throw new SubscriptionNotFoundError();
-    const [[subscription], orders, payments] = await Promise.all([
+    const [[subscription], orders, payments, changes] = await Promise.all([
         withCustomers(this, [record]),
         this.ordersRepository.findOrdersBySubscriptionId(id),
         this.ordersRepository.findPaymentsBySubscriptionId(id),
+        this.ordersRepository.findMethodChangesBySubscriptionIds([id]),
     ]);
-    return { ...subscription!, orders: await this.presentOrders(orders), payments: payments.map(toPayment) };
+    return {
+        ...subscription!,
+        orders: await this.presentOrders(orders),
+        payments: payments.map(toPayment),
+        deliveryMethodChanges: changes.map(toDeliveryMethodChange),
+    };
 }

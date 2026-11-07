@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PaymentChange, PaymentWithSubscription } from "../interfaces/orders.repository.js";
-import { buildPaymentRecord, buildSubscriptionRecord } from "../../test-utils/factory/orders.factory.js";
+import {
+    buildDeliveryMethodChangeRecord,
+    buildPaymentRecord,
+    buildSubscriptionRecord,
+} from "../../test-utils/factory/orders.factory.js";
 import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 
 function setup(current: PaymentWithSubscription) {
@@ -31,6 +35,43 @@ describe("OrdersService.confirmRefund (unit)", () => {
 
         expect(await service.confirmRefund("pay-1")).toMatchObject({ status: "Refund" });
         expect(changes).toEqual([{ payment: { status: "Refund" }, subscription: { needsRefund: false } }]);
+    });
+
+    it("keeps the order waiting while another paid payment is left to refund", async () => {
+        const { service, changes } = setup({
+            payment: buildPaymentRecord({ status: "Success" }),
+            subscription: buildSubscriptionRecord({ status: "Dibatalkan", needsRefund: true }),
+            otherPayments: [
+                buildPaymentRecord({ id: "pay-2", status: "Success", type: "DELIVERY_SERVICE_UPGRADE" }),
+                buildPaymentRecord({ id: "pay-3", status: "Expire" }),
+            ],
+        });
+
+        await service.confirmRefund("pay-1");
+
+        expect(changes).toEqual([{ payment: { status: "Refund" }, subscription: { needsRefund: true } }]);
+    });
+
+    it("clears the refund of the delivery change an upgrade payment belongs to", async () => {
+        const { service, changes } = setup({
+            payment: buildPaymentRecord({ status: "Success", type: "DELIVERY_SERVICE_UPGRADE" }),
+            subscription: buildSubscriptionRecord({ status: "Dibatalkan", needsRefund: true }),
+            otherPayments: [buildPaymentRecord({ id: "pay-0", status: "Refund" })],
+            methodChange: {
+                change: buildDeliveryMethodChangeRecord({ toDelivery: true, needsRefund: true }),
+                orders: [],
+            },
+        });
+
+        await service.confirmRefund("pay-1");
+
+        expect(changes).toEqual([
+            {
+                payment: { status: "Refund" },
+                subscription: { needsRefund: false },
+                methodChange: { needsRefund: false },
+            },
+        ]);
     });
 
     it("refuses an order that does not need a refund", async () => {

@@ -33,7 +33,13 @@ describe("OrdersService.presentOrders (unit)", () => {
         );
 
         const [first, second] = await service.presentOrders([
-            buildOrderRecord({ id: "a", menuScheduleId: "s-1", status: "Selesai" }),
+            buildOrderRecord({
+                id: "a",
+                menuScheduleId: "s-1",
+                status: "Selesai",
+                isDelivery: true,
+                deliveryFee: 4000,
+            }),
             buildOrderRecord({ id: "b", menuScheduleId: "s-1", usesAlternativeMenu: true }),
         ]);
 
@@ -42,8 +48,10 @@ describe("OrdersService.presentOrders (unit)", () => {
             menu: { id: "m-1" },
             obstacles: [],
             completedAt: "2026-11-03T12:00:00.000+07:00",
+            isDelivery: true,
+            deliveryFee: 4000,
         });
-        expect(second).toMatchObject({ menu: { id: "m-2" }, completedAt: null });
+        expect(second).toMatchObject({ menu: { id: "m-2" }, completedAt: null, isDelivery: false, deliveryFee: 0 });
         expect(second?.obstacles).toHaveLength(1);
     });
 

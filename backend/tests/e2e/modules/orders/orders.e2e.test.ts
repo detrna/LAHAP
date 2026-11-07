@@ -915,4 +915,162 @@ describe("orders routes (e2e)", () => {
             expect((await request(app).get("/api/admin/dashboard").set(customer())).status).toBe(403);
         });
     });
+
+    describe("delivery method changes", () => {
+        let switcherId: string;
+        let adminHeaders: Record<string, string>;
+        const switcher = () => asRole("CUSTOMER", switcherId);
+        const pin = () => ({
+            deliveryAddress: "Jl. Ijen E2E",
+            deliveryLatitude: business.latitude + 0.04,
+            deliveryLongitude: business.longitude,
+        });
+
+        beforeAll(async () => {
+            switcherId = await createTestUser(db, rows);
+            adminHeaders = asRole("ADMIN", await createTestUser(db, rows, { role: "ADMIN" }));
+        });
+
+        it("upgrades a paid pick-up order to delivery once the fee is paid, then switches part of it back", async () => {
+            const created = await request(app).post("/api/subscriptions").set(switcher()).send(checkout());
+            expect(created.status).toBe(201);
+            trackCheckout(created.body);
+            const { subscription, payment } = created.body.data;
+            await request(app).post("/api/webhooks/midtrans").send(midtransNotification(payment.id, payment.amount));
+            const base = `/api/subscriptions/${subscription.id}/delivery-method`;
+
+            const preview = await request(app)
+                .post(`${base}/preview`)
+                .set(switcher())
+                .send({ isDelivery: true, ...pin() });
+            expect(preview.status).toBe(200);
+            expect(preview.body.data).toMatchObject({
+                toDelivery: true,
+                effectiveFrom: weekStart.toString(),
+                slotCount: 2,
+                delivery: { available: true },
+            });
+            expect(preview.body.data.amount).toBe(preview.body.data.deliveryFeePerSlot * 2);
+
+            const upgrade = await request(app)
+                .post(base)
+                .set(switcher())
+                .send({ isDelivery: true, ...pin() });
+            expect(upgrade.status).toBe(201);
+            rows.track("Payment", upgrade.body.data.payment.id);
+            rows.track("DeliveryMethodChange", upgrade.body.data.change.id);
+            const fee = preview.body.data.deliveryFeePerSlot as number;
+            expect(fee).toBeGreaterThan(0);
+
+            expect(upgrade.body.data).toMatchObject({
+                change: { status: "Pending", amount: fee * 2 },
+                payment: { type: "DELIVERY_SERVICE_UPGRADE", status: "Pending", amount: fee * 2 },
+            });
+            const session = await request(app)
+                .post(`/api/delivery-method-changes/${upgrade.body.data.change.id}/payment-session`)
+                .set(switcher());
+            expect(session.status).toBe(200);
+            expect(session.body.data.snapToken).toBe(`snap-${upgrade.body.data.payment.id}`);
+            const second = await request(app).post(base).set(switcher()).send({ isDelivery: false });
+            expect(second.status).toBe(422);
+
+            const paid = await request(app)
+                .post("/api/webhooks/midtrans")
+                .send(midtransNotification(upgrade.body.data.payment.id, fee * 2));
+            expect(paid.status).toBe(200);
+
+            const detail = await request(app).get(`/api/subscriptions/${subscription.id}`).set(switcher());
+            expect(detail.body.data).toMatchObject({ isDelivery: true, deliveryAddress: "Jl. Ijen E2E" });
+            expect(detail.body.data.orders.map((order: { isDelivery: boolean }) => order.isDelivery)).toEqual([
+                true,
+                true,
+            ]);
+            expect(detail.body.data.deliveryMethodChanges).toMatchObject([{ status: "Success", toDelivery: true }]);
+
+            const downgrade = await request(app)
+                .post(base)
+                .set(switcher())
+                .send({ isDelivery: false, effectiveFrom: weekStart.add({ days: 1 }).toString() });
+            expect(downgrade.status).toBe(201);
+            rows.track("DeliveryMethodChange", downgrade.body.data.change.id);
+            expect(downgrade.body.data).toMatchObject({
+                change: { status: "Success", slotCount: 1, amount: fee, needsRefund: true },
+                payment: null,
+            });
+            const after = await request(app).get(`/api/subscriptions/${subscription.id}`).set(switcher());
+            expect(after.body.data.orders.map((order: { isDelivery: boolean }) => order.isDelivery)).toEqual([
+                true,
+                false,
+            ]);
+
+            const waiting = await request(app)
+                .get("/api/admin/delivery-method-changes?needsRefund=true&limit=100")
+                .set(adminHeaders);
+            expect(waiting.status).toBe(200);
+            expect(waiting.body.data.map((change: { id: string }) => change.id)).toContain(
+                downgrade.body.data.change.id,
+            );
+            const confirmUrl = `/api/admin/delivery-method-changes/${downgrade.body.data.change.id}/confirm-refund`;
+            const confirmed = await request(app).post(confirmUrl).set(adminHeaders);
+            expect(confirmed.status).toBe(200);
+            expect(confirmed.body.data).toMatchObject({ needsRefund: false });
+            expect((await request(app).post(confirmUrl).set(adminHeaders)).status).toBe(422);
+
+            const upgrades = await request(app)
+                .get(`/api/admin/payments?type=DELIVERY_SERVICE_UPGRADE&userId=${switcherId}`)
+                .set(adminHeaders);
+            expect(upgrades.body.data.map((item: { id: string }) => item.id)).toEqual([upgrade.body.data.payment.id]);
+        });
+
+        it("checks the body, the owner, the start date and the roles", async () => {
+            const created = await request(app).post("/api/subscriptions").set(switcher()).send(checkout());
+            trackCheckout(created.body);
+            const { subscription, payment } = created.body.data;
+            const base = `/api/subscriptions/${subscription.id}/delivery-method`;
+
+            expect((await request(app).post(base).set(switcher()).send({ isDelivery: false })).status).toBe(422);
+            await request(app).post("/api/webhooks/midtrans").send(midtransNotification(payment.id, payment.amount));
+
+            expect((await request(app).post(base).send({ isDelivery: false })).status).toBe(401);
+            expect((await request(app).post(base).set(switcher()).send({ isDelivery: true })).status).toBe(400);
+            const today = await request(app)
+                .post(base)
+                .set(switcher())
+                .send({ isDelivery: true, ...pin(), effectiveFrom: new SystemClock().now().toPlainDate().toString() });
+            expect(today.status).toBe(400);
+            expect(today.body.error.issues).toEqual([expect.objectContaining({ path: "effectiveFrom" })]);
+            expect(
+                (
+                    await request(app)
+                        .post(`${base}/preview`)
+                        .set(customer())
+                        .send({ isDelivery: true, ...pin() })
+                ).status,
+            ).toBe(404);
+            expect((await request(app).post(base).set(switcher()).send({ isDelivery: false })).status).toBe(422);
+
+            const adminBase = `/api/admin/subscriptions/${subscription.id}/delivery-method`;
+            const adminPreview = await request(app)
+                .post(`${adminBase}/preview`)
+                .set(adminHeaders)
+                .send({ isDelivery: true, ...pin() });
+            expect(adminPreview.status).toBe(200);
+            expect(
+                (
+                    await request(app)
+                        .post(adminBase)
+                        .set(switcher())
+                        .send({ isDelivery: true, ...pin() })
+                ).status,
+            ).toBe(403);
+            expect((await request(app).get("/api/admin/delivery-method-changes").set(switcher())).status).toBe(403);
+            expect(
+                (
+                    await request(app)
+                        .post(`/api/delivery-method-changes/${randomUUID()}/payment-session`)
+                        .set(switcher())
+                ).status,
+            ).toBe(404);
+        });
+    });
 });

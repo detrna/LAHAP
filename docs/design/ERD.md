@@ -35,7 +35,7 @@ This document constitutes the authoritative Entity Relationship Diagram (ERD) an
      - `ON DELETE RESTRICT` for audit actors (`user` $\rightarrow$ `order_status_history`, `user` $\rightarrow$ `delivery_obstacle`); accounts are deactivated via `is_active`, never deleted.
 
 5. **Audit Timestamps & Media Keys:**
-   - Tabel entitas yang dapat berubah menyimpan `created_at` dan `updated_at` (diperbarui otomatis). Tabel penghubung (`user_allergy`, `schedule_menu`, `menu_ingredient`, `ingredient_allergy`) dan log append-only (`order_status_history`, `delivery_obstacle`, `job_run`) tidak memakai `updated_at`.
+   - Tabel entitas yang dapat berubah menyimpan `created_at` dan `updated_at` (diperbarui otomatis). Tabel penghubung (`user_allergy`, `schedule_menu`, `menu_ingredient`, `ingredient_allergy`, `delivery_method_change_slot`) dan log append-only (`order_status_history`, `delivery_obstacle`, `job_run`) tidak memakai `updated_at`.
    - Kolom foto menyimpan **kunci objek** (`photo_key`), bukan URL: adapter object storage hanya menerbitkan URL bertanda tangan yang kedaluwarsa, sehingga API menandatangani `photoUrl` setiap kali dibaca.
 
 6. **Single-Tenant MVP, Multi-Tenant Ready:**
@@ -76,6 +76,11 @@ erDiagram
     order ||--o{ delivery_obstacle : "reports (r24)"
     user ||--o{ delivery_obstacle : "written_by (r25)"
     user ||--o{ refresh_token : "signs_in_with (r28)"
+    subscription ||--o{ delivery_method_change : "switches_method_via (r29)"
+    user ||--o{ delivery_method_change : "requests_switch (r30)"
+    payment |o--o| delivery_method_change : "pays_upgrade (r31)"
+    delivery_method_change ||--|{ delivery_method_change_slot : "switches (r32)"
+    order ||--o{ delivery_method_change_slot : "switched_in (r33)"
 
     user {
         VARCHAR_36 id PK
@@ -214,6 +219,8 @@ erDiagram
         VARCHAR_30 status
         BOOLEAN uses_alternative_menu
         TEXT skip_reason "nullable"
+        BOOLEAN is_delivery
+        DECIMAL delivery_fee
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
@@ -341,11 +348,39 @@ erDiagram
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
+
+    delivery_method_change {
+        VARCHAR_36 id PK
+        VARCHAR_36 subscription_id FK
+        VARCHAR_36 requested_by_id FK
+        BOOLEAN to_delivery
+        DATE effective_from
+        VARCHAR_30 status
+        INT slot_count
+        DECIMAL delivery_fee_per_slot
+        DECIMAL amount
+        BOOLEAN needs_refund
+        TIMESTAMP refunded_at "nullable"
+        VARCHAR_36 payment_id FK, UK "nullable"
+        TEXT delivery_address "nullable"
+        DECIMAL delivery_latitude "nullable"
+        DECIMAL delivery_longitude "nullable"
+        INT delivery_distance_km "nullable"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    delivery_method_change_slot {
+        VARCHAR_36 id PK
+        VARCHAR_36 change_id FK
+        VARCHAR_36 order_id FK
+        DECIMAL fee
+    }
 ```
 
 ---
 
-## 3. Entity Data Dictionary (23 Relational Tables)
+## 3. Entity Data Dictionary (25 Relational Tables)
 
 ### 3.1. `user` (`t1`)
 Pusat identitas seluruh pengguna sistem (Pelanggan, Administrator, Koki Dapur, Kurir Pengantar).
@@ -523,7 +558,7 @@ Entitas transaksi induk pemesanan paket langganan oleh pelanggan.
   | `period` | `VARCHAR(10)` | No | - | Periode yang dipilih pelanggan: `'Harian'`, `'Mingguan'`, atau `'Bulanan'`; wajib salah satu dari `package.periods` (PRD UC-05, divalidasi aplikasi). |
   | `start_date` | `DATE` | No | - | Tanggal slot pertama pesanan; acuan cut-off 23:59:59 H-1 (PRD BR-09). |
   | `end_date` | `DATE` | No | - | Tanggal slot terakhir pesanan; acuan label Akan Datang/Aktif/Selesai (BR-21) dan deteksi churn (BR-28). |
-  | `is_delivery` | `BOOLEAN` | No | DEFAULT `true` | Metode penerimaan untuk **seluruh** slot pesanan: `true` = Diantar Kurir; `false` = Ambil Sendiri (PRD BR-13). Waktu makan tiap slot mengikuti `schedule.delivery_time`; satu pesanan dapat mencakup beberapa waktu makan (PRD UC-06, UC-09). |
+  | `is_delivery` | `BOOLEAN` | No | DEFAULT `true` | Metode penerimaan saat ini pada pesanan (diisi saat checkout dan diperbarui bila ganti metode berhasil): `true` = Diantar Kurir; `false` = Ambil Sendiri (PRD BR-13, §7.5). Metode aktual tiap slot disimpan pada `order.is_delivery`. Waktu makan tiap slot mengikuti `schedule.delivery_time`; satu pesanan dapat mencakup beberapa waktu makan (PRD UC-06, UC-09). |
   | `recipient_name` | `VARCHAR(100)` | No | - | Nama pemesan untuk pesanan ini; wajib (UC-07). Diisi otomatis dari profil dan dapat diubah. |
   | `delivery_address` | `TEXT` | Yes | Wajib jika `is_delivery` | Alamat pengantaran pesanan ini (UC-07); snapshot saat checkout, tidak berubah saat profil diubah. |
   | `delivery_latitude` | `DECIMAL(10,8)` | Yes | Wajib jika `is_delivery` | Lintang pin peta pesanan (WGS 84; PRD §6.3 "koordinat disimpan di pesanan"). |
@@ -564,7 +599,7 @@ Pencatatan mutasi finansial pembayaran dan pengembalian dana (*refund*) pesanan 
   | `subscription_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t8.id` | Langganan yang dibayar. |
   | `user_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id` | Pelanggan pembayar. |
   | `method` | `VARCHAR(50)` | No | - | Metode pembayaran: `'CASH'` (tunai di kasir, diverifikasi admin), `'FREE'` (total 0, lunas saat checkout tanpa gateway), `'MIDTRANS'` (gateway, kanal belum dipilih), atau `'MIDTRANS_<PAYMENT_TYPE>'` dari webhook (e.g., `'MIDTRANS_QRIS'`, `'MIDTRANS_BANK_TRANSFER'`) (PRD BR-19). Respons API menyertakan `doneOnline = method <> 'CASH'` (turunan, tidak disimpan). |
-  | `type` | `VARCHAR(30)` | No | - | Jenis transaksi: `'SUBSCRIPTION'` (pembayaran langganan) atau `'DELIVERY_SERVICE_UPGRADE'` (dicadangkan untuk fitur ganti metode pasca-rilis, PRD §7.5: tambahan ongkir saat Ambil Sendiri → Diantar). MVP hanya membuat `'SUBSCRIPTION'`; ganti metode di MVP = batalkan lalu pesan ulang (BR-13). |
+  | `type` | `VARCHAR(30)` | No | - | Jenis transaksi: `'SUBSCRIPTION'` (pembayaran langganan saat checkout) atau `'DELIVERY_SERVICE_UPGRADE'` (tambahan ongkir saat ganti metode Ambil Sendiri → Diantar pada `delivery_method_change`, PRD §7.5). |
   | `amount` | `DECIMAL(12,2)` | No | - | Nominal rupiah yang ditransaksikan. |
   | `status` | `VARCHAR(30)` | No | - | Status pembayaran: `'Pending'`, `'Success'`, `'Expire'` (PRD BR-20), atau `'Refund'` (refund manual telah dikonfirmasi admin). |
   | `transaction_id` | `VARCHAR(100)` | Yes | UNIQUE | ID transaksi eksternal Midtrans sandbox atau kode resi kasir. |
@@ -593,10 +628,12 @@ Unit operasional terkecil dari katering: **1 Slot = 1 Porsi = 1 Pengiriman** (PR
   | `subscription_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t8.id` | Paket langganan induk pemilik slot. |
   | `menu_schedule_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t11.id` | Jadwal kalender menu harian yang dipenuhi (PRD BR-04). |
   | `service_date` | `DATE` | No | - | Salinan `schedule.date` saat checkout, agar filter dan urutan tanggal cukup membaca tabel `order` sendiri. Tidak bisa basi karena tanggal jadwal tidak boleh diubah setelah ada pesanan. |
-  | `courier_id` | `VARCHAR(36)` | Yes | FK $\rightarrow$ `t1.id` | Kurir yang ditugaskan admin **per slot** (UC-27; tanpa tabel shift), khusus `subscription.is_delivery = true`. Memindahkan satu pengantaran = mengubah kolom ini. |
+  | `courier_id` | `VARCHAR(36)` | Yes | FK $\rightarrow$ `t1.id` | Kurir yang ditugaskan admin **per slot** (UC-27; tanpa tabel shift), khusus `order.is_delivery = true`. Memindahkan satu pengantaran = mengubah kolom ini; dikosongkan otomatis bila slot diubah menjadi Ambil Sendiri. |
   | `status` | `VARCHAR(30)` | No | - | Mesin status slot: `'Terjadwal'`, `'Disiapkan'`, `'Diantar'`, `'Siap Diambil'`, `'Selesai'`, `'Dilewati'` (PRD BR-23). |
   | `uses_alternative_menu` | `BOOLEAN` | No | DEFAULT `false` | `true` jika dapur mengalokasikan Menu Alternatif (`schedule_menu.is_primary = false`) karena bentrok alergi (PRD BR-24). |
   | `skip_reason` | `TEXT` | Yes | Hanya jika `status = 'Dilewati'` | Alasan skip bebas dan opsional (PRD UC-44), mis. "pulang kampung"; "Skip Hari Ini" mengisi alasan yang sama pada tiap slot. |
+  | `is_delivery` | `BOOLEAN` | No | - | Metode penerimaan slot ini (`true` = Diantar Kurir, `false` = Ambil Sendiri); disalin dari `subscription.is_delivery` saat checkout dan dapat diubah per rentang tanggal lewat `delivery_method_change` (PRD §7.5). |
+  | `delivery_fee` | `DECIMAL(10,2)` | No | DEFAULT `0.00` | Ongkir yang dibayar untuk slot ini; diisi `subscription.delivery_fee_per_slot` saat checkout diantar, diubah menjadi `0` saat turun ke Ambil Sendiri, atau diisi tarif baru saat naik ke Diantar. |
   | `created_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu pembuatan baris. |
   | `updated_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu perubahan terakhir; diperbarui otomatis setiap update (`@onUpdate(now())`). |
 - **Indexes:**
@@ -875,7 +912,61 @@ Refresh token JWT yang pernah diterbitkan, satu baris per token (`jti`). Access 
 
 ---
 
-## 4. Relationship & Cardinality Matrix (28 Relational Edges)
+### 3.24. `delivery_method_change` (`t24`)
+Pencatatan perubahan metode penerimaan pada pesanan lunas (`subscription.status = 'Success'`) mulai tanggal layanan tertentu (`effective_from`), baik dari Diantar ke Ambil Sendiri (memicu refund ongkir slot yang beralih) maupun dari Ambil Sendiri ke Diantar (memicu tagihan `payment.type = 'DELIVERY_SERVICE_UPGRADE'` dengan tarif hari ini) (PRD §7.5). Snapshot harga awal pada `subscription` tidak pernah diubah.
+- **Primary Key:** `id` (`VARCHAR(36)`)
+- **Foreign Keys:**
+  - `subscription_id` $\rightarrow$ `subscription(id)` (ON DELETE RESTRICT)
+  - `requested_by_id` $\rightarrow$ `user(id)` (ON DELETE RESTRICT)
+  - `payment_id` $\rightarrow$ `payment(id)` (ON DELETE RESTRICT)
+- **Columns:**
+  | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `id` | `VARCHAR(36)` | No | PK | UUID v4 perubahan metode penerimaan. |
+  | `subscription_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t8.id` | Pesanan langganan yang diubah metodenya. |
+  | `requested_by_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t1.id` | Aktor pengaju perubahan (pelanggan pemilik pesanan atau admin). |
+  | `to_delivery` | `BOOLEAN` | No | - | Arah perubahan: `true` = Ambil Sendiri → Diantar (*upgrade*); `false` = Diantar → Ambil Sendiri (*downgrade*). |
+  | `effective_from` | `DATE` | No | - | Tanggal layanan awal perubahan (setelah hari ini, ≤ `subscription.end_date`). Seluruh slot `'Terjadwal'` pada atau setelah tanggal ini ikut beralih. |
+  | `status` | `VARCHAR(30)` | No | - | Status perubahan: `'Pending'` (menunggu pembayaran upgrade), `'Success'` (diterapkan), atau `'Expire'` (pembayaran upgrade kedaluwarsa atau lunas terlambat melewati cut-off). |
+  | `slot_count` | `INT` | No | - | Jumlah slot yang termasuk dalam perubahan ini. |
+  | `delivery_fee_per_slot` | `DECIMAL(10,2)` | No | DEFAULT `0.00` | Tarif ongkir per slot untuk upgrade (dihitung dengan tarif hari ini); `0.00` untuk downgrade. |
+  | `amount` | `DECIMAL(12,2)` | No | - | Total nominal perubahan: tagihan tambahan ongkir (upgrade) atau nominal refund ongkir yang harus dikembalikan (downgrade). |
+  | `needs_refund` | `BOOLEAN` | No | DEFAULT `false` | `true` bila ada dana yang wajib di-refund manual oleh admin (downgrade dengan `amount > 0`, atau upgrade yang dibayar setelah slot melewati cut-off). |
+  | `refunded_at` | `TIMESTAMP` | Yes | - | Waktu admin mengonfirmasi refund manual; menjadi tanggal pengurang pemasukan pengantaran pada laporan (UC-31). |
+  | `payment_id` | `VARCHAR(36)` | Yes | FK $\rightarrow$ `t9.id`, UNIQUE | Transaksi pembayaran `DELIVERY_SERVICE_UPGRADE` untuk upgrade; `NULL` untuk downgrade. |
+  | `delivery_address` | `TEXT` | Yes | Wajib jika `to_delivery` | Alamat pengantaran baru untuk upgrade; disalin ke `subscription` saat upgrade berhasil. |
+  | `delivery_latitude` | `DECIMAL(10,8)` | Yes | Wajib jika `to_delivery` | Lintang pin pengantaran baru (WGS 84). |
+  | `delivery_longitude` | `DECIMAL(11,8)` | Yes | Wajib jika `to_delivery` | Bujur pin pengantaran baru (WGS 84). |
+  | `delivery_distance_km` | `INT` | Yes | Wajib jika `to_delivery` | Jarak Haversine dibulatkan ke atas untuk titik pengantaran baru (PRD BR-15). |
+  | `created_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu pengajuan perubahan. |
+  | `updated_at` | `TIMESTAMP` | No | DEFAULT `CURRENT_TIMESTAMP` | Waktu perubahan terakhir; diperbarui otomatis setiap update (`@onUpdate(now())`). |
+- **Indexes:**
+  - `idx_delivery_method_change_sub` (`subscription_id`)
+  - `idx_delivery_method_change_req` (`requested_by_id`)
+  - `idx_delivery_method_change_refund` (`needs_refund`)
+
+---
+
+### 3.25. `delivery_method_change_slot` (`t25`)
+Tabel penghubung yang mencatat rincian slot (`order`) yang tercakup dalam satu `delivery_method_change` beserta ongkir per slotnya.
+- **Primary Key:** `id` (`VARCHAR(36)`)
+- **Foreign Keys:**
+  - `change_id` $\rightarrow$ `delivery_method_change(id)` (ON DELETE CASCADE)
+  - `order_id` $\rightarrow$ `order(id)` (ON DELETE CASCADE)
+- **Columns:**
+  | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `id` | `VARCHAR(36)` | No | PK | UUID v4 baris rincian slot perubahan metode. |
+  | `change_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t24.id` | Perubahan metode induk. |
+  | `order_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t10.id` | Slot pesanan yang beralih metode. |
+  | `fee` | `DECIMAL(10,2)` | No | - | Ongkir yang ditagihkan (upgrade) atau yang dikembalikan (downgrade) untuk slot ini. |
+- **Indexes:**
+  - `uq_delivery_method_change_slot` UNIQUE (`change_id`, `order_id`)
+  - `idx_delivery_method_change_slot_order` (`order_id`)
+
+---
+
+## 4. Relationship & Cardinality Matrix (33 Relational Edges)
 
 | ID | Parent / From Entity (`Card`) | Child / To Entity (`Card`) | Foreign Key Column | Referential Action | Business Semantics & Invariants |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -907,6 +998,11 @@ Refresh token JWT yang pernah diterbitkan, satu baris per token (`jti`). Access 
 | **`r26`**| `user` (`1`) | `membership` (`0..1`) | `membership.user_id` (UNIQUE) | `ON DELETE CASCADE` | Pengguna memiliki 0 atau 1 keanggotaan tier aktif. |
 | **`r27`**| `tier` (`0..1`) | `subscription` (`0..N`) | `subscription.tier_id` | `ON DELETE SET NULL` | Tier yang memberi diskon pada pesanan. Jika tier dihapus, nominal `tier_discount` tetap tersimpan. |
 | **`r28`**| `user` (`1`) | `refresh_token` (`0..N`) | `refresh_token.user_id` | `ON DELETE CASCADE` | Satu pengguna memiliki banyak refresh token (satu per sesi/perangkat dan per rotasi). |
+| **`r29`**| `subscription` (`1`) | `delivery_method_change` (`0..N`) | `delivery_method_change.subscription_id` | `ON DELETE RESTRICT` | Satu langganan lunas dapat mengalami beberapa kali perubahan metode penerimaan mulai tanggal tertentu (maksimal satu upgrade `'Pending'` pada satu waktu). |
+| **`r30`**| `user` (`1`) | `delivery_method_change` (`0..N`) | `delivery_method_change.requested_by_id` | `ON DELETE RESTRICT` | Pelanggan atau admin yang mengajukan perubahan metode tercatat untuk jejak audit. |
+| **`r31`**| `payment` (`0..1`) | `delivery_method_change` (`0..1`) | `delivery_method_change.payment_id` (UNIQUE) | `ON DELETE RESTRICT` | Perubahan Ambil Sendiri → Diantar terikat pada satu pembayaran `'DELIVERY_SERVICE_UPGRADE'`; perubahan Diantar → Ambil Sendiri bernilai `NULL`. |
+| **`r32`**| `delivery_method_change` (`1`) | `delivery_method_change_slot` (`1..N`) | `delivery_method_change_slot.change_id` | `ON DELETE CASCADE` | Satu perubahan metode merinci minimal satu slot `'Terjadwal'` yang beralih. |
+| **`r33`**| `order` (`1`) | `delivery_method_change_slot` (`0..N`) | `delivery_method_change_slot.order_id` | `ON DELETE CASCADE` | Satu slot dapat tercatat pada riwayat perubahan metode apabila pesanan diubah lebih dari sekali sebelum cut-off slot tersebut. |
 
 ---
 
@@ -1096,7 +1192,7 @@ CREATE TABLE IF NOT EXISTS payment (
     user_id VARCHAR(36) NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
     method VARCHAR(50) NOT NULL,
     type VARCHAR(30) NOT NULL CHECK (type IN ('SUBSCRIPTION', 'DELIVERY_SERVICE_UPGRADE')),
-    amount DECIMAL(12,2) NOT NULL CHECK (amount > 0.00),
+    amount DECIMAL(12,2) NOT NULL CHECK (amount >= 0.00),
     status VARCHAR(30) NOT NULL CHECK (status IN ('Pending', 'Success', 'Expire', 'Refund')),
     transaction_id VARCHAR(100) UNIQUE,
     paid_at TIMESTAMP,
@@ -1191,6 +1287,8 @@ CREATE TABLE IF NOT EXISTS "order" (
     status VARCHAR(30) NOT NULL CHECK (status IN ('Terjadwal', 'Disiapkan', 'Diantar', 'Siap Diambil', 'Selesai', 'Dilewati')),
     uses_alternative_menu BOOLEAN NOT NULL DEFAULT false,
     skip_reason TEXT CHECK (skip_reason IS NULL OR status = 'Dilewati'),
+    is_delivery BOOLEAN NOT NULL,
+    delivery_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0.00),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1264,6 +1362,43 @@ CREATE TABLE IF NOT EXISTS refresh_token (
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON refresh_token(user_id);
+
+-- 22. Table: delivery_method_change (t24)
+CREATE TABLE IF NOT EXISTS delivery_method_change (
+    id VARCHAR(36) PRIMARY KEY,
+    subscription_id VARCHAR(36) NOT NULL REFERENCES subscription(id) ON DELETE RESTRICT,
+    requested_by_id VARCHAR(36) NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
+    to_delivery BOOLEAN NOT NULL,
+    effective_from DATE NOT NULL,
+    status VARCHAR(30) NOT NULL CHECK (status IN ('Pending', 'Success', 'Expire')),
+    slot_count INT NOT NULL CHECK (slot_count > 0),
+    delivery_fee_per_slot DECIMAL(10,2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee_per_slot >= 0.00),
+    amount DECIMAL(12,2) NOT NULL CHECK (amount >= 0.00),
+    needs_refund BOOLEAN NOT NULL DEFAULT false,
+    refunded_at TIMESTAMP,
+    payment_id VARCHAR(36) UNIQUE REFERENCES payment(id) ON DELETE RESTRICT,
+    delivery_address TEXT,
+    delivery_latitude DECIMAL(10,8),
+    delivery_longitude DECIMAL(11,8),
+    delivery_distance_km INT CHECK (delivery_distance_km >= 0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_method_change_sub ON delivery_method_change(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_method_change_req ON delivery_method_change(requested_by_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_method_change_refund ON delivery_method_change(needs_refund);
+
+-- 23. Table: delivery_method_change_slot (t25)
+CREATE TABLE IF NOT EXISTS delivery_method_change_slot (
+    id VARCHAR(36) PRIMARY KEY,
+    change_id VARCHAR(36) NOT NULL REFERENCES delivery_method_change(id) ON DELETE CASCADE,
+    order_id VARCHAR(36) NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
+    fee DECIMAL(10,2) NOT NULL CHECK (fee >= 0.00),
+    CONSTRAINT uq_delivery_method_change_slot UNIQUE (change_id, order_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_method_change_slot_order ON delivery_method_change_slot(order_id);
 ```
 
 ---
@@ -1336,6 +1471,7 @@ model User {
   statusChanges OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
   refreshTokens RefreshToken[]
+  deliveryMethodChanges DeliveryMethodChange[]
 
   @@index([role])
   @@map("user")
@@ -1642,6 +1778,7 @@ model Subscription {
   tier      Tier?      @relation(fields: [tierId], references: [id], onDelete: SetNull) // deleting a tier keeps the discount amount
   orders    Order[]
   payments  Payment[]
+  deliveryMethodChanges DeliveryMethodChange[]
 
   @@index([userId])
   @@index([packageId])
@@ -1662,6 +1799,8 @@ model Order {
   // true = kitchen assigned the schedule's alternative menu (ScheduleMenu.isPrimary = false) for an allergy clash (BR-24)
   usesAlternativeMenu Boolean @default(false) @map("uses_alternative_menu")
   skipReason          String?  @map("skip_reason") // optional free text, only when status = "Dilewati" (UC-44)
+  isDelivery          Boolean  @map("is_delivery")
+  deliveryFee         Numeric(10, 2) @default(0.00) @map("delivery_fee")
   createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
   updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
 
@@ -1670,6 +1809,7 @@ model Order {
   courier      User?        @relation("CourierDeliveries", fields: [courierId], references: [id], onDelete: SetNull)
   statusHistory OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
+  deliveryMethodChanges DeliveryMethodChangeSlot[]
 
   // One slot per order per schedule (package + date + meal time), BR-06; also serves lookups by subscriptionId
   @@unique([subscriptionId, menuScheduleId])
@@ -1734,11 +1874,57 @@ model Payment {
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  deliveryMethodChange DeliveryMethodChange?
 
   @@index([subscriptionId])
   @@index([userId])
   @@index([status])
   @@map("payment")
+}
+
+model DeliveryMethodChange {
+  id                 VarChar(36)     @id @onCreate(uuid())
+  subscriptionId     VarChar(36)     @map("subscription_id")
+  requestedById      VarChar(36)     @map("requested_by_id")
+  toDelivery         Boolean         @map("to_delivery")
+  effectiveFrom      Date            @map("effective_from")
+  status             VarChar(30)
+  slotCount          Int             @map("slot_count")
+  deliveryFeePerSlot Numeric(10, 2)  @default(0.00) @map("delivery_fee_per_slot")
+  amount             Numeric(12, 2)
+  needsRefund        Boolean         @default(false) @map("needs_refund")
+  refundedAt         Timestamp?      @map("refunded_at")
+  paymentId          VarChar(36)?    @unique @map("payment_id")
+  deliveryAddress    String?         @map("delivery_address")
+  deliveryLatitude   Numeric(10, 8)? @map("delivery_latitude")
+  deliveryLongitude  Numeric(11, 8)? @map("delivery_longitude")
+  deliveryDistanceKm Int?            @map("delivery_distance_km")
+  createdAt          Timestamp       @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  requestedBy  User         @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  slots        DeliveryMethodChangeSlot[]
+
+  @@index([subscriptionId])
+  @@index([requestedById])
+  @@index([needsRefund])
+  @@map("delivery_method_change")
+}
+
+model DeliveryMethodChangeSlot {
+  id       VarChar(36)    @id @onCreate(uuid())
+  changeId VarChar(36)    @map("change_id")
+  orderId  VarChar(36)    @map("order_id")
+  fee      Numeric(10, 2)
+
+  change DeliveryMethodChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  order  Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([changeId, orderId])
+  @@index([orderId])
+  @@map("delivery_method_change_slot")
 }
 
 model Announcement {
@@ -1774,9 +1960,9 @@ model Announcement {
 | **BR-06 (Slot Unit)** | Setiap slot pesanan adalah satu baris independen pada tabel `order` dengan pasangan unik `(subscription_id, menu_schedule_id)`. |
 | **BR-07 (Main & Alternative Menu)** | Konstrain UNIQUE (`schedule_id`, `is_primary`) pada `schedule_menu` menjamin maksimal 1 Menu Utama (`is_primary = true`) dan maksimal 1 Menu Alternatif (`is_primary = false`) per jadwal. Keberadaan tepat 1 Menu Utama divalidasi aplikasi sebelum `schedule.is_published = true`. |
 | **BR-11 (Skip Slot)** | Saat pelanggan melakukan skip, status pada tabel `order` diubah menjadi `'Dilewati'`. Tidak ada trigger pengembalian dana pada tabel `payment` dan `subscription.total_price` tetap utuh. Alasan opsional disimpan pada `order.skip_reason` (UC-44). |
-| **BR-13 (Delivery Consistency)** | Metode penerimaan disimpan sekali pada `subscription.is_delivery` sehingga otomatis seragam untuk seluruh slot `order` turunannya. Waktu makan tidak disimpan pada `subscription`; tiap slot memakai `schedule.delivery_time`, sehingga satu pesanan dapat mencakup beberapa waktu makan. |
-| **BR-14 s.d. BR-16 (Ongkir Haversine)** | Jarak dihitung dari pin pesanan `subscription.delivery_latitude`/`delivery_longitude` (bukan pin profil `user`) ke koordinat dapur `business.latitude`/`longitude`, dibulatkan ke atas dan disimpan pada `subscription.delivery_distance_km`. Parameter tarif (`delivery_free_radius`, `delivery_max_distance`, `delivery_price_per_km`) dibaca dari `package` sebagai override, atau dari `business` jika bernilai `NULL`. Ongkir disnapshot terpisah pada `subscription.delivery_fee_per_slot` dan `delivery_fee_total` (tidak didiskon; perubahan tarif hanya berlaku untuk pesanan baru). |
-| **BR-17 & UC-52 (Rincian Harga)** | Rincian harga disnapshot saat checkout pada `subscription`: `price_per_portion`, `food_subtotal`, `tier_id`/`tier_discount`, `promo_discount`, `delivery_fee_per_slot`, `delivery_fee_total`, dan `total_price = food_subtotal − tier_discount − promo_discount + delivery_fee_total`. Laporan pemasukan (UC-31) menjumlahkan kolom-kolom ini dari pesanan `Success`. |
+| **BR-13 & PRD §7.5 (Delivery Consistency & Method Change)** | Saat checkout, metode penerimaan disalin ke `subscription.is_delivery` dan ke setiap `order.is_delivery` (beserta `order.delivery_fee`), sehingga tidak ada pencampuran per hari. Perubahan metode mulai tanggal `effective_from` dicatat pada `delivery_method_change` dan `delivery_method_change_slot`: Diantar → Ambil Sendiri langsung mengubah slot `'Terjadwal'` terkait menjadi `is_delivery = false`, `delivery_fee = 0`, mengosongkan `courier_id`, dan menandai `needs_refund = true` sebesar ongkir slot yang beralih; Ambil Sendiri → Diantar membuat `payment` bertipe `'DELIVERY_SERVICE_UPGRADE'` dengan tarif hari ini dan baru mengubah slot serta alamat `subscription` setelah pembayaran `'Success'`. Waktu makan tiap slot memakai `schedule.delivery_time`. |
+| **BR-14 s.d. BR-16 (Ongkir Haversine)** | Jarak dihitung dari pin pesanan `subscription.delivery_latitude`/`delivery_longitude` (bukan pin profil `user`) ke koordinat dapur `business.latitude`/`longitude`, dibulatkan ke atas dan disimpan pada `subscription.delivery_distance_km`. Parameter tarif (`delivery_free_radius`, `delivery_max_distance`, `delivery_price_per_km`) dibaca dari `package` sebagai override, atau dari `business` jika bernilai `NULL`. Ongkir disnapshot terpisah pada `subscription.delivery_fee_per_slot` dan `delivery_fee_total` (tidak didiskon; perubahan tarif hanya berlaku untuk pesanan/upgrade baru). |
+| **BR-17 & UC-52 (Rincian Harga)** | Rincian harga disnapshot saat checkout pada `subscription`: `price_per_portion`, `food_subtotal`, `tier_id`/`tier_discount`, `promo_discount`, `delivery_fee_per_slot`, `delivery_fee_total`, dan `total_price = food_subtotal − tier_discount − promo_discount + delivery_fee_total` (tidak pernah diubah oleh skip maupun ganti metode). Laporan pemasukan (UC-31) menjumlahkan kolom-kolom ini dari pesanan `Success`, ditambah `payment` `'DELIVERY_SERVICE_UPGRADE'` yang lunas pada periode `paid_at` dan dikurangi refund `delivery_method_change` yang dikonfirmasi pada periode `refunded_at`. |
 | **UC-38 (Hapus Tier)** | `membership.tier_id` bersifat RESTRICT. Dalam satu transaksi: anggota tier dipindah ke tier sebelumnya (`required_subscription_days` tertinggi di bawahnya, unik) dengan `started_at`/`expires_at` tetap; tanpa tier lebih rendah, keanggotaan dihapus; lalu tier dihapus. `subscription.tier_id` menjadi `NULL` dan nominal `tier_discount` tetap. |
 | **BR-18 (Tier & Promo Stacking)** | Tier aktif pelanggan dibaca dari `membership` (maksimal 1 baris per pengguna), dengan turun satu tingkat per masa berlaku yang habis. `tier.discount_percent` dipotong terlebih dahulu dari subtotal makanan. `promo_code.allow_stack_with_tier = true` mengizinkan pemotongan kupon bertingkat; jika `false`, sistem hanya memotong diskon terbesar. Jenis potongan kupon ditentukan `promo_code.discount_type` (`'Persen'`/`'Nominal'`) dengan nilai `discount_value`; kupon hanya berlaku jika subtotal makanan ≥ `min_purchase`. |
 | **BR-19 & UC-03 (Online/Offline)** | Jenis pembelian disimpan sekali pada `subscription.purchase_type` (`'Online'`/`'Offline'`). Pesanan `'Online'` hanya boleh dibayar lewat gateway (`payment.method <> 'CASH'`, divalidasi aplikasi); `'Offline'` boleh gateway atau `'CASH'` yang diverifikasi admin. `doneOnline` pada respons API diturunkan dari `payment.method`, tidak disimpan. |

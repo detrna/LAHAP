@@ -5,8 +5,12 @@ import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 
 function setup(status: OrderStatus, isDelivery = true) {
     const context = setupOrdersService();
-    const order = buildOrderRecord({ id: "ord-1", status });
-    const subscription = buildSubscriptionRecord({ id: order.subscriptionId, status: "Success", isDelivery });
+    const order = buildOrderRecord({ id: "ord-1", status, isDelivery });
+    const subscription = buildSubscriptionRecord({
+        id: order.subscriptionId,
+        status: "Success",
+        isDelivery: !isDelivery,
+    });
     context.repository.findSlotWithSubscription.mockResolvedValue({ order, subscription });
     context.repository.transitionSlots.mockImplementation(async ({ to }: { to: OrderStatus }) => [
         {

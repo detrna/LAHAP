@@ -91,6 +91,8 @@ describe("OrdersService.createSubscription (unit)", () => {
                 id: "00000000-0000-4000-8000-000000000003",
                 menuScheduleId: SLOT.id,
                 serviceDate: Temporal.PlainDate.from("2026-11-09"),
+                isDelivery: false,
+                deliveryFee: 0,
             },
         ]);
         expect(write.payment).toEqual({
@@ -172,6 +174,26 @@ describe("OrdersService.createSubscription (unit)", () => {
             deliveryLatitude: KITCHEN.latitude,
             deliveryDistanceKm: 0,
         });
+    });
+
+    it("gives every slot of a delivery order its method and the fee per slot", async () => {
+        const { service, repository } = setup();
+
+        await service.createSubscription(
+            "user-1",
+            input({
+                isDelivery: true,
+                deliveryAddress: "Jl. Ijen",
+                deliveryLatitude: KITCHEN.latitude + 0.05,
+                deliveryLongitude: KITCHEN.longitude,
+            }),
+        );
+
+        const write = repository.createCheckout.mock.calls[0]![0] as CheckoutWrite;
+        expect(write.subscription.deliveryFeePerSlot).toBeGreaterThan(0);
+        expect(write.slots).toEqual([
+            expect.objectContaining({ isDelivery: true, deliveryFee: write.subscription.deliveryFeePerSlot }),
+        ]);
     });
 
     it("writes nothing when the gateway fails", async () => {

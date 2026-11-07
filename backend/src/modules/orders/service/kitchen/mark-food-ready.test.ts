@@ -6,12 +6,12 @@ import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 const changedAt = Temporal.PlainDateTime.from("2026-11-06T03:00:00");
 
 describe("OrdersService.markFoodReady (unit)", () => {
-    it("moves delivery slots to Diantar and pick-up slots to Siap Diambil", async () => {
+    it("moves delivery slots to Diantar and pick-up slots to Siap Diambil, by each slot's own method", async () => {
         const { service, repository, realtime } = setupOrdersService();
-        const delivered = buildSubscriptionRecord({ id: "sub-d", isDelivery: true, status: "Success" });
-        const pickedUp = buildSubscriptionRecord({ id: "sub-p", isDelivery: false, status: "Success" });
-        const a = buildOrderRecord({ id: "a", subscriptionId: "sub-d", status: "Disiapkan" });
-        const b = buildOrderRecord({ id: "b", subscriptionId: "sub-p", status: "Disiapkan" });
+        const delivered = buildSubscriptionRecord({ id: "sub-d", isDelivery: false, status: "Success" });
+        const pickedUp = buildSubscriptionRecord({ id: "sub-p", isDelivery: true, status: "Success" });
+        const a = buildOrderRecord({ id: "a", subscriptionId: "sub-d", status: "Disiapkan", isDelivery: true });
+        const b = buildOrderRecord({ id: "b", subscriptionId: "sub-p", status: "Disiapkan", isDelivery: false });
         repository.findSlots.mockResolvedValue([
             { order: a, subscription: delivered },
             { order: b, subscription: pickedUp },

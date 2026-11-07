@@ -18,7 +18,7 @@ export async function getSlotForObstacle(this: OrdersService, orderId: string): 
         userId: slot.subscription.userId,
         courierId: slot.order.courierId,
         status: slot.order.status,
-        isDelivery: slot.subscription.isDelivery,
+        isDelivery: slot.order.isDelivery,
         subscriptionStatus: slot.subscription.status,
         menuScheduleId: slot.order.menuScheduleId,
     };

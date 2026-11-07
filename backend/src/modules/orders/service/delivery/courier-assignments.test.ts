@@ -4,8 +4,8 @@ import { buildUserSummary } from "../../../users/test-utils/factory/users.factor
 import { buildOrderRecord, buildSubscriptionRecord } from "../../test-utils/factory/orders.factory.js";
 import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 
-const delivered = buildSubscriptionRecord({ id: "sub-d", isDelivery: true, status: "Success" });
-const pickedUp = buildSubscriptionRecord({ id: "sub-p", isDelivery: false, status: "Success" });
+const delivered = buildSubscriptionRecord({ id: "sub-d", isDelivery: false, status: "Success" });
+const pickedUp = buildSubscriptionRecord({ id: "sub-p", isDelivery: true, status: "Success" });
 
 describe("OrdersService.listCourierAssignments (unit)", () => {
     it("counts delivery slots per date and meal time and names a sole courier", async () => {
@@ -14,22 +14,25 @@ describe("OrdersService.listCourierAssignments (unit)", () => {
         );
         repository.findSlots.mockResolvedValue([
             {
-                order: buildOrderRecord({ id: "a", menuScheduleId: "lunch", courierId: "c-1" }),
+                order: buildOrderRecord({ id: "a", menuScheduleId: "lunch", courierId: "c-1", isDelivery: true }),
                 subscription: delivered,
             },
             {
-                order: buildOrderRecord({ id: "b", menuScheduleId: "lunch", courierId: "c-1" }),
+                order: buildOrderRecord({ id: "b", menuScheduleId: "lunch", courierId: "c-1", isDelivery: true }),
                 subscription: delivered,
             },
             {
-                order: buildOrderRecord({ id: "c", menuScheduleId: "dinner", courierId: null }),
+                order: buildOrderRecord({ id: "c", menuScheduleId: "dinner", courierId: null, isDelivery: true }),
                 subscription: delivered,
             },
             {
-                order: buildOrderRecord({ id: "d", menuScheduleId: "dinner", courierId: "c-1" }),
+                order: buildOrderRecord({ id: "d", menuScheduleId: "dinner", courierId: "c-1", isDelivery: true }),
                 subscription: delivered,
             },
-            { order: buildOrderRecord({ id: "e", menuScheduleId: "lunch" }), subscription: pickedUp },
+            {
+                order: buildOrderRecord({ id: "e", menuScheduleId: "lunch", isDelivery: false }),
+                subscription: pickedUp,
+            },
         ]);
         catalog.findSchedules.mockResolvedValue([
             buildScheduleSummary({ id: "lunch", date: "2026-11-10", deliveryTime: { time: "12:00", range: "Siang" } }),
@@ -71,8 +74,8 @@ describe("OrdersService.assignCourier (unit)", () => {
         customers.filterActiveUserIds.mockResolvedValue(["c-1"]);
         catalog.findSchedules.mockResolvedValue([buildScheduleSummary({ id: "lunch" })]);
         repository.findSlots.mockResolvedValue([
-            { order: buildOrderRecord({ id: "a" }), subscription: delivered },
-            { order: buildOrderRecord({ id: "b" }), subscription: pickedUp },
+            { order: buildOrderRecord({ id: "a", isDelivery: true }), subscription: delivered },
+            { order: buildOrderRecord({ id: "b", isDelivery: false }), subscription: pickedUp },
         ]);
         repository.assignCourier.mockResolvedValue(1);
         const date = Temporal.PlainDate.from("2026-11-10");
@@ -92,7 +95,9 @@ describe("OrdersService.assignCourier (unit)", () => {
 
     it("unassigns explicit slots without checking a courier", async () => {
         const { service, repository, customers } = setupOrdersService();
-        repository.findSlots.mockResolvedValue([{ order: buildOrderRecord({ id: "a" }), subscription: delivered }]);
+        repository.findSlots.mockResolvedValue([
+            { order: buildOrderRecord({ id: "a", isDelivery: true }), subscription: delivered },
+        ]);
 
         await service.assignCourier({ courierId: null, orderIds: ["a"] });
 

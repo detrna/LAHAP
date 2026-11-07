@@ -1,10 +1,21 @@
 import { buildMenu } from "../../../catalog/test-utils/factory/catalog.factory.js";
 import type { CheckoutSlotPreview, CheckoutPreview, CheckoutResult } from "../../domain/checkout.domain.js";
+import type {
+    DeliveryMethodChange,
+    DeliveryMethodChangeResult,
+    DeliveryMethodChangeSlot,
+    DeliveryMethodPreview,
+} from "../../domain/delivery-method-change.domain.js";
 import type { OrderStatusHistory, Order, SkipDayResult, CourierScheduleEntry } from "../../domain/order.domain.js";
 import type { Payment, PaymentSession } from "../../domain/payment.domain.js";
 import type { DashboardStats, IncomeReport } from "../../domain/report.domain.js";
 import type { Subscription } from "../../domain/subscription.domain.js";
-import type { OrderRecord, PaymentRecord, SubscriptionRecord } from "../../service/interfaces/orders.repository.js";
+import type {
+    DeliveryMethodChangeRecord,
+    OrderRecord,
+    PaymentRecord,
+    SubscriptionRecord,
+} from "../../service/interfaces/orders.repository.js";
 
 export function buildSubscription(overrides: Partial<Subscription> = {}): Subscription {
     return {
@@ -62,6 +73,8 @@ export function buildOrder(overrides: Partial<Order> = {}): Order {
         status: "Terjadwal",
         usesAlternativeMenu: false,
         skipReason: null,
+        isDelivery: false,
+        deliveryFee: 0,
         completedAt: null,
         createdAt: "2026-11-03T00:00:00.000+07:00",
         updatedAt: "2026-11-03T00:00:00.000+07:00",
@@ -246,6 +259,91 @@ export function buildOrderRecord(overrides: Partial<OrderRecord> = {}): OrderRec
         status: "Terjadwal",
         usesAlternativeMenu: false,
         skipReason: null,
+        isDelivery: false,
+        deliveryFee: 0,
+        createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        ...overrides,
+    };
+}
+
+export function buildDeliveryMethodChangeSlot(
+    overrides: Partial<DeliveryMethodChangeSlot> = {},
+): DeliveryMethodChangeSlot {
+    return { orderId: "00000000-0000-4000-8000-000000000003", serviceDate: "2026-11-10", fee: 0, ...overrides };
+}
+
+export function buildDeliveryMethodChange(overrides: Partial<DeliveryMethodChange> = {}): DeliveryMethodChange {
+    return {
+        id: "00000000-0000-4000-8000-000000000004",
+        subscriptionId: "00000000-0000-4000-8000-000000000001",
+        requestedById: "00000000-0000-4000-8000-000000000001",
+        toDelivery: false,
+        effectiveFrom: "2026-11-10",
+        status: "Success",
+        slotCount: 1,
+        deliveryFeePerSlot: 0,
+        amount: 0,
+        needsRefund: false,
+        refundedAt: null,
+        paymentId: null,
+        deliveryAddress: null,
+        deliveryLatitude: null,
+        deliveryLongitude: null,
+        deliveryDistanceKm: null,
+        slots: [buildDeliveryMethodChangeSlot()],
+        createdAt: "2026-11-03T08:00:00.000+07:00",
+        updatedAt: "2026-11-03T08:00:00.000+07:00",
+        ...overrides,
+    };
+}
+
+export function buildDeliveryMethodPreview(overrides: Partial<DeliveryMethodPreview> = {}): DeliveryMethodPreview {
+    return {
+        toDelivery: false,
+        effectiveFrom: "2026-11-10",
+        slots: [buildDeliveryMethodChangeSlot()],
+        slotCount: 1,
+        deliveryFeePerSlot: 0,
+        amount: 0,
+        delivery: null,
+        ...overrides,
+    };
+}
+
+export function buildDeliveryMethodChangeResult(
+    overrides: Partial<DeliveryMethodChangeResult> = {},
+): DeliveryMethodChangeResult {
+    return { change: buildDeliveryMethodChange(), payment: null, paymentSession: null, ...overrides };
+}
+
+export function buildDeliveryMethodChangeRecord(
+    overrides: Partial<DeliveryMethodChangeRecord> = {},
+): DeliveryMethodChangeRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000004",
+        subscriptionId: "00000000-0000-4000-8000-000000000001",
+        requestedById: "00000000-0000-4000-8000-000000000001",
+        toDelivery: false,
+        effectiveFrom: Temporal.PlainDate.from("2026-11-10"),
+        status: "Success",
+        slotCount: 1,
+        deliveryFeePerSlot: 0,
+        amount: 0,
+        needsRefund: false,
+        refundedAt: null,
+        paymentId: null,
+        deliveryAddress: null,
+        deliveryLatitude: null,
+        deliveryLongitude: null,
+        deliveryDistanceKm: null,
+        slots: [
+            {
+                orderId: "00000000-0000-4000-8000-000000000003",
+                serviceDate: Temporal.PlainDate.from("2026-11-10"),
+                fee: 0,
+            },
+        ],
         createdAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
         updatedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
         ...overrides,

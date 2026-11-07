@@ -27,6 +27,8 @@ export interface Order {
     readonly status: OrderStatus;
     readonly usesAlternativeMenu: boolean;
     readonly skipReason: string | null;
+    readonly isDelivery: boolean;
+    readonly deliveryFee: number;
     readonly completedAt: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;

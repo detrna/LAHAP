@@ -12,6 +12,16 @@ export async function expirePendingPayments(
             const expired = await tx.orm.public.Payment.where({ status: "Pending" })
                 .where(payment => payment.createdAt.lt(createdBefore))
                 .updateAll({ status: "Expire" });
+            const upgradeIds = expired
+                .filter(payment => payment.type === "DELIVERY_SERVICE_UPGRADE")
+                .map(payment => payment.id);
+            if (upgradeIds.length > 0) {
+                await tx.orm.public.DeliveryMethodChange.where(change =>
+                    change.paymentId.in(upgradeIds as Varchar<36>[]),
+                )
+                    .where({ status: "Pending" })
+                    .updateAll({ status: "Expire" });
+            }
             const subscriptionIds = [...new Set(expired.map(payment => payment.subscriptionId))];
             if (subscriptionIds.length > 0) {
                 await tx.orm.public.Subscription.where(subscription =>

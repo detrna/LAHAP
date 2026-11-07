@@ -241,6 +241,39 @@ describe("PrismaOrdersRepository slots (integration)", () => {
         expect(refunds.total).toBe(0);
     });
 
+    it("filters by each slot's own method, not the order's", async () => {
+        const userId = await createTestUser(db, rows);
+        const date = base.add({ days: 60 });
+        const switched = await createTestSlots(db, rows, {
+            userId,
+            packageId,
+            status: "Success",
+            isDelivery: true,
+            deliveryFeePerSlot: 3000,
+            slots: [{ scheduleId: await scheduleOn(date) }, { scheduleId: await scheduleOn(date), isDelivery: false }],
+        });
+        const [delivered, pickedUp] = switched.slotIds;
+
+        const pickup = await repository.listSlots({
+            date,
+            isDelivery: false,
+            subscriptionId: switched.subscriptionId,
+            skip: 0,
+            take: 10,
+            subscriptionStatuses: ["Success"],
+        });
+        expect(pickup.items.map(item => item.order.id)).toEqual([pickedUp]);
+        expect(pickup.items[0]!.order).toMatchObject({ isDelivery: false, deliveryFee: 0 });
+
+        const found = await repository.findSlots({
+            orderIds: switched.slotIds,
+            isDelivery: true,
+            subscriptionStatuses: ["Success"],
+        });
+        expect(found.map(item => item.order.id)).toEqual([delivered]);
+        expect(found[0]!.order).toMatchObject({ isDelivery: true, deliveryFee: 3000 });
+    });
+
     it("finds a courier's delivery slots and leaves out other couriers, pick-up and unpaid orders", async () => {
         const userId = await createTestUser(db, rows);
         const courierId = await createTestUser(db, rows, { role: "COURIER" });

@@ -8,7 +8,11 @@ export interface PaidDetails {
     readonly method: PaymentMethod;
 }
 
-export function toPaymentChange(outcome: PaymentOutcome, paid: PaidDetails): PaymentChange | null {
+export function toPaymentChange(
+    outcome: PaymentOutcome,
+    paid: PaidDetails,
+    hasOtherPaidPayments = false,
+): PaymentChange | null {
     switch (outcome.kind) {
         case "none":
             return null;
@@ -24,7 +28,10 @@ export function toPaymentChange(outcome: PaymentOutcome, paid: PaidDetails): Pay
         case "refunded":
             return {
                 payment: { status: "Refund" },
-                subscription: { needsRefund: false, ...(outcome.cancelsSubscription ? { status: "Dibatalkan" } : {}) },
+                subscription: {
+                    needsRefund: hasOtherPaidPayments,
+                    ...(outcome.cancelsSubscription ? { status: "Dibatalkan" } : {}),
+                },
             };
     }
 }

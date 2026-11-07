@@ -35,7 +35,7 @@ export async function listCourierAssignments(
             statuses: DELIVERED_STATUSES,
             subscriptionStatuses: PAID_SUBSCRIPTION_STATUSES,
         })
-    ).filter(slot => slot.subscription.isDelivery);
+    ).filter(slot => slot.order.isDelivery);
     if (slots.length === 0) return [];
 
     const scheduleIds = [...new Set(slots.map(slot => slot.order.menuScheduleId))];
@@ -98,6 +98,6 @@ export async function assignCourier(this: OrdersService, assignment: CourierAssi
         statuses: ASSIGNABLE_STATUSES,
         subscriptionStatuses: PAID_SUBSCRIPTION_STATUSES,
     });
-    const orderIds = slots.filter(slot => slot.subscription.isDelivery).map(slot => slot.order.id);
+    const orderIds = slots.filter(slot => slot.order.isDelivery).map(slot => slot.order.id);
     return { updatedCount: await this.ordersRepository.assignCourier(orderIds, courierId) };
 }

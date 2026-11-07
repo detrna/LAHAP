@@ -69,6 +69,17 @@ import { countPromoUses, countPromoUsesByUser, hasPendingSubscriptions } from ".
 import { getDashboard } from "./reports/get-dashboard.js";
 import { getIncomeReport } from "./reports/get-income-report.js";
 
+import { changeDeliveryMethod } from "./method-change/change-delivery-method.js";
+import {
+    afterMethodChanged,
+    afterUpgradeNotApplied,
+    afterUpgradeRefunded,
+} from "./method-change/method-change-notices.js";
+import { getMethodChangePaymentSession } from "./method-change/method-change-payment-session.js";
+import { confirmMethodChangeRefund, listMethodChangesForAdmin } from "./method-change/method-change-refunds.js";
+import { previewMethodChange } from "./method-change/preview-method-change.js";
+import { quoteMethodChange } from "./method-change/quote-method-change.js";
+
 export interface OrdersServiceDeps {
     readonly clock: Clock;
     readonly logger: Logger;
@@ -183,6 +194,15 @@ export class OrdersService {
     findCustomerIdsForPackage = findCustomerIdsForPackage;
     findCustomerIdsForSchedule = findCustomerIdsForSchedule;
     findAnnouncementTargetsOf = findAnnouncementTargetsOf;
+    quoteMethodChange = quoteMethodChange;
+    previewMethodChange = previewMethodChange;
+    changeDeliveryMethod = changeDeliveryMethod;
+    afterMethodChanged = afterMethodChanged;
+    afterUpgradeNotApplied = afterUpgradeNotApplied;
+    afterUpgradeRefunded = afterUpgradeRefunded;
+    getMethodChangePaymentSession = getMethodChangePaymentSession;
+    listMethodChangesForAdmin = listMethodChangesForAdmin;
+    confirmMethodChangeRefund = confirmMethodChangeRefund;
     listKitchenSlots = listKitchenSlots;
     listCourierSlots = listCourierSlots;
     getSlotForObstacle = getSlotForObstacle;

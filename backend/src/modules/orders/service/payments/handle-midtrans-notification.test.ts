@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { VerifiedPaymentNotification } from "../../../../shared/ports/payment-gateway/payment-gateway.js";
 import type { PaymentChange, PaymentWithSubscription } from "../interfaces/orders.repository.js";
-import { buildPaymentRecord, buildSubscriptionRecord } from "../../test-utils/factory/orders.factory.js";
+import {
+    buildDeliveryMethodChangeRecord,
+    buildOrderRecord,
+    buildPaymentRecord,
+    buildSubscriptionRecord,
+} from "../../test-utils/factory/orders.factory.js";
 import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 
 const NOW = "2026-11-06T10:00:00+07:00[Asia/Jakarta]";
@@ -28,6 +33,14 @@ function setup(current: PaymentWithSubscription) {
                 after: {
                     payment: { ...current.payment, ...change.payment },
                     subscription: { ...current.subscription, ...change.subscription },
+                    ...(current.methodChange !== undefined
+                        ? {
+                              methodChange: {
+                                  ...current.methodChange,
+                                  change: { ...current.methodChange.change, ...change.methodChange },
+                              },
+                          }
+                        : {}),
                 },
             };
         },
@@ -154,6 +167,24 @@ describe("OrdersService.handleMidtransNotification (unit)", () => {
         expect(notifier.notifyUser).toHaveBeenCalled();
     });
 
+    it("keeps the order waiting for a refund when another paid payment is left", async () => {
+        const paid = pending();
+        const current = {
+            payment: { ...paid.payment, status: "Success" as const },
+            subscription: { ...paid.subscription, status: "Success" as const },
+            otherPayments: [buildPaymentRecord({ id: "pay-2", status: "Success", type: "DELIVERY_SERVICE_UPGRADE" })],
+        };
+        const { service, paymentGateway, changes } = setup(current);
+        paymentGateway.verifyNotification.mockReturnValue(notification({ status: "REFUNDED", rawStatus: "refund" }));
+
+        await service.handleMidtransNotification({});
+
+        expect(changes[0]).toEqual({
+            payment: { status: "Refund" },
+            subscription: { needsRefund: true, status: "Dibatalkan" },
+        });
+    });
+
     it("lets a bad signature fail the request", async () => {
         const { service, paymentGateway, repository } = setup(pending());
         paymentGateway.verifyNotification.mockImplementation(() => {
@@ -162,5 +193,87 @@ describe("OrdersService.handleMidtransNotification (unit)", () => {
 
         await expect(service.handleMidtransNotification({})).rejects.toThrow("bad signature");
         expect(repository.changePayment).not.toHaveBeenCalled();
+    });
+});
+
+describe("OrdersService.handleMidtransNotification for a delivery upgrade (unit)", () => {
+    const upgrade = (overrides: { serviceDate?: string; paymentStatus?: "Pending" | "Success" } = {}) => {
+        const order = buildOrderRecord({
+            id: "o-1",
+            serviceDate: Temporal.PlainDate.from(overrides.serviceDate ?? "2026-11-08"),
+        });
+        return {
+            payment: buildPaymentRecord({
+                id: "pay-1",
+                amount: 15000,
+                status: overrides.paymentStatus ?? "Pending",
+                type: "DELIVERY_SERVICE_UPGRADE",
+            }),
+            subscription: buildSubscriptionRecord({ id: "sub-1", userId: "user-1", status: "Success" }),
+            otherPayments: [],
+            methodChange: {
+                change: buildDeliveryMethodChangeRecord({
+                    id: "chg-1",
+                    toDelivery: true,
+                    status: overrides.paymentStatus === "Success" ? "Success" : "Pending",
+                    paymentId: "pay-1",
+                    amount: 15000,
+                    slots: [{ orderId: "o-1", serviceDate: order.serviceDate, fee: 15000 }],
+                }),
+                orders: [order],
+            },
+        };
+    };
+    const paidAt = Temporal.PlainDateTime.from("2026-11-06T03:00:00");
+
+    it("applies a paid upgrade and tells the customer and the admins, without touching the tier", async () => {
+        const { service, paymentGateway, changes, tierDiscounts, notifier } = setup(upgrade());
+        paymentGateway.verifyNotification.mockReturnValue(notification());
+
+        await service.handleMidtransNotification({});
+
+        expect(changes[0]).toEqual({
+            payment: { status: "Success", paidAt, transactionId: "trx-1", method: "MIDTRANS_QRIS" },
+            methodChange: { status: "Success", apply: true },
+        });
+        expect(tierDiscounts.reevaluate).not.toHaveBeenCalled();
+        expect(notifier.notifyUser).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-1" }));
+        expect(notifier.notifyAdmins).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a payment that came after a slot's cut-off but doesn't apply it", async () => {
+        const { service, paymentGateway, changes, notifier } = setup(upgrade({ serviceDate: "2026-11-06" }));
+        paymentGateway.verifyNotification.mockReturnValue(notification());
+
+        await service.handleMidtransNotification({});
+
+        expect(changes[0]).toEqual({
+            payment: { status: "Success", paidAt, transactionId: "trx-1", method: "MIDTRANS_QRIS" },
+            methodChange: { status: "Expire", needsRefund: true },
+        });
+        expect(notifier.notifyAdmins).toHaveBeenCalledTimes(1);
+        expect(notifier.notifyUser).not.toHaveBeenCalled();
+    });
+
+    it("expires the change with its payment and leaves the order alone", async () => {
+        const { service, paymentGateway, changes } = setup(upgrade());
+        paymentGateway.verifyNotification.mockReturnValue(notification({ status: "EXPIRED", rawStatus: "expire" }));
+
+        await service.handleMidtransNotification({});
+
+        expect(changes[0]).toEqual({ payment: { status: "Expire" }, methodChange: { status: "Expire" } });
+    });
+
+    it("records a refund from the dashboard without reverting the slots", async () => {
+        const { service, paymentGateway, changes, notifier, tierDiscounts } = setup(
+            upgrade({ paymentStatus: "Success" }),
+        );
+        paymentGateway.verifyNotification.mockReturnValue(notification({ status: "REFUNDED", rawStatus: "refund" }));
+
+        await service.handleMidtransNotification({});
+
+        expect(changes[0]).toEqual({ payment: { status: "Refund" }, methodChange: { needsRefund: false } });
+        expect(notifier.notifyAdmins).toHaveBeenCalledTimes(1);
+        expect(tierDiscounts.reevaluate).not.toHaveBeenCalled();
     });
 });

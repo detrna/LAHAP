@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildUserSummary } from "../../../users/test-utils/factory/users.factory.js";
-import { buildPaymentRecord, buildSubscriptionRecord } from "../../test-utils/factory/orders.factory.js";
+import {
+    buildDeliveryMethodChangeRecord,
+    buildPaymentRecord,
+    buildSubscriptionRecord,
+} from "../../test-utils/factory/orders.factory.js";
 import { setupOrdersService } from "../../test-utils/setup/orders.setup.js";
 
 describe("OrdersService admin subscriptions and payments (unit)", () => {
@@ -34,9 +38,18 @@ describe("OrdersService admin subscriptions and payments (unit)", () => {
         repository.findSubscriptionById.mockResolvedValue(buildSubscriptionRecord({ id: "sub-1" }));
         repository.findPaymentsBySubscriptionId.mockResolvedValue([buildPaymentRecord()]);
 
+        repository.findMethodChangesBySubscriptionIds.mockResolvedValue([
+            buildDeliveryMethodChangeRecord({ id: "chg-1" }),
+        ]);
+
         const subscription = await service.getSubscriptionForAdmin("sub-1");
 
-        expect(subscription).toMatchObject({ id: "sub-1", orders: [], payments: [{ status: "Pending" }] });
+        expect(subscription).toMatchObject({
+            id: "sub-1",
+            orders: [],
+            payments: [{ status: "Pending" }],
+            deliveryMethodChanges: [{ id: "chg-1" }],
+        });
         repository.findSubscriptionById.mockResolvedValue(null);
         await expect(service.getSubscriptionForAdmin("x")).rejects.toMatchObject({ statusCode: 404 });
     });

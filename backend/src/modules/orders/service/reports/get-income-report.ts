@@ -3,6 +3,7 @@ import { toDbTimestamp } from "../../../../shared/time/timestamp.js";
 import { PAID_SUBSCRIPTION_STATUSES } from "../../domain/paid-subscriptions.js";
 import type { IncomeReport } from "../../domain/report.domain.js";
 import { reportPeriodRange, type ReportPeriod } from "../../domain/report-period.js";
+import { roundHalfUp } from "../../../../shared/utils/decimal/decimal.js";
 import type { IncomeTotals } from "../interfaces/orders.repository.js";
 import type { OrdersService } from "../orders.service.js";
 
@@ -36,13 +37,51 @@ const totalsOf = (row: IncomeTotals): IncomeTotals => ({
     totalRevenue: row.totalRevenue,
 });
 
+const MONEY_SCALE = 2;
+
+function withDeliveryChanges<K extends string, R extends IncomeTotals>(
+    rows: readonly R[],
+    keyOf: (row: R) => K,
+    changes: readonly { readonly key: K; readonly deliveryRevenue: number }[],
+    emptyRow: (key: K) => R,
+): R[] {
+    const merged = new Map<K, R>(rows.map(row => [keyOf(row), row]));
+    for (const { key, deliveryRevenue } of changes) {
+        const row = merged.get(key) ?? emptyRow(key);
+        merged.set(key, {
+            ...row,
+            deliveryRevenue: roundHalfUp(row.deliveryRevenue + deliveryRevenue, MONEY_SCALE),
+            totalRevenue: roundHalfUp(row.totalRevenue + deliveryRevenue, MONEY_SCALE),
+        });
+    }
+    return [...merged.values()];
+}
+
 export async function getIncomeReport(this: OrdersService, period: ReportPeriod): Promise<IncomeReport> {
     const { from, to } = reportPeriodRange(period, this.clock.now().toPlainDate());
-    const income = await this.ordersRepository.sumIncome({
-        createdFrom: startOfDay(from),
-        createdBefore: startOfDay(to.add({ days: 1 })),
-        statuses: PAID_SUBSCRIPTION_STATUSES,
-    });
+    const range = { from: startOfDay(from), before: startOfDay(to.add({ days: 1 })) };
+    const [sums, changes] = await Promise.all([
+        this.ordersRepository.sumIncome({
+            createdFrom: range.from,
+            createdBefore: range.before,
+            statuses: PAID_SUBSCRIPTION_STATUSES,
+        }),
+        this.ordersRepository.sumMethodChangeIncome({ ...range, statuses: PAID_SUBSCRIPTION_STATUSES }),
+    ]);
+    const income = {
+        byPackage: withDeliveryChanges(
+            sums.byPackage,
+            row => row.packageId,
+            changes.byPackage.map(row => ({ key: row.packageId, deliveryRevenue: row.deliveryRevenue })),
+            packageId => ({ ...EMPTY, packageId }),
+        ),
+        byPurchaseType: withDeliveryChanges(
+            sums.byPurchaseType,
+            row => row.purchaseType,
+            changes.byPurchaseType.map(row => ({ key: row.purchaseType, deliveryRevenue: row.deliveryRevenue })),
+            purchaseType => ({ ...EMPTY, purchaseType }),
+        ),
+    };
     const packages = await this.catalog.getPackagesByIds(income.byPackage.map(row => row.packageId));
     const nameById = new Map(packages.map(pkg => [pkg.id, pkg.name]));
 

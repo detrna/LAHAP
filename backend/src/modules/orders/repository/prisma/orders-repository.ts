@@ -39,6 +39,15 @@ import { sumIncome } from "./reports/sum-income.js";
 import { findSubscriptionById } from "./subscriptions/find-subscription-by-id.js";
 import { listSubscriptions } from "./subscriptions/list-subscriptions.js";
 
+import { confirmMethodChangeRefund } from "./method-changes/confirm-method-change-refund.js";
+import { createMethodChange } from "./method-changes/create-method-change.js";
+import {
+    findMethodChangeById,
+    findMethodChangesBySubscriptionIds,
+    listMethodChanges,
+} from "./method-changes/find-method-changes.js";
+
+import { sumMethodChangeIncome } from "./reports/sum-method-change-income.js";
 export class PrismaOrdersRepository implements OrdersRepository {
     constructor(readonly db: Db) {}
 
@@ -60,12 +69,18 @@ export class PrismaOrdersRepository implements OrdersRepository {
     setUsesAlternativeMenu = setUsesAlternativeMenu;
     assignCourier = assignCourier;
     cancelSubscription = cancelSubscription;
+    createMethodChange = createMethodChange;
+    findMethodChangeById = findMethodChangeById;
+    findMethodChangesBySubscriptionIds = findMethodChangesBySubscriptionIds;
+    listMethodChanges = listMethodChanges;
+    confirmMethodChangeRefund = confirmMethodChangeRefund;
 
     countPromoUses = countPromoUses;
     countPromoUsesByUser = countPromoUsesByUser;
     hasSubscriptionsWithPromo = hasSubscriptionsWithPromo;
     countPortions = countPortions;
     sumIncome = sumIncome;
+    sumMethodChangeIncome = sumMethodChangeIncome;
     countPaidServiceDays = countPaidServiceDays;
     sumTierDiscounts = sumTierDiscounts;
     findLastSuccessEndDates = findLastSuccessEndDates;

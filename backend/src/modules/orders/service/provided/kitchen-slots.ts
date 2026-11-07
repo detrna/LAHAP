@@ -28,7 +28,7 @@ export async function listKitchenSlots(
         usesAlternativeMenu: order.usesAlternativeMenu,
         userId: subscription.userId,
         recipientName: subscription.recipientName,
-        isDelivery: subscription.isDelivery,
+        isDelivery: order.isDelivery,
         notes: subscription.notes,
     }));
 }

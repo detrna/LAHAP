@@ -62,6 +62,8 @@ describe("PrismaOrdersRepository checkout (integration)", () => {
                 id: randomUUID(),
                 menuScheduleId,
                 serviceDate: firstDate.add({ days: index }),
+                isDelivery: true,
+                deliveryFee: 2000,
             })),
             payment: { id: randomUUID(), method: "MIDTRANS", amount: 32500, status: "Pending", paidAt: null },
             promo: null,

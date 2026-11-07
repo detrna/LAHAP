@@ -2,6 +2,7 @@ import type { OrderPeriod, Package } from "../../catalog/domain/package.domain.j
 import type { PromoCode } from "../../promo-codes/domain/promo-code.domain.js";
 import type { Tier } from "../../tiers/domain/tier.domain.js";
 import type { UserSummary } from "../../users/domain/user.domain.js";
+import type { DeliveryMethodChange } from "./delivery-method-change.domain.js";
 import type { Order } from "./order.domain.js";
 import type { Payment } from "./payment.domain.js";
 
@@ -49,4 +50,5 @@ export interface Subscription {
     readonly tier?: Tier | null | undefined;
     readonly orders?: readonly Order[] | undefined;
     readonly payments?: readonly Payment[] | undefined;
+    readonly deliveryMethodChanges?: readonly DeliveryMethodChange[] | undefined;
 }

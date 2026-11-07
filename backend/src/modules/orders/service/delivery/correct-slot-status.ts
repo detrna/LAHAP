@@ -18,7 +18,7 @@ export async function correctSlotStatus(
     const slot = await this.ordersRepository.findSlotWithSubscription(orderId);
     if (slot === null || slot.subscription.status !== "Success") throw new OrderNotFoundError();
     const from = slot.order.status;
-    if (!canCorrect(slot.subscription.isDelivery, from, correction.status)) {
+    if (!canCorrect(slot.order.isDelivery, from, correction.status)) {
         throw new InvalidStateError(`slot cannot move from ${from} to ${correction.status}`);
     }
 

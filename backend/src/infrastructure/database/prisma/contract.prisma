@@ -61,6 +61,7 @@ model User {
   statusChanges OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
   refreshTokens RefreshToken[]
+  deliveryMethodChanges DeliveryMethodChange[]
 
   @@index([role])
   @@map("user")
@@ -367,6 +368,7 @@ model Subscription {
   tier      Tier?      @relation(fields: [tierId], references: [id], onDelete: SetNull) // deleting a tier keeps the discount amount
   orders    Order[]
   payments  Payment[]
+  deliveryMethodChanges DeliveryMethodChange[]
 
   @@index([userId])
   @@index([packageId])
@@ -387,6 +389,8 @@ model Order {
   // true = kitchen assigned the schedule's alternative menu (ScheduleMenu.isPrimary = false) for an allergy clash (BR-24)
   usesAlternativeMenu Boolean @default(false) @map("uses_alternative_menu")
   skipReason          String?  @map("skip_reason") // optional free text, only when status = "Dilewati" (UC-44)
+  isDelivery          Boolean  @map("is_delivery")
+  deliveryFee         Numeric(10, 2) @default(0.00) @map("delivery_fee")
   createdAt Timestamp @default(now()) @onCreate(now()) @map("created_at")
   updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
 
@@ -395,6 +399,7 @@ model Order {
   courier      User?        @relation("CourierDeliveries", fields: [courierId], references: [id], onDelete: SetNull)
   statusHistory OrderStatusHistory[]
   obstacles     DeliveryObstacle[]
+  deliveryMethodChanges DeliveryMethodChangeSlot[]
 
   // One slot per order per schedule (package + date + meal time), BR-06; also serves lookups by subscriptionId
   @@unique([subscriptionId, menuScheduleId])
@@ -459,11 +464,57 @@ model Payment {
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  deliveryMethodChange DeliveryMethodChange?
 
   @@index([subscriptionId])
   @@index([userId])
   @@index([status])
   @@map("payment")
+}
+
+model DeliveryMethodChange {
+  id                 VarChar(36)     @id @onCreate(uuid())
+  subscriptionId     VarChar(36)     @map("subscription_id")
+  requestedById      VarChar(36)     @map("requested_by_id")
+  toDelivery         Boolean         @map("to_delivery")
+  effectiveFrom      Date            @map("effective_from")
+  status             VarChar(30)
+  slotCount          Int             @map("slot_count")
+  deliveryFeePerSlot Numeric(10, 2)  @default(0.00) @map("delivery_fee_per_slot")
+  amount             Numeric(12, 2)
+  needsRefund        Boolean         @default(false) @map("needs_refund")
+  refundedAt         Timestamp?      @map("refunded_at")
+  paymentId          VarChar(36)?    @unique @map("payment_id")
+  deliveryAddress    String?         @map("delivery_address")
+  deliveryLatitude   Numeric(10, 8)? @map("delivery_latitude")
+  deliveryLongitude  Numeric(11, 8)? @map("delivery_longitude")
+  deliveryDistanceKm Int?            @map("delivery_distance_km")
+  createdAt          Timestamp       @default(now()) @onCreate(now()) @map("created_at")
+  updatedAt Timestamp @default(now()) @onCreate(now()) @onUpdate(now()) @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  requestedBy  User         @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  slots        DeliveryMethodChangeSlot[]
+
+  @@index([subscriptionId])
+  @@index([requestedById])
+  @@index([needsRefund])
+  @@map("delivery_method_change")
+}
+
+model DeliveryMethodChangeSlot {
+  id       VarChar(36)    @id @onCreate(uuid())
+  changeId VarChar(36)    @map("change_id")
+  orderId  VarChar(36)    @map("order_id")
+  fee      Numeric(10, 2)
+
+  change DeliveryMethodChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  order  Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([changeId, orderId])
+  @@index([orderId])
+  @@map("delivery_method_change_slot")
 }
 
 model Announcement {

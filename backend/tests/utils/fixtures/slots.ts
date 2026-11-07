@@ -12,6 +12,7 @@ export interface TestSlotInput {
     readonly usesAlternativeMenu?: boolean | undefined;
     readonly skipReason?: string | undefined;
     readonly courierId?: string | undefined;
+    readonly isDelivery?: boolean | undefined;
 }
 
 export interface TestPaymentInput {
@@ -85,7 +86,7 @@ async function createTestPayment(
 export async function createTestSlots(db: Db, rows: CreatedRows, input: TestSlotsInput): Promise<TestSlots> {
     const { slots, payment, ...subscription } = input;
     if (slots.length === 0) throw new Error("createTestSlots needs at least one slot");
-    for (const slot of slots) assertSlotFits(slot, input.isDelivery ?? false);
+    for (const slot of slots) assertSlotFits(slot, slot.isDelivery ?? input.isDelivery ?? false);
     const { serviceDates, ...dates } = await readServiceDates(db, input.packageId, slots);
     const subscriptionId = await createTestSubscription(db, rows, {
         ...subscription,
@@ -94,8 +95,10 @@ export async function createTestSlots(db: Db, rows: CreatedRows, input: TestSlot
     });
     const paymentId =
         payment === undefined ? null : await createTestPayment(db, rows, subscriptionId, input.userId, payment);
+    const fee = await db.orm.public.Subscription.where({ id: subscriptionId }).select("deliveryFeePerSlot").first();
     const slotIds: string[] = [];
     for (const slot of slots) {
+        const isDelivery = slot.isDelivery ?? input.isDelivery ?? false;
         const created = await db.orm.public.Order.create({
             subscriptionId,
             menuScheduleId: slot.scheduleId,
@@ -104,6 +107,8 @@ export async function createTestSlots(db: Db, rows: CreatedRows, input: TestSlot
             usesAlternativeMenu: slot.usesAlternativeMenu ?? false,
             skipReason: slot.skipReason ?? null,
             courierId: slot.courierId ?? null,
+            isDelivery,
+            deliveryFee: isDelivery ? (fee?.deliveryFeePerSlot ?? "0.00") : "0.00",
         });
         slotIds.push(rows.track("Order", created.id));
     }

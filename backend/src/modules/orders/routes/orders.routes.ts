@@ -11,13 +11,16 @@ import {
 import type { TokenProvider } from "../../../shared/ports/token-provider/token-provider.js";
 import type { OrdersController } from "../controller/orders.controller.js";
 import {
+    adminMethodChangeListQuerySchema,
     adminPaymentListQuerySchema,
     adminSlotListQuerySchema,
     adminSubscriptionListQuerySchema,
     checkoutSchema,
     courierAssignmentQuerySchema,
     courierAssignmentSchema,
+    deliveryMethodChangeSchema,
     foodReadySchema,
+    methodChangeIdParamsSchema,
     orderIdParamsSchema,
     paymentIdParamsSchema,
     paymentListQuerySchema,
@@ -74,6 +77,29 @@ export function createOrdersRouter({ controller, tokenProvider }: OrdersRouterDe
         customer,
         validateParams(subscriptionIdParamsSchema),
         controller.cancelSubscription,
+    );
+    router.post(
+        "/subscriptions/:id/delivery-method/preview",
+        signedIn,
+        customer,
+        validateParams(subscriptionIdParamsSchema),
+        validateBody(deliveryMethodChangeSchema),
+        controller.previewMethodChange,
+    );
+    router.post(
+        "/subscriptions/:id/delivery-method",
+        signedIn,
+        customer,
+        validateParams(subscriptionIdParamsSchema),
+        validateBody(deliveryMethodChangeSchema),
+        controller.changeDeliveryMethod,
+    );
+    router.post(
+        "/delivery-method-changes/:id/payment-session",
+        signedIn,
+        customer,
+        validateParams(methodChangeIdParamsSchema),
+        controller.getMethodChangePaymentSession,
     );
     router.get("/orders", signedIn, customer, validateQuery(slotDateQuerySchema), controller.listMySlots);
     router.post("/orders/skip-day", signedIn, customer, validateBody(skipDaySchema), controller.skipDay);
@@ -159,6 +185,37 @@ export function createOrdersRouter({ controller, tokenProvider }: OrdersRouterDe
         admin,
         validateParams(subscriptionIdParamsSchema),
         controller.getSubscriptionForAdmin,
+    );
+    router.post(
+        "/admin/subscriptions/:id/delivery-method/preview",
+        signedIn,
+        admin,
+        validateParams(subscriptionIdParamsSchema),
+        validateBody(deliveryMethodChangeSchema),
+        controller.previewMethodChangeForAdmin,
+    );
+    router.post(
+        "/admin/subscriptions/:id/delivery-method",
+        signedIn,
+        admin,
+        validateParams(subscriptionIdParamsSchema),
+        validateBody(deliveryMethodChangeSchema),
+        controller.changeDeliveryMethodForAdmin,
+    );
+    router.get(
+        "/admin/delivery-method-changes",
+        signedIn,
+        admin,
+        validateQuery(adminMethodChangeListQuerySchema),
+        paginate(),
+        controller.listMethodChangesForAdmin,
+    );
+    router.post(
+        "/admin/delivery-method-changes/:id/confirm-refund",
+        signedIn,
+        admin,
+        validateParams(methodChangeIdParamsSchema),
+        controller.confirmMethodChangeRefund,
     );
     router.get(
         "/admin/orders",

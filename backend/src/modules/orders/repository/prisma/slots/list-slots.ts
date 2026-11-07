@@ -17,7 +17,6 @@ function matchingSubscriptions(orm: Db["orm"], query: SlotListQuery) {
     )
         .where(row => row.startDate.lte(query.date))
         .where(row => row.endDate.gte(query.date));
-    if (query.isDelivery !== undefined) subscriptions = subscriptions.where({ isDelivery: query.isDelivery });
     if (query.packageId !== undefined) subscriptions = subscriptions.where({ packageId: query.packageId });
     if (query.subscriptionId !== undefined) subscriptions = subscriptions.where({ id: query.subscriptionId });
     return subscriptions;
@@ -31,6 +30,7 @@ function matchingOrders(orm: Db["orm"], query: SlotListQuery, subscriptionIds: r
         orders = orders.where(row => row.menuScheduleId.in([...query.menuScheduleIds!] as Varchar<36>[]));
     }
     if (query.status !== undefined) orders = orders.where({ status: query.status });
+    if (query.isDelivery !== undefined) orders = orders.where({ isDelivery: query.isDelivery });
     if (query.courierId !== undefined) orders = orders.where({ courierId: query.courierId });
     if (query.unassigned === true) orders = orders.where({ courierId: null });
     if (query.unassigned === false) orders = orders.where(row => row.courierId.isNotNull());

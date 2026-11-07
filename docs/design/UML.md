@@ -144,6 +144,8 @@ classDiagram
         - status: String
         - usesAlternativeMenu: boolean
         - skipReason: String?
+        - isDelivery: boolean
+        - deliveryFee: double
     }
 
     class Payment {
@@ -225,6 +227,28 @@ classDiagram
         - createdAt: Date
     }
 
+    class DeliveryMethodChange {
+        - id: String
+        - toDelivery: boolean
+        - effectiveFrom: Date
+        - status: String
+        - slotCount: int
+        - deliveryFeePerSlot: double
+        - amount: double
+        - needsRefund: boolean
+        - refundedAt: Date?
+        - deliveryAddress: String?
+        - deliveryLatitude: double?
+        - deliveryLongitude: double?
+        - deliveryDistanceKm: int?
+        - createdAt: Date
+    }
+
+    class DeliveryMethodChangeSlot {
+        - id: String
+        - fee: double
+    }
+
     %% Relationships
     Notification "0..*" --> "1" User : notifies
     User "1" --> "0..1" Membership : holds
@@ -256,12 +280,17 @@ classDiagram
     Order "1" *-- "0..*" DeliveryObstacle : reports
     DeliveryObstacle "0..*" --> "1" User : written by
     User "1" *-- "0..*" RefreshToken : signs in with
+    Subscription "1" --> "0..*" DeliveryMethodChange : switches method via
+    DeliveryMethodChange "0..*" --> "1" User : requested by
+    DeliveryMethodChange "0..1" --> "0..1" Payment : paid via
+    DeliveryMethodChange "1" *-- "1..*" DeliveryMethodChangeSlot : switches
+    DeliveryMethodChangeSlot "0..*" --> "1" Order : switched in
     %% Business is a singleton settings entity with no associations (tenant scoping deferred)
 ```
 
 ---
 
-## 3. Entity Data Dictionary (20 Domain Entities)
+## 3. Entity Data Dictionary (22 Domain Entities)
 
 > Mutable entities also carry `createdAt` and `updatedAt` (auto-maintained), omitted from the tables below. Link tables and append-only logs (`OrderStatusHistory`, `DeliveryObstacle`) have no `updatedAt`.
 
@@ -405,7 +434,7 @@ classDiagram
   | `period` | `String` | No | Chosen period: `Harian`, `Mingguan` or `Bulanan`; must be one of `Package.periods` (PRD UC-05). |
   | `startDate` | `Date` | No | Date of the first slot; drives the cut-off (PRD BR-09). |
   | `endDate` | `Date` | No | Date of the last slot; drives the derived labels (BR-21) and churn (BR-28). |
-  | `isDelivery` | `boolean` | No | Fulfillment method for **every** slot: `true` = Courier Delivery; `false` = Self Pick-Up (PRD BR-13). Each slot's meal time is its `MenuSchedule.deliveryTime`, so one subscription can span several meal times (PRD UC-06, UC-09). |
+  | `isDelivery` | `boolean` | No | Current fulfillment method for the order (`true` = Courier Delivery; `false` = Self Pick-Up, PRD BR-13, §7.5), updated when a delivery method switch succeeds. Each slot carries its own `Order.isDelivery`. Each slot's meal time is its `MenuSchedule.deliveryTime`, so one subscription can span several meal times (PRD UC-06, UC-09). |
   | `recipientName` | `String` | No | Orderer's name for this order; required (UC-07), prefilled from the profile. |
   | `deliveryAddress` | `String` | Yes | Delivery address for this order; required when `isDelivery`. Snapshotted at checkout, so profile edits never move existing orders. |
   | `deliveryLatitude` | `double` | Yes | Order's map pin latitude (WGS 84); required when `isDelivery` (PRD §6.3). |
@@ -433,17 +462,19 @@ classDiagram
   | `status` | `String` | No | Slot status: `Terjadwal`, `Disiapkan`, `Diantar`, `Siap Diambil`, `Selesai`, `Dilewati` (PRD BR-23). Delivery obstacles are timestamped notes, not a status. |
   | `usesAlternativeMenu` | `boolean` | No | `true` = kitchen assigned the schedule's alternative menu (`ScheduleMenu.isPrimary = false`) for an allergy clash (PRD BR-24). Default `false`. |
   | `skipReason` | `String` | Yes | Optional free-text reason, set only when the slot becomes `Dilewati` (PRD UC-44). |
+  | `isDelivery` | `boolean` | No | This slot's fulfillment method (`true` = Courier Delivery, `false` = Self Pick-Up); copied from `Subscription.isDelivery` at checkout and updated by `DeliveryMethodChange` (PRD §7.5). |
+  | `deliveryFee` | `double` | No | Delivery fee paid for this slot (`0` for pick-up). |
 
 ### 3.12 `Payment` (`c_payment`)
 
 - **Stereotype:** `«entity»`
-- **Domain Role:** Financial payment record for subscription checkouts. A `DELIVERY_SERVICE_UPGRADE` type is reserved for the post-release change-method feature (PRD §7.5); in the MVP, changing the method means cancelling and re-ordering (PRD BR-13).
+- **Domain Role:** Financial payment record for subscription checkouts (`SUBSCRIPTION`) and pick-up → delivery upgrades (`DELIVERY_SERVICE_UPGRADE`, PRD §7.5).
 - **Attributes:**
   | Attribute | Type | Nullable | Description & Invariants |
   | :--- | :--- | :---: | :--- |
   | `id` | `String` | No | Primary Key. |
-  | `method` | `String` | No | `CASH` (cashier, verified by admin), `FREE` (total 0, paid at checkout without the gateway), `MIDTRANS` (gateway, channel not chosen yet), or `MIDTRANS_<PAYMENT_TYPE>` from the webhook (e.g. `MIDTRANS_QRIS`, `MIDTRANS_BANK_TRANSFER`) (PRD BR-19). |
-  | `type` | `String` | No | `SUBSCRIPTION` (the only type the MVP creates) or `DELIVERY_SERVICE_UPGRADE` (reserved: extra delivery fee when switching pick-up → delivery after release, PRD §7.5). |
+  | `method` | `String` | No | `CASH` (cashier, verified by admin), `FREE` (total 0, paid at checkout or upgrade without the gateway), `MIDTRANS` (gateway, channel not chosen yet), or `MIDTRANS_<PAYMENT_TYPE>` from the webhook (e.g. `MIDTRANS_QRIS`, `MIDTRANS_BANK_TRANSFER`) (PRD BR-19). |
+  | `type` | `String` | No | `SUBSCRIPTION` (subscription checkout) or `DELIVERY_SERVICE_UPGRADE` (extra delivery fee when switching pick-up → delivery, PRD §7.5). |
   | `amount` | `double` | No | Exact monetary amount billed. |
   | `status` | `String` | No | Stored state: `Pending`, `Success`, `Expire` (PRD BR-20), or `Refund` once the admin confirms the manual refund. Midtrans statuses are normalized by the `PaymentGateway` port and mapped to these values. |
   | `/doneOnline` | `boolean` | No | **Derived, not stored:** `method != "CASH"`. Included in API responses for the frontend. |
@@ -563,11 +594,48 @@ classDiagram
   | `createdAt` | `Date` | No | When the token was issued. |
   | _(user)_ | `User` | No | The signed-in user. |
 
+### 3.21 `DeliveryMethodChange` (`c_delivery_method_change`)
+
+- **Stereotype:** `«entity»`
+- **Domain Role:** A delivery method switch on a paid (`Success`) subscription from a chosen `effectiveFrom` date onward (PRD §7.5): delivery → pick-up switches the `Terjadwal` slots immediately and flags a manual refund of their delivery fees; pick-up → delivery quotes today's delivery rates into a `DELIVERY_SERVICE_UPGRADE` payment and switches the slots once paid. The checkout price snapshot on `Subscription` never changes.
+- **Attributes:**
+  | Attribute | Type | Nullable | Description & Invariants |
+  | :--- | :--- | :---: | :--- |
+  | `id` | `String` | No | Primary Key. |
+  | `toDelivery` | `boolean` | No | `true` = pick-up → delivery upgrade; `false` = delivery → pick-up downgrade. |
+  | `effectiveFrom` | `Date` | No | First service date of the switch (after today, `≤ Subscription.endDate`). |
+  | `status` | `String` | No | `Pending` (waiting for upgrade payment), `Success` (applied), or `Expire` (upgrade payment expired or paid after a slot passed cut-off). |
+  | `slotCount` | `int` | No | Number of switched slots. |
+  | `deliveryFeePerSlot` | `double` | No | Quoted fee per slot at today's rates for upgrades; `0` for downgrades. |
+  | `amount` | `double` | No | Charged upgrade fee or downgrade refund amount. |
+  | `needsRefund` | `boolean` | No | `true` when a manual refund is due (downgrade with `amount > 0` or late-paid upgrade). |
+  | `refundedAt` | `Date` | Yes | Timestamp when the admin confirmed the manual refund (income deduction date, UC-31). |
+  | `deliveryAddress` | `String` | Yes | New delivery address for upgrades; copied to `Subscription` once applied. |
+  | `deliveryLatitude` | `double` | Yes | New delivery pin latitude (WGS 84) for upgrades. |
+  | `deliveryLongitude` | `double` | Yes | New delivery pin longitude (WGS 84) for upgrades. |
+  | `deliveryDistanceKm` | `int` | Yes | Rounded-up Haversine distance in km for upgrades (PRD BR-15). |
+  | `createdAt` | `Date` | No | Timestamp of the request. |
+  | _(subscription)_ | `Subscription` | No | The switched subscription. |
+  | _(requestedBy)_ | `User` | No | Customer or admin who requested the switch. |
+  | _(payment)_ | `Payment` | Yes | The `DELIVERY_SERVICE_UPGRADE` payment for upgrades; `null` for downgrades. |
+
+### 3.22 `DeliveryMethodChangeSlot` (`c_delivery_method_change_slot`)
+
+- **Stereotype:** `«entity»`
+- **Domain Role:** Associative line item recording each `Order` slot included in a `DeliveryMethodChange` and its per-slot fee.
+- **Attributes:**
+  | Attribute | Type | Nullable | Description & Invariants |
+  | :--- | :--- | :---: | :--- |
+  | `id` | `String` | No | Primary Key. |
+  | `fee` | `double` | No | Fee charged (upgrade) or to refund (downgrade) for this slot. |
+  | _(change)_ | `DeliveryMethodChange` | No | Parent method change. |
+  | _(order)_ | `Order` | No | The switched slot. |
+
 ---
 
-## 4. Relationship & Multiplicity Matrix (25 Edges)
+## 4. Relationship & Multiplicity Matrix (30 Edges)
 
-The following matrix documents all 25 edges connecting the 20 entities in the class model:
+The following matrix documents all 30 edges connecting the 22 entities in the class model:
 
 | Edge ID             | Source Node      |  Mult  | Relation Type | Target Node    |  Mult  | Label               | Foreign Key / Cascade Semantics                                                                                                                 |
 | :------------------ | :--------------- | :----: | :-----------: | :------------- | :----: | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -596,6 +664,11 @@ The following matrix documents all 25 edges connecting the 20 entities in the cl
 | `e_obst_order` | `DeliveryObstacle` | `0..*` | `composition` | `Order` | `1` | `reports` | `DeliveryObstacle.orderId -> Order.id` (ON DELETE CASCADE). Obstacle notes owned by the slot (PRD BR-23). |
 | `e_obst_user` | `DeliveryObstacle` | `0..*` | `association` | `User` | `1` | `written by` | `DeliveryObstacle.authorId -> User.id` (ON DELETE RESTRICT). Courier or admin author. |
 | `e_user_refresh_token` | `User` | `1` | `composition` | `RefreshToken` | `0..*` | `signs in with` | `RefreshToken.userId -> User.id` (ON DELETE CASCADE). One row per issued refresh token, so per session and per rotation. |
+| `e_sub_method_change` | `Subscription` | `1` | `association` | `DeliveryMethodChange` | `0..*` | `switches method via` | `DeliveryMethodChange.subscriptionId -> Subscription.id` (ON DELETE RESTRICT). A paid subscription may switch methods across date ranges. |
+| `e_method_change_user` | `DeliveryMethodChange` | `0..*` | `association` | `User` | `1` | `requested by` | `DeliveryMethodChange.requestedById -> User.id` (ON DELETE RESTRICT). Customer or admin actor who requested the switch. |
+| `e_method_change_payment` | `DeliveryMethodChange` | `0..1` | `association` | `Payment` | `0..1` | `paid via` | `DeliveryMethodChange.paymentId -> Payment.id` (UNIQUE, ON DELETE RESTRICT). Upgrade payment (`DELIVERY_SERVICE_UPGRADE`); `null` for downgrades. |
+| `e_method_change_slot_comp` | `DeliveryMethodChange` | `1` | `composition` | `DeliveryMethodChangeSlot` | `1..*` | `switches` | `DeliveryMethodChangeSlot.changeId -> DeliveryMethodChange.id` (ON DELETE CASCADE). Slots covered by the switch. |
+| `e_method_change_slot_order` | `DeliveryMethodChangeSlot` | `0..*` | `association` | `Order` | `1` | `switched in` | `DeliveryMethodChangeSlot.orderId -> Order.id` (ON DELETE CASCADE). References the switched daily slot. |
 
 ---
 

@@ -81,6 +81,8 @@ export async function createCheckout(this: PrismaOrdersRepository, write: Checko
                     menuScheduleId: slot.menuScheduleId,
                     serviceDate: slot.serviceDate,
                     status: "Terjadwal",
+                    isDelivery: slot.isDelivery,
+                    deliveryFee: toNumeric(slot.deliveryFee, MONEY_SCALE),
                 })),
             );
             await tx.orm.public.OrderStatusHistory.createAll(

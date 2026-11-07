@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSchema, foodReadySchema } from "./orders.schemas.js";
+import {
+    adminMethodChangeListQuerySchema,
+    adminPaymentListQuerySchema,
+    checkoutSchema,
+    deliveryMethodChangeSchema,
+    foodReadySchema,
+} from "./orders.schemas.js";
 
 const PACKAGE_ID = "10000000-0000-4000-8000-000000000001";
 const SLOT_ID = "40000000-0000-4000-8000-000000000001";
@@ -86,5 +92,68 @@ describe("foodReadySchema", () => {
         expect(foodReadySchema.safeParse({ orderIds: [] }).success).toBe(false);
         expect(foodReadySchema.safeParse({}).success).toBe(false);
         expect(foodReadySchema.safeParse({ menuScheduleId: SLOT_ID, orderIds: [SLOT_ID] }).success).toBe(false);
+    });
+});
+
+describe("deliveryMethodChangeSchema", () => {
+    it("parses a switch to pick-up and fills the defaults", () => {
+        expect(deliveryMethodChangeSchema.parse({ isDelivery: false })).toEqual({
+            isDelivery: false,
+            deliveryAddress: null,
+            deliveryLatitude: null,
+            deliveryLongitude: null,
+            paymentMethod: "MIDTRANS",
+        });
+    });
+
+    it("parses a switch to delivery from a chosen date", () => {
+        const parsed = deliveryMethodChangeSchema.parse({
+            isDelivery: true,
+            effectiveFrom: "2026-11-12",
+            deliveryAddress: " Jl. Ijen ",
+            deliveryLatitude: -7.95,
+            deliveryLongitude: 112.61,
+            paymentMethod: "CASH",
+        });
+
+        expect(parsed).toMatchObject({
+            effectiveFrom: Temporal.PlainDate.from("2026-11-12"),
+            deliveryAddress: "Jl. Ijen",
+            paymentMethod: "CASH",
+        });
+    });
+
+    it("needs an address and a pin for delivery, and both coordinates together", () => {
+        const missing = deliveryMethodChangeSchema.safeParse({ isDelivery: true });
+        expect(missing.success).toBe(false);
+        expect(missing.error?.issues.map(issue => issue.path.join("."))).toEqual([
+            "deliveryAddress",
+            "deliveryLatitude",
+        ]);
+
+        const half = deliveryMethodChangeSchema.safeParse({
+            isDelivery: false,
+            deliveryLatitude: -7.95,
+        });
+        expect(half.error?.issues.map(issue => issue.path.join("."))).toEqual(["deliveryLongitude"]);
+        expect(deliveryMethodChangeSchema.safeParse({ isDelivery: false, effectiveFrom: "12-11-2026" }).success).toBe(
+            false,
+        );
+    });
+});
+
+describe("adminMethodChangeListQuerySchema", () => {
+    it("reads the refund filter as a boolean", () => {
+        expect(adminMethodChangeListQuerySchema.parse({ needsRefund: "false" })).toMatchObject({ needsRefund: false });
+        expect(adminMethodChangeListQuerySchema.parse({})).not.toHaveProperty("needsRefund");
+    });
+});
+
+describe("adminPaymentListQuerySchema", () => {
+    it("filters by payment type", () => {
+        expect(adminPaymentListQuerySchema.parse({ type: "DELIVERY_SERVICE_UPGRADE" })).toMatchObject({
+            type: "DELIVERY_SERVICE_UPGRADE",
+        });
+        expect(adminPaymentListQuerySchema.safeParse({ type: "TIP" }).success).toBe(false);
     });
 });

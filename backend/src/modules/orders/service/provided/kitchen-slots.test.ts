@@ -19,20 +19,30 @@ describe("OrdersService.listKitchenSlots (unit)", () => {
         const { service, repository } = setupOrdersService();
         repository.findSlots.mockResolvedValue([
             {
-                order: buildOrderRecord({ id: "o-1", menuScheduleId: "s-1", usesAlternativeMenu: true }),
+                order: buildOrderRecord({
+                    id: "o-1",
+                    menuScheduleId: "s-1",
+                    usesAlternativeMenu: true,
+                    isDelivery: true,
+                }),
                 subscription: buildSubscriptionRecord({
                     userId: "u-1",
                     recipientName: "Bu Rina",
-                    isDelivery: true,
+                    isDelivery: false,
                     notes: "no chili",
                 }),
             },
             {
-                order: buildOrderRecord({ id: "o-2", menuScheduleId: "s-2", usesAlternativeMenu: false }),
+                order: buildOrderRecord({
+                    id: "o-2",
+                    menuScheduleId: "s-2",
+                    usesAlternativeMenu: false,
+                    isDelivery: false,
+                }),
                 subscription: buildSubscriptionRecord({
                     userId: "u-2",
                     recipientName: "Pak Andi",
-                    isDelivery: false,
+                    isDelivery: true,
                     notes: null,
                 }),
             },

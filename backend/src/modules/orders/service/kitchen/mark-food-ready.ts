@@ -23,7 +23,7 @@ export async function markFoodReady(
 
     const changed: TransitionedSlot[] = [];
     for (const isDelivery of [true, false]) {
-        const orderIds = slots.filter(slot => slot.subscription.isDelivery === isDelivery).map(slot => slot.order.id);
+        const orderIds = slots.filter(slot => slot.order.isDelivery === isDelivery).map(slot => slot.order.id);
         changed.push(
             ...(await this.ordersRepository.transitionSlots({
                 orderIds,

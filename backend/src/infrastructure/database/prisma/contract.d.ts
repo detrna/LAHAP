@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'f8dd7e04764ab17064c1bc8ea93eafd9299ba58549f49cd48643664961879fea'>;
+  StorageHashBase<'eaaa12097b855472fefde902e39ad6e7bc2776b0a86bf4289e4cb3b10166896f'>;
 export type ExecutionHash =
-  ExecutionHashBase<'f1d6c16d23baa2e4d589cda73002417b59117d32bed25e0f4cb7a6f6815afaa7'>;
+  ExecutionHashBase<'00f3f985c96fd60a3c85fdf4d5114891a06bdf6d53645fca3015335e166714c8'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -307,6 +307,40 @@ export namespace Models {
     whatsappNumber: FieldOutputTypes['public']['Business']['whatsappNumber'];
     readonly [RelationKeys]?: never;
   };
+  export type public_DeliveryMethodChange = {
+    amount: FieldOutputTypes['public']['DeliveryMethodChange']['amount'];
+    createdAt: FieldOutputTypes['public']['DeliveryMethodChange']['createdAt'];
+    deliveryAddress: FieldOutputTypes['public']['DeliveryMethodChange']['deliveryAddress'];
+    deliveryDistanceKm: FieldOutputTypes['public']['DeliveryMethodChange']['deliveryDistanceKm'];
+    deliveryFeePerSlot: FieldOutputTypes['public']['DeliveryMethodChange']['deliveryFeePerSlot'];
+    deliveryLatitude: FieldOutputTypes['public']['DeliveryMethodChange']['deliveryLatitude'];
+    deliveryLongitude: FieldOutputTypes['public']['DeliveryMethodChange']['deliveryLongitude'];
+    effectiveFrom: FieldOutputTypes['public']['DeliveryMethodChange']['effectiveFrom'];
+    id: FieldOutputTypes['public']['DeliveryMethodChange']['id'];
+    needsRefund: FieldOutputTypes['public']['DeliveryMethodChange']['needsRefund'];
+    paymentId: FieldOutputTypes['public']['DeliveryMethodChange']['paymentId'];
+    refundedAt: FieldOutputTypes['public']['DeliveryMethodChange']['refundedAt'];
+    requestedById: FieldOutputTypes['public']['DeliveryMethodChange']['requestedById'];
+    slotCount: FieldOutputTypes['public']['DeliveryMethodChange']['slotCount'];
+    status: FieldOutputTypes['public']['DeliveryMethodChange']['status'];
+    subscriptionId: FieldOutputTypes['public']['DeliveryMethodChange']['subscriptionId'];
+    toDelivery: FieldOutputTypes['public']['DeliveryMethodChange']['toDelivery'];
+    updatedAt: FieldOutputTypes['public']['DeliveryMethodChange']['updatedAt'];
+    payment: public_Payment | null;
+    requestedBy: public_User;
+    slots: public_DeliveryMethodChangeSlot[];
+    subscription: public_Subscription;
+    readonly [RelationKeys]?: 'payment' | 'requestedBy' | 'slots' | 'subscription';
+  };
+  export type public_DeliveryMethodChangeSlot = {
+    changeId: FieldOutputTypes['public']['DeliveryMethodChangeSlot']['changeId'];
+    fee: FieldOutputTypes['public']['DeliveryMethodChangeSlot']['fee'];
+    id: FieldOutputTypes['public']['DeliveryMethodChangeSlot']['id'];
+    orderId: FieldOutputTypes['public']['DeliveryMethodChangeSlot']['orderId'];
+    change: public_DeliveryMethodChange;
+    order: public_Order;
+    readonly [RelationKeys]?: 'change' | 'order';
+  };
   export type public_DeliveryObstacle = {
     authorId: FieldOutputTypes['public']['DeliveryObstacle']['authorId'];
     createdAt: FieldOutputTypes['public']['DeliveryObstacle']['createdAt'];
@@ -404,7 +438,9 @@ export namespace Models {
   export type public_Order = {
     courierId: FieldOutputTypes['public']['Order']['courierId'];
     createdAt: FieldOutputTypes['public']['Order']['createdAt'];
+    deliveryFee: FieldOutputTypes['public']['Order']['deliveryFee'];
     id: FieldOutputTypes['public']['Order']['id'];
+    isDelivery: FieldOutputTypes['public']['Order']['isDelivery'];
     menuScheduleId: FieldOutputTypes['public']['Order']['menuScheduleId'];
     serviceDate: FieldOutputTypes['public']['Order']['serviceDate'];
     skipReason: FieldOutputTypes['public']['Order']['skipReason'];
@@ -413,12 +449,18 @@ export namespace Models {
     updatedAt: FieldOutputTypes['public']['Order']['updatedAt'];
     usesAlternativeMenu: FieldOutputTypes['public']['Order']['usesAlternativeMenu'];
     courier: public_User | null;
+    deliveryMethodChanges: public_DeliveryMethodChangeSlot[];
     obstacles: public_DeliveryObstacle[];
     schedule: public_Schedule;
     statusHistory: public_OrderStatusHistory[];
     subscription: public_Subscription;
     readonly [RelationKeys]?:
-      'courier' | 'obstacles' | 'schedule' | 'statusHistory' | 'subscription';
+      | 'courier'
+      | 'deliveryMethodChanges'
+      | 'obstacles'
+      | 'schedule'
+      | 'statusHistory'
+      | 'subscription';
   };
   export type public_OrderStatusHistory = {
     adminNote: FieldOutputTypes['public']['OrderStatusHistory']['adminNote'];
@@ -465,9 +507,10 @@ export namespace Models {
     type: FieldOutputTypes['public']['Payment']['type'];
     updatedAt: FieldOutputTypes['public']['Payment']['updatedAt'];
     userId: FieldOutputTypes['public']['Payment']['userId'];
+    deliveryMethodChange: public_DeliveryMethodChange | null;
     subscription: public_Subscription;
     user: public_User;
-    readonly [RelationKeys]?: 'subscription' | 'user';
+    readonly [RelationKeys]?: 'deliveryMethodChange' | 'subscription' | 'user';
   };
   export type public_PromoCode = {
     allowStackWithTier: FieldOutputTypes['public']['PromoCode']['allowStackWithTier'];
@@ -545,13 +588,15 @@ export namespace Models {
     totalPrice: FieldOutputTypes['public']['Subscription']['totalPrice'];
     updatedAt: FieldOutputTypes['public']['Subscription']['updatedAt'];
     userId: FieldOutputTypes['public']['Subscription']['userId'];
+    deliveryMethodChanges: public_DeliveryMethodChange[];
     orders: public_Order[];
     package: public_Package;
     payments: public_Payment[];
     promoCode: public_PromoCode | null;
     tier: public_Tier | null;
     user: public_User;
-    readonly [RelationKeys]?: 'orders' | 'package' | 'payments' | 'promoCode' | 'tier' | 'user';
+    readonly [RelationKeys]?:
+      'deliveryMethodChanges' | 'orders' | 'package' | 'payments' | 'promoCode' | 'tier' | 'user';
   };
   export type public_Tier = {
     createdAt: FieldOutputTypes['public']['Tier']['createdAt'];
@@ -583,6 +628,7 @@ export namespace Models {
     updatedAt: FieldOutputTypes['public']['User']['updatedAt'];
     allergies: public_UserAllergy[];
     deliveries: public_Order[];
+    deliveryMethodChanges: public_DeliveryMethodChange[];
     membership: public_Membership | null;
     notifications: public_Notification[];
     obstacles: public_DeliveryObstacle[];
@@ -593,6 +639,7 @@ export namespace Models {
     readonly [RelationKeys]?:
       | 'allergies'
       | 'deliveries'
+      | 'deliveryMethodChanges'
       | 'membership'
       | 'notifications'
       | 'obstacles'
@@ -617,6 +664,8 @@ export declare const models: {
     Allergy: Models.public_Allergy;
     Announcement: Models.public_Announcement;
     Business: Models.public_Business;
+    DeliveryMethodChange: Models.public_DeliveryMethodChange;
+    DeliveryMethodChangeSlot: Models.public_DeliveryMethodChangeSlot;
     DeliveryObstacle: Models.public_DeliveryObstacle;
     Ingredient: Models.public_Ingredient;
     IngredientAllergy: Models.public_IngredientAllergy;
@@ -913,6 +962,271 @@ type ContractBase = Omit<
               uniques: readonly [];
               indexes: readonly [];
               foreignKeys: readonly [];
+            };
+            readonly delivery_method_change: {
+              columns: {
+                readonly amount: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly precision: 12; readonly scale: 2 };
+                  readonly many: false;
+                };
+                readonly created_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
+                readonly delivery_address: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly delivery_distance_km: {
+                  readonly dataType: 'pg/int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly delivery_fee_per_slot: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/numeric@1', '0.00'>;
+                  };
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                  readonly many: false;
+                };
+                readonly delivery_latitude: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly precision: 10; readonly scale: 8 };
+                  readonly many: false;
+                };
+                readonly delivery_longitude: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly precision: 11; readonly scale: 8 };
+                  readonly many: false;
+                };
+                readonly effective_from: {
+                  readonly dataType: 'pg/date';
+                  readonly codecId: 'pg/date-temporal@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly needs_refund: {
+                  readonly dataType: 'pg/bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                  readonly many: false;
+                };
+                readonly payment_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly refunded_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly requested_by_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly slot_count: {
+                  readonly dataType: 'pg/int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly status: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 30 };
+                  readonly many: false;
+                };
+                readonly subscription_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly to_delivery: {
+                  readonly dataType: 'pg/bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly updated_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['payment_id'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'delivery_method_change_needs_refund_idx_12ceb89e';
+                  readonly prefix: 'delivery_method_change_needs_refund_idx';
+                  readonly columns: readonly ['needs_refund'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'delivery_method_change_requested_by_id_idx_d76f2dd3';
+                  readonly prefix: 'delivery_method_change_requested_by_id_idx';
+                  readonly columns: readonly ['requested_by_id'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'delivery_method_change_subscription_id_idx_1e74615f';
+                  readonly prefix: 'delivery_method_change_subscription_id_idx';
+                  readonly columns: readonly ['subscription_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change';
+                    readonly columns: readonly ['subscription_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'subscription';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change';
+                    readonly columns: readonly ['requested_by_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change';
+                    readonly columns: readonly ['payment_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'payment';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly delivery_method_change_slot: {
+              columns: {
+                readonly change_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly fee: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly order_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['change_id', 'order_id'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'delivery_method_change_slot_change_id_idx_582c0040';
+                  readonly prefix: 'delivery_method_change_slot_change_id_idx';
+                  readonly columns: readonly ['change_id'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'delivery_method_change_slot_order_id_idx_39ad19ad';
+                  readonly prefix: 'delivery_method_change_slot_order_id_idx';
+                  readonly columns: readonly ['order_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change_slot';
+                    readonly columns: readonly ['change_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'delivery_method_change_slot';
+                    readonly columns: readonly ['order_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'order';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
             };
             readonly delivery_obstacle: {
               columns: {
@@ -1590,11 +1904,28 @@ type ContractBase = Omit<
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly many: false;
                 };
+                readonly delivery_fee: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/numeric@1', '0.00'>;
+                  };
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                  readonly many: false;
+                };
                 readonly id: {
                   readonly dataType: 'pg/varchar';
                   readonly codecId: 'sql/varchar@1';
                   readonly nullable: false;
                   readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly is_delivery: {
+                  readonly dataType: 'pg/bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
                   readonly many: false;
                 };
                 readonly menu_schedule_id: {
@@ -2997,6 +3328,14 @@ type ContractBase = Omit<
       readonly model: 'Announcement';
     };
     readonly business: { readonly namespace: 'public' & NamespaceId; readonly model: 'Business' };
+    readonly delivery_method_change: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DeliveryMethodChange';
+    };
+    readonly delivery_method_change_slot: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DeliveryMethodChangeSlot';
+    };
     readonly delivery_obstacle: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'DeliveryObstacle';
@@ -3337,6 +3676,269 @@ type ContractBase = Omit<
                 readonly paymentTimeoutMinutes: { readonly column: 'payment_timeout_minutes' };
                 readonly updatedAt: { readonly column: 'updated_at' };
                 readonly whatsappNumber: { readonly column: 'whatsapp_number' };
+              };
+            };
+          };
+          readonly DeliveryMethodChange: {
+            readonly fields: {
+              readonly amount: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 12; readonly scale: 2 };
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly deliveryAddress: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly deliveryDistanceKm: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly deliveryFeePerSlot: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
+              };
+              readonly deliveryLatitude: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 8 };
+                };
+              };
+              readonly deliveryLongitude: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 11; readonly scale: 8 };
+                };
+              };
+              readonly effectiveFrom: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/date-temporal@1' };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly needsRefund: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly paymentId: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly refundedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly requestedById: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly slotCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 30 };
+                };
+              };
+              readonly subscriptionId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly toDelivery: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly payment: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Payment';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['paymentId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly requestedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['requestedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly slots: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChangeSlot';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['changeId'];
+                };
+              };
+              readonly subscription: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Subscription';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['subscriptionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'delivery_method_change';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly amount: { readonly column: 'amount' };
+                readonly createdAt: { readonly column: 'created_at' };
+                readonly deliveryAddress: { readonly column: 'delivery_address' };
+                readonly deliveryDistanceKm: { readonly column: 'delivery_distance_km' };
+                readonly deliveryFeePerSlot: { readonly column: 'delivery_fee_per_slot' };
+                readonly deliveryLatitude: { readonly column: 'delivery_latitude' };
+                readonly deliveryLongitude: { readonly column: 'delivery_longitude' };
+                readonly effectiveFrom: { readonly column: 'effective_from' };
+                readonly id: { readonly column: 'id' };
+                readonly needsRefund: { readonly column: 'needs_refund' };
+                readonly paymentId: { readonly column: 'payment_id' };
+                readonly refundedAt: { readonly column: 'refunded_at' };
+                readonly requestedById: { readonly column: 'requested_by_id' };
+                readonly slotCount: { readonly column: 'slot_count' };
+                readonly status: { readonly column: 'status' };
+                readonly subscriptionId: { readonly column: 'subscription_id' };
+                readonly toDelivery: { readonly column: 'to_delivery' };
+                readonly updatedAt: { readonly column: 'updated_at' };
+              };
+            };
+          };
+          readonly DeliveryMethodChangeSlot: {
+            readonly fields: {
+              readonly changeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly fee: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly orderId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly change: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChange';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['changeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly order: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Order';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['orderId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'delivery_method_change_slot';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly changeId: { readonly column: 'change_id' };
+                readonly fee: { readonly column: 'fee' };
+                readonly id: { readonly column: 'id' };
+                readonly orderId: { readonly column: 'order_id' };
               };
             };
           };
@@ -4016,6 +4618,14 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamp-temporal@1';
                 };
               };
+              readonly deliveryFee: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
+              };
               readonly id: {
                 readonly nullable: false;
                 readonly type: {
@@ -4023,6 +4633,10 @@ type ContractBase = Omit<
                   readonly codecId: 'sql/varchar@1';
                   readonly typeParams: { readonly length: 36 };
                 };
+              };
+              readonly isDelivery: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly menuScheduleId: {
                 readonly nullable: false;
@@ -4078,6 +4692,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly deliveryMethodChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChangeSlot';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['orderId'];
+                };
+              };
               readonly obstacles: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -4131,7 +4756,9 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly courierId: { readonly column: 'courier_id' };
                 readonly createdAt: { readonly column: 'created_at' };
+                readonly deliveryFee: { readonly column: 'delivery_fee' };
                 readonly id: { readonly column: 'id' };
+                readonly isDelivery: { readonly column: 'is_delivery' };
                 readonly menuScheduleId: { readonly column: 'menu_schedule_id' };
                 readonly serviceDate: { readonly column: 'service_date' };
                 readonly skipReason: { readonly column: 'skip_reason' };
@@ -4480,6 +5107,18 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly deliveryMethodChange: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChange';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['paymentId'];
+                };
+              };
               readonly subscription: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -5059,6 +5698,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly deliveryMethodChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChange';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['subscriptionId'];
+                };
+              };
               readonly orders: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -5373,6 +6023,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['courierId'];
                 };
               };
+              readonly deliveryMethodChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DeliveryMethodChange';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['requestedById'];
+                };
+              };
               readonly membership: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -5664,6 +6325,39 @@ type ContractBase = Omit<
           readonly ref: {
             readonly entry: 'business';
             readonly field: 'updated_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'delivery_method_change';
+            readonly field: 'created_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'delivery_method_change';
+            readonly field: 'id';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly onUpdate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'delivery_method_change';
+            readonly field: 'updated_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'delivery_method_change_slot';
+            readonly field: 'id';
             readonly namespace: 'public';
           };
         },

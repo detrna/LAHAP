@@ -1,4 +1,5 @@
 import type { OrderPeriod } from "../../../catalog/domain/package.domain.js";
+import type { DeliveryMethodChangeStatus } from "../../domain/delivery-method-change.domain.js";
 import type { OrderStatus } from "../../domain/order.domain.js";
 import type { PaymentMethod, PaymentStatus, PaymentType } from "../../domain/payment.domain.js";
 import type { PurchaseType, SubscriptionStatus } from "../../domain/subscription.domain.js";
@@ -58,6 +59,8 @@ export interface OrderRecord {
     readonly status: OrderStatus;
     readonly usesAlternativeMenu: boolean;
     readonly skipReason: string | null;
+    readonly isDelivery: boolean;
+    readonly deliveryFee: number;
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
 }
@@ -68,6 +71,8 @@ export interface NewSlotRecord {
     readonly id: string;
     readonly menuScheduleId: string;
     readonly serviceDate: Temporal.PlainDate;
+    readonly isDelivery: boolean;
+    readonly deliveryFee: number;
 }
 
 export interface NewPaymentRecord {
@@ -98,9 +103,67 @@ export interface CheckoutRecord {
     readonly orders: readonly OrderRecord[];
 }
 
+export interface DeliveryMethodChangeSlotRecord {
+    readonly orderId: string;
+    readonly serviceDate: Temporal.PlainDate;
+    readonly fee: number;
+}
+
+export interface DeliveryMethodChangeRecord {
+    readonly id: string;
+    readonly subscriptionId: string;
+    readonly requestedById: string;
+    readonly toDelivery: boolean;
+    readonly effectiveFrom: Temporal.PlainDate;
+    readonly status: DeliveryMethodChangeStatus;
+    readonly slotCount: number;
+    readonly deliveryFeePerSlot: number;
+    readonly amount: number;
+    readonly needsRefund: boolean;
+    readonly refundedAt: Temporal.PlainDateTime | null;
+    readonly paymentId: string | null;
+    readonly deliveryAddress: string | null;
+    readonly deliveryLatitude: number | null;
+    readonly deliveryLongitude: number | null;
+    readonly deliveryDistanceKm: number | null;
+    readonly slots: readonly DeliveryMethodChangeSlotRecord[];
+    readonly createdAt: Temporal.PlainDateTime;
+    readonly updatedAt: Temporal.PlainDateTime;
+}
+
+export type NewDeliveryMethodChangeRecord = Omit<
+    DeliveryMethodChangeRecord,
+    "slots" | "refundedAt" | "paymentId" | "createdAt" | "updatedAt"
+>;
+
+export interface MethodChangeWrite {
+    readonly change: NewDeliveryMethodChangeRecord;
+    readonly slots: readonly { readonly orderId: string; readonly fee: number }[];
+    readonly payment: NewPaymentRecord | null;
+    readonly apply: boolean;
+}
+
+export interface MethodChangeWriteResult {
+    readonly change: DeliveryMethodChangeRecord;
+    readonly payment: PaymentRecord | null;
+    readonly subscription: SubscriptionRecord;
+    readonly slotsBefore: readonly OrderRecord[];
+}
+
+export interface MethodChangeListQuery extends PageQuery {
+    readonly needsRefund?: boolean | undefined;
+}
+
+export interface UpgradeInPayment {
+    readonly change: DeliveryMethodChangeRecord;
+    readonly orders: readonly OrderRecord[];
+}
+
 export interface PaymentWithSubscription {
     readonly payment: PaymentRecord;
     readonly subscription: SubscriptionRecord;
+    readonly methodChange?: UpgradeInPayment | undefined;
+    readonly otherPayments?: readonly PaymentRecord[] | undefined;
 }
 
 export interface PaymentChange {
@@ -114,6 +177,13 @@ export interface PaymentChange {
         | {
               readonly status?: SubscriptionStatus | undefined;
               readonly needsRefund?: boolean | undefined;
+          }
+        | undefined;
+    readonly methodChange?:
+        | {
+              readonly status?: DeliveryMethodChangeStatus | undefined;
+              readonly needsRefund?: boolean | undefined;
+              readonly apply?: boolean | undefined;
           }
         | undefined;
 }
@@ -155,6 +225,7 @@ export interface PaymentListQuery extends PageQuery, CreatedRange {
     readonly userId?: string | undefined;
     readonly status?: PaymentStatus | undefined;
     readonly method?: PaymentMethod | undefined;
+    readonly type?: PaymentType | undefined;
     readonly needsRefund?: boolean | undefined;
 }
 
@@ -261,6 +332,17 @@ export interface IncomeTotals {
     readonly totalRevenue: number;
 }
 
+export interface MethodChangeIncomeQuery {
+    readonly from: Temporal.PlainDateTime;
+    readonly before: Temporal.PlainDateTime;
+    readonly statuses: readonly SubscriptionStatus[];
+}
+
+export interface MethodChangeIncomeRecord {
+    readonly byPackage: readonly { readonly packageId: string; readonly deliveryRevenue: number }[];
+    readonly byPurchaseType: readonly { readonly purchaseType: PurchaseType; readonly deliveryRevenue: number }[];
+}
+
 export interface IncomeRecord {
     readonly byPackage: readonly (IncomeTotals & { readonly packageId: string })[];
     readonly byPurchaseType: readonly (IncomeTotals & { readonly purchaseType: PurchaseType })[];
@@ -331,6 +413,16 @@ export interface OrdersRepository {
     setUsesAlternativeMenu(change: AlternativeMenuChange): Promise<OrderRecord | null>;
     assignCourier(orderIds: readonly string[], courierId: string | null): Promise<number>;
     cancelSubscription(cancellation: SubscriptionCancellation): Promise<SubscriptionRecord | null>;
+    createMethodChange(write: MethodChangeWrite): Promise<MethodChangeWriteResult>;
+    findMethodChangeById(id: string): Promise<DeliveryMethodChangeRecord | null>;
+    findMethodChangesBySubscriptionIds(
+        subscriptionIds: readonly string[],
+    ): Promise<readonly DeliveryMethodChangeRecord[]>;
+    listMethodChanges(query: MethodChangeListQuery): Promise<Page<DeliveryMethodChangeRecord>>;
+    confirmMethodChangeRefund(
+        id: string,
+        refundedAt: Temporal.PlainDateTime,
+    ): Promise<DeliveryMethodChangeRecord | null>;
 
     countPromoUses(
         promoCodeIds: readonly string[],
@@ -340,6 +432,7 @@ export interface OrdersRepository {
     hasSubscriptionsWithPromo(promoCodeId: string, statuses: readonly SubscriptionStatus[]): Promise<boolean>;
     countPortions(query: PortionQuery): Promise<readonly PortionCountRecord[]>;
     sumIncome(query: IncomeQuery): Promise<IncomeRecord>;
+    sumMethodChangeIncome(query: MethodChangeIncomeQuery): Promise<MethodChangeIncomeRecord>;
     countPaidServiceDays(userId: string, statuses: readonly SubscriptionStatus[]): Promise<number>;
     sumTierDiscounts(
         tierIds: readonly string[],

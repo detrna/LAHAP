@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    buildDeliveryMethodChangeRecord,
     buildOrderRecord,
     buildPaymentRecord,
     buildSubscriptionRecord,
@@ -14,8 +15,14 @@ describe("OrdersService.getMySubscription (unit)", () => {
         );
         repository.findOrdersBySubscriptionId.mockResolvedValue([buildOrderRecord({ id: "a" })]);
         repository.findPaymentsBySubscriptionId.mockResolvedValue([buildPaymentRecord({ method: "CASH" })]);
+        repository.findMethodChangesBySubscriptionIds.mockResolvedValue([
+            buildDeliveryMethodChangeRecord({ id: "chg-1", needsRefund: true }),
+        ]);
 
         const subscription = await service.getMySubscription("user-1", "sub-1");
+
+        expect(repository.findMethodChangesBySubscriptionIds).toHaveBeenCalledWith(["sub-1"]);
+        expect(subscription.deliveryMethodChanges).toMatchObject([{ id: "chg-1", needsRefund: true }]);
 
         expect(subscription.displayStatus).toBe("Aktif");
         expect(subscription.orders?.map(order => order.id)).toEqual(["a"]);

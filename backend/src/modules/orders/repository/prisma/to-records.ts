@@ -58,6 +58,8 @@ export interface OrderRow {
     readonly status: string;
     readonly usesAlternativeMenu: boolean;
     readonly skipReason: string | null;
+    readonly isDelivery: boolean;
+    readonly deliveryFee: string;
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
 }
@@ -120,6 +122,8 @@ export function toOrderRecord(row: OrderRow): OrderRecord {
         status: row.status as OrderStatus,
         usesAlternativeMenu: row.usesAlternativeMenu,
         skipReason: row.skipReason,
+        isDelivery: row.isDelivery,
+        deliveryFee: fromNumeric(row.deliveryFee),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };

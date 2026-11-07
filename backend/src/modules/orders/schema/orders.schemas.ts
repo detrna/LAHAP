@@ -7,7 +7,7 @@ import { isoDateSchema } from "../../../shared/time/schemas.js";
 import { clockTimeSchema } from "../../../shared/utils/meal-time/meal-time.js";
 import { ORDER_STATUSES } from "../domain/order.domain.js";
 import { REPORT_PERIODS } from "../domain/report-period.js";
-import { PAYMENT_STATUSES } from "../domain/payment.domain.js";
+import { PAYMENT_STATUSES, PAYMENT_TYPES } from "../domain/payment.domain.js";
 import { PURCHASE_TYPES, SUBSCRIPTION_STATUSES } from "../domain/subscription.domain.js";
 
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
@@ -63,28 +63,60 @@ const rangeCheckoutSchema = z.object({
     deliveryTimes: uniqueArray(clockTimeSchema, { by: time => time.toString() }).min(1),
 });
 
+interface DeliveryPointFields {
+    readonly isDelivery: boolean;
+    readonly deliveryAddress: string | null;
+    readonly deliveryLatitude: number | null;
+    readonly deliveryLongitude: number | null;
+}
+
+function refineDeliveryPoint(value: DeliveryPointFields, ctx: z.RefinementCtx): void {
+    const hasLatitude = value.deliveryLatitude !== null;
+    const hasLongitude = value.deliveryLongitude !== null;
+    if (hasLatitude !== hasLongitude) {
+        ctx.addIssue({
+            code: "custom",
+            path: [hasLatitude ? "deliveryLongitude" : "deliveryLatitude"],
+            message: "deliveryLatitude and deliveryLongitude must be sent together",
+        });
+    }
+    if (!value.isDelivery) return;
+    if (value.deliveryAddress === null) {
+        ctx.addIssue({ code: "custom", path: ["deliveryAddress"], message: "is required for delivery" });
+    }
+    if (!hasLatitude && !hasLongitude) {
+        ctx.addIssue({ code: "custom", path: ["deliveryLatitude"], message: "is required for delivery" });
+    }
+}
+
 export const checkoutSchema = z
     .discriminatedUnion("period", [dailyCheckoutSchema, rangeCheckoutSchema])
-    .superRefine((value, ctx) => {
-        const hasLatitude = value.deliveryLatitude !== null;
-        const hasLongitude = value.deliveryLongitude !== null;
-        if (hasLatitude !== hasLongitude) {
-            ctx.addIssue({
-                code: "custom",
-                path: [hasLatitude ? "deliveryLongitude" : "deliveryLatitude"],
-                message: "deliveryLatitude and deliveryLongitude must be sent together",
-            });
-        }
-        if (!value.isDelivery) return;
-        if (value.deliveryAddress === null) {
-            ctx.addIssue({ code: "custom", path: ["deliveryAddress"], message: "is required for delivery" });
-        }
-        if (!hasLatitude && !hasLongitude) {
-            ctx.addIssue({ code: "custom", path: ["deliveryLatitude"], message: "is required for delivery" });
-        }
-    });
+    .superRefine(refineDeliveryPoint);
 
 export type CheckoutBody = z.output<typeof checkoutSchema>;
+
+export const deliveryMethodChangeSchema = z
+    .object({
+        isDelivery: z.boolean(),
+        effectiveFrom: isoDateSchema.optional(),
+        deliveryAddress: optionalText(),
+        deliveryLatitude: latitudeSchema.nullish().transform(value => value ?? null),
+        deliveryLongitude: longitudeSchema.nullish().transform(value => value ?? null),
+        paymentMethod: z.enum(CHECKOUT_PAYMENT_METHODS).default("MIDTRANS"),
+    })
+    .superRefine(refineDeliveryPoint);
+
+export type DeliveryMethodChangeBody = z.output<typeof deliveryMethodChangeSchema>;
+
+export const methodChangeIdParamsSchema = z.object({
+    id: z.uuid(),
+});
+
+export const adminMethodChangeListQuerySchema = paginationQuerySchema.extend({
+    needsRefund: queryBooleanSchema.optional(),
+});
+
+export type AdminMethodChangeListQuery = z.output<typeof adminMethodChangeListQuerySchema>;
 
 export const subscriptionListQuerySchema = paginationQuerySchema.extend({
     status: z.enum(SUBSCRIPTION_STATUSES).optional(),
@@ -172,6 +204,7 @@ export const adminSubscriptionListQuerySchema = paginationQuerySchema
 export const adminPaymentListQuerySchema = paginationQuerySchema
     .extend({
         status: z.enum(PAYMENT_STATUSES).optional(),
+        type: z.enum(PAYMENT_TYPES).optional(),
         method: z
             .string()
             .regex(/^(CASH|FREE|MIDTRANS(_[A-Z0-9_]+)?)$/)

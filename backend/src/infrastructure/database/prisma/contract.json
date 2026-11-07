@@ -20,6 +20,14 @@
       "model": "Business",
       "namespace": "public"
     },
+    "delivery_method_change": {
+      "model": "DeliveryMethodChange",
+      "namespace": "public"
+    },
+    "delivery_method_change_slot": {
+      "model": "DeliveryMethodChangeSlot",
+      "namespace": "public"
+    },
     "delivery_obstacle": {
       "model": "DeliveryObstacle",
       "namespace": "public"
@@ -490,6 +498,389 @@
               },
               "namespaceId": "public",
               "table": "business"
+            }
+          },
+          "DeliveryMethodChange": {
+            "fields": {
+              "amount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 12,
+                    "scale": 2
+                  }
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryAddress": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryDistanceKm": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryFeePerSlot": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              },
+              "deliveryLatitude": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 8
+                  }
+                }
+              },
+              "deliveryLongitude": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 11,
+                    "scale": 8
+                  }
+                }
+              },
+              "effectiveFrom": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/date-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "needsRefund": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "paymentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "refundedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestedById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "slotCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 30
+                  }
+                }
+              },
+              "subscriptionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "toDelivery": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "payment": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "paymentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
+                  "namespace": "public"
+                }
+              },
+              "requestedBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "requestedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "slots": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "changeId"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChangeSlot",
+                  "namespace": "public"
+                }
+              },
+              "subscription": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "subscriptionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Subscription",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "amount": {
+                  "column": "amount"
+                },
+                "createdAt": {
+                  "column": "created_at"
+                },
+                "deliveryAddress": {
+                  "column": "delivery_address"
+                },
+                "deliveryDistanceKm": {
+                  "column": "delivery_distance_km"
+                },
+                "deliveryFeePerSlot": {
+                  "column": "delivery_fee_per_slot"
+                },
+                "deliveryLatitude": {
+                  "column": "delivery_latitude"
+                },
+                "deliveryLongitude": {
+                  "column": "delivery_longitude"
+                },
+                "effectiveFrom": {
+                  "column": "effective_from"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "needsRefund": {
+                  "column": "needs_refund"
+                },
+                "paymentId": {
+                  "column": "payment_id"
+                },
+                "refundedAt": {
+                  "column": "refunded_at"
+                },
+                "requestedById": {
+                  "column": "requested_by_id"
+                },
+                "slotCount": {
+                  "column": "slot_count"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "subscriptionId": {
+                  "column": "subscription_id"
+                },
+                "toDelivery": {
+                  "column": "to_delivery"
+                },
+                "updatedAt": {
+                  "column": "updated_at"
+                }
+              },
+              "namespaceId": "public",
+              "table": "delivery_method_change"
+            }
+          },
+          "DeliveryMethodChangeSlot": {
+            "fields": {
+              "changeId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "fee": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              }
+            },
+            "relations": {
+              "change": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "changeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChange",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "changeId": {
+                  "column": "change_id"
+                },
+                "fee": {
+                  "column": "fee"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "orderId": {
+                  "column": "order_id"
+                }
+              },
+              "namespaceId": "public",
+              "table": "delivery_method_change_slot"
             }
           },
           "DeliveryObstacle": {
@@ -1442,6 +1833,17 @@
                   "kind": "scalar"
                 }
               },
+              "deliveryFee": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -1450,6 +1852,13 @@
                   "typeParams": {
                     "length": 36
                   }
+                }
+              },
+              "isDelivery": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
                 }
               },
               "menuScheduleId": {
@@ -1528,6 +1937,21 @@
                   "namespace": "public"
                 }
               },
+              "deliveryMethodChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChangeSlot",
+                  "namespace": "public"
+                }
+              },
               "obstacles": {
                 "cardinality": "1:N",
                 "on": {
@@ -1599,8 +2023,14 @@
                 "createdAt": {
                   "column": "created_at"
                 },
+                "deliveryFee": {
+                  "column": "delivery_fee"
+                },
                 "id": {
                   "column": "id"
+                },
+                "isDelivery": {
+                  "column": "is_delivery"
                 },
                 "menuScheduleId": {
                   "column": "menu_schedule_id"
@@ -2098,6 +2528,22 @@
               }
             },
             "relations": {
+              "deliveryMethodChange": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "paymentId"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChange",
+                  "namespace": "public"
+                }
+              },
               "subscription": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -2917,6 +3363,21 @@
               }
             },
             "relations": {
+              "deliveryMethodChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "subscriptionId"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChange",
+                  "namespace": "public"
+                }
+              },
               "orders": {
                 "cardinality": "1:N",
                 "on": {
@@ -3390,6 +3851,21 @@
                 },
                 "to": {
                   "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "deliveryMethodChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "requestedById"
+                  ]
+                },
+                "to": {
+                  "model": "DeliveryMethodChange",
                   "namespace": "public"
                 }
               },
@@ -4019,6 +4495,359 @@
                 ]
               },
               "uniques": []
+            },
+            "delivery_method_change": {
+              "columns": {
+                "amount": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 12,
+                    "scale": 2
+                  }
+                },
+                "created_at": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "dataType": "pg/timestamp",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "delivery_address": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "delivery_distance_km": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": true
+                },
+                "delivery_fee_per_slot": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0.00"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                },
+                "delivery_latitude": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": true,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 8
+                  }
+                },
+                "delivery_longitude": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": true,
+                  "typeParams": {
+                    "precision": 11,
+                    "scale": 8
+                  }
+                },
+                "effective_from": {
+                  "codecId": "pg/date-temporal@1",
+                  "dataType": "pg/date",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "needs_refund": {
+                  "codecId": "pg/bool@1",
+                  "dataType": "pg/bool",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nullable": false
+                },
+                "payment_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": true,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "refunded_at": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "dataType": "pg/timestamp",
+                  "nullable": true
+                },
+                "requested_by_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "slot_count": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 30
+                  }
+                },
+                "subscription_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "to_delivery": {
+                  "codecId": "pg/bool@1",
+                  "dataType": "pg/bool",
+                  "nullable": false
+                },
+                "updated_at": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "dataType": "pg/timestamp",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "delivery_method_change_subscription_id_idx_1e74615f"
+                  },
+                  "onDelete": "restrict",
+                  "source": {
+                    "columns": [
+                      "subscription_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "subscription"
+                  }
+                },
+                {
+                  "index": {
+                    "name": "delivery_method_change_requested_by_id_idx_d76f2dd3"
+                  },
+                  "onDelete": "restrict",
+                  "source": {
+                    "columns": [
+                      "requested_by_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "index": {
+                    "unique": [
+                      "payment_id"
+                    ]
+                  },
+                  "onDelete": "restrict",
+                  "source": {
+                    "columns": [
+                      "payment_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "payment"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "needs_refund"
+                  ],
+                  "name": "delivery_method_change_needs_refund_idx_12ceb89e",
+                  "prefix": "delivery_method_change_needs_refund_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "requested_by_id"
+                  ],
+                  "name": "delivery_method_change_requested_by_id_idx_d76f2dd3",
+                  "prefix": "delivery_method_change_requested_by_id_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "subscription_id"
+                  ],
+                  "name": "delivery_method_change_subscription_id_idx_1e74615f",
+                  "prefix": "delivery_method_change_subscription_id_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "payment_id"
+                  ]
+                }
+              ]
+            },
+            "delivery_method_change_slot": {
+              "columns": {
+                "change_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "fee": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                },
+                "id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "order_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "delivery_method_change_slot_change_id_idx_582c0040"
+                  },
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "change_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change_slot"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change"
+                  }
+                },
+                {
+                  "index": {
+                    "name": "delivery_method_change_slot_order_id_idx_39ad19ad"
+                  },
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "order_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "delivery_method_change_slot"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "change_id"
+                  ],
+                  "name": "delivery_method_change_slot_change_id_idx_582c0040",
+                  "prefix": "delivery_method_change_slot_change_id_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "order_id"
+                  ],
+                  "name": "delivery_method_change_slot_order_id_idx_39ad19ad",
+                  "prefix": "delivery_method_change_slot_order_id_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "change_id",
+                    "order_id"
+                  ]
+                }
+              ]
             },
             "delivery_obstacle": {
               "columns": {
@@ -4870,6 +5699,19 @@
                   },
                   "nullable": false
                 },
+                "delivery_fee": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0.00"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                },
                 "id": {
                   "codecId": "sql/varchar@1",
                   "dataType": "pg/varchar",
@@ -4877,6 +5719,11 @@
                   "typeParams": {
                     "length": 36
                   }
+                },
+                "is_delivery": {
+                  "codecId": "pg/bool@1",
+                  "dataType": "pg/bool",
+                  "nullable": false
                 },
                 "menu_schedule_id": {
                   "codecId": "sql/varchar@1",
@@ -6677,10 +7524,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "f8dd7e04764ab17064c1bc8ea93eafd9299ba58549f49cd48643664961879fea"
+    "storageHash": "eaaa12097b855472fefde902e39ad6e7bc2776b0a86bf4289e4cb3b10166896f"
   },
   "execution": {
-    "executionHash": "f1d6c16d23baa2e4d589cda73002417b59117d32bed25e0f4cb7a6f6815afaa7",
+    "executionHash": "00f3f985c96fd60a3c85fdf4d5114891a06bdf6d53645fca3015335e166714c8",
     "mutations": {
       "defaults": [
         {
@@ -6813,6 +7660,54 @@
           "ref": {
             "entry": "business",
             "field": "updated_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "delivery_method_change",
+            "field": "created_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "delivery_method_change",
+            "field": "id",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "delivery_method_change",
+            "field": "updated_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "delivery_method_change_slot",
+            "field": "id",
             "namespace": "public"
           }
         },

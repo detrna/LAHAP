@@ -30,6 +30,16 @@ import { cancelSubscription } from "./subscriptions/cancel-subscription.js";
 import { getMySubscription } from "./subscriptions/get-my-subscription.js";
 import { listMySubscriptions } from "./subscriptions/list-my-subscriptions.js";
 
+import {
+    changeDeliveryMethod,
+    changeDeliveryMethodForAdmin,
+    confirmMethodChangeRefund,
+    getMethodChangePaymentSession,
+    listMethodChangesForAdmin,
+    previewMethodChange,
+    previewMethodChangeForAdmin,
+} from "./method-change/delivery-method.js";
+
 export class OrdersController {
     constructor(readonly ordersService: OrdersService) {}
 
@@ -61,4 +71,11 @@ export class OrdersController {
     listPaymentsForAdmin = listPaymentsForAdmin.bind(this);
     getIncomeReport = getIncomeReport.bind(this);
     getDashboard = getDashboard.bind(this);
+    previewMethodChange = previewMethodChange.bind(this);
+    previewMethodChangeForAdmin = previewMethodChangeForAdmin.bind(this);
+    changeDeliveryMethod = changeDeliveryMethod.bind(this);
+    changeDeliveryMethodForAdmin = changeDeliveryMethodForAdmin.bind(this);
+    getMethodChangePaymentSession = getMethodChangePaymentSession.bind(this);
+    listMethodChangesForAdmin = listMethodChangesForAdmin.bind(this);
+    confirmMethodChangeRefund = confirmMethodChangeRefund.bind(this);
 }

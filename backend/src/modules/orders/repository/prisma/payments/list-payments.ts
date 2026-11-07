@@ -10,6 +10,7 @@ function matching(orm: Db["orm"], query: PaymentListQuery, subscriptionIds: read
     if (query.userId !== undefined) payments = payments.where({ userId: query.userId });
     if (query.status !== undefined) payments = payments.where({ status: query.status });
     if (query.method !== undefined) payments = payments.where({ method: query.method });
+    if (query.type !== undefined) payments = payments.where({ type: query.type });
     if (subscriptionIds !== undefined) {
         payments = payments.where(row => row.subscriptionId.in([...subscriptionIds] as Varchar<36>[]));
     }

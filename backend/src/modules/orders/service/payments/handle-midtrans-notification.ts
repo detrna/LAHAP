@@ -1,8 +1,15 @@
 import { toDbTimestamp } from "../../../../shared/time/timestamp.js";
+import type { UpgradeOutcome } from "../../domain/method-change.js";
 import { decidePaymentOutcome, type PaymentOutcome } from "../../domain/payment-event.js";
 import { toPaidMethod, toStoredPaymentStatus } from "../../domain/payment-status.js";
 import type { OrdersService } from "../orders.service.js";
 import { toPaymentChange } from "./to-payment-change.js";
+import {
+    decideUpgradePayment,
+    hasOtherPaidPayments,
+    isUpgradePayment,
+    toUpgradePaymentChange,
+} from "./upgrade-payment.js";
 
 export async function handleMidtransNotification(this: OrdersService, payload: unknown): Promise<void> {
     const notification = this.paymentGateway.verifyNotification(payload);
@@ -15,7 +22,8 @@ export async function handleMidtransNotification(this: OrdersService, payload: u
         transactionId: notification.transactionId ?? null,
         method: toPaidMethod(notification.paymentType),
     };
-    let outcome = { kind: "none" } as PaymentOutcome;
+    const today = this.clock.now().toPlainDate();
+    let outcome = { kind: "none" } as PaymentOutcome | UpgradeOutcome;
     let amountMismatch = false;
 
     const result = await this.ordersRepository.changePayment(notification.orderId, current => {
@@ -23,11 +31,17 @@ export async function handleMidtransNotification(this: OrdersService, payload: u
             amountMismatch = true;
             return null;
         }
-        outcome = decidePaymentOutcome(
+        if (isUpgradePayment(current)) {
+            const upgrade = decideUpgradePayment(current, target, today);
+            outcome = upgrade;
+            return toUpgradePaymentChange(upgrade, paid);
+        }
+        const decided = decidePaymentOutcome(
             { paymentStatus: current.payment.status, subscriptionStatus: current.subscription.status },
             target,
         );
-        return toPaymentChange(outcome, paid);
+        outcome = decided;
+        return toPaymentChange(decided, paid, hasOtherPaidPayments(current));
     });
 
     if (result === null) {

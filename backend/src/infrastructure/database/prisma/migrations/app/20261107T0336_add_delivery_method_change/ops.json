@@ -1,0 +1,927 @@
+[
+  {
+    "id": "table.delivery_method_change",
+    "label": "Create table \"delivery_method_change\"",
+    "summary": "Creates table \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"delivery_method_change\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"delivery_method_change\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"delivery_method_change\"",
+        "sql": "CREATE TABLE \"public\".\"delivery_method_change\" (\n  \"amount\" numeric(12,2) NOT NULL,\n  \"created_at\" timestamp DEFAULT (now()) NOT NULL,\n  \"delivery_address\" text,\n  \"delivery_distance_km\" int4,\n  \"delivery_fee_per_slot\" numeric(10,2) DEFAULT '0.00'::numeric(10,2) NOT NULL,\n  \"delivery_latitude\" numeric(10,8),\n  \"delivery_longitude\" numeric(11,8),\n  \"effective_from\" date NOT NULL,\n  \"id\" character varying(36) NOT NULL,\n  \"needs_refund\" bool DEFAULT false NOT NULL,\n  \"payment_id\" character varying(36),\n  \"refunded_at\" timestamp,\n  \"requested_by_id\" character varying(36) NOT NULL,\n  \"slot_count\" int4 NOT NULL,\n  \"status\" character varying(30) NOT NULL,\n  \"subscription_id\" character varying(36) NOT NULL,\n  \"to_delivery\" bool NOT NULL,\n  \"updated_at\" timestamp DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"delivery_method_change\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"delivery_method_change\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.delivery_method_change_slot",
+    "label": "Create table \"delivery_method_change_slot\"",
+    "summary": "Creates table \"delivery_method_change_slot\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"delivery_method_change_slot\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"delivery_method_change_slot\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"delivery_method_change_slot\"",
+        "sql": "CREATE TABLE \"public\".\"delivery_method_change_slot\" (\n  \"change_id\" character varying(36) NOT NULL,\n  \"fee\" numeric(10,2) NOT NULL,\n  \"id\" character varying(36) NOT NULL,\n  \"order_id\" character varying(36) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"delivery_method_change_slot\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"delivery_method_change_slot\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.delivery_fee",
+    "label": "Add column \"delivery_fee\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "delivery_fee",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"delivery_fee\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "delivery_fee"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"delivery_fee\" on \"order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"delivery_fee\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"delivery_fee\" numeric(10,2) DEFAULT '0.00'::numeric(10,2) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"delivery_fee\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "delivery_fee"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"delivery_fee\" on \"order\""
+        }
+      },
+      {
+        "description": "verify column \"delivery_fee\" has type \"numeric(10,2)\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "delivery_fee",
+          "numeric(10,2)"
+        ]
+      },
+      {
+        "description": "verify column \"delivery_fee\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "delivery_fee",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.is_delivery",
+    "label": "Add column \"is_delivery\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "is_delivery",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"is_delivery\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "is_delivery"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"is_delivery\" on \"order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"is_delivery\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"is_delivery\" bool"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"is_delivery\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "is_delivery"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"is_delivery\" on \"order\""
+        }
+      },
+      {
+        "description": "verify column \"is_delivery\" has type \"boolean\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "is_delivery",
+          "boolean"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-order-is_delivery",
+    "label": "Data transform: backfill-order-is_delivery",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "is_delivery",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "Check backfill-order-is_delivery has work to do",
+        "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"is_delivery\" IS NULL LIMIT 1) AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Run backfill-order-is_delivery",
+        "sql": "UPDATE \"order\" SET is_delivery = subscription.is_delivery, delivery_fee = CASE WHEN subscription.is_delivery THEN subscription.delivery_fee_per_slot ELSE 0 END FROM subscription WHERE subscription.id = \"order\".subscription_id AND \"order\".is_delivery IS NULL",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify backfill-order-is_delivery resolved all violations",
+        "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"is_delivery\" IS NULL LIMIT 1) AS ok",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "order",
+            "column": "is_delivery",
+            "reason": "backfillMissedRows"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.order.is_delivery",
+    "label": "Set NOT NULL on \"order\".\"is_delivery\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "is_delivery",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"is_delivery\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "is_delivery"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"is_delivery\" on \"order\""
+        }
+      },
+      {
+        "description": "ensure no NULL values in \"is_delivery\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"order\" WHERE \"is_delivery\" IS NULL) AS \"result\"",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "order",
+            "column": "is_delivery",
+            "reason": "nullValues"
+          }
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"is_delivery\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ALTER COLUMN \"is_delivery\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"is_delivery\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "is_delivery",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.delivery_method_change.delivery_method_change_payment_id_key",
+    "label": "Add unique constraint on \"delivery_method_change\" (payment_id)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "delivery_method_change_payment_id_key",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"delivery_method_change_payment_id_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_payment_id_key",
+          "public",
+          "\"public\".\"delivery_method_change\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"delivery_method_change_payment_id_key\" on \"delivery_method_change\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"delivery_method_change_payment_id_key\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change\" ADD CONSTRAINT \"delivery_method_change_payment_id_key\" UNIQUE (\"payment_id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"delivery_method_change_payment_id_key\" exists on (payment_id)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "delivery_method_change_payment_id_key",
+          "public",
+          "\"public\".\"delivery_method_change\"",
+          "u",
+          "[\"payment_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.delivery_method_change_slot.delivery_method_change_slot_change_id_order_id_key",
+    "label": "Add unique constraint on \"delivery_method_change_slot\" (change_id, order_id)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "delivery_method_change_slot_change_id_order_id_key",
+        "table": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"delivery_method_change_slot_change_id_order_id_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_change_id_order_id_key",
+          "public",
+          "\"public\".\"delivery_method_change_slot\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"delivery_method_change_slot_change_id_order_id_key\" on \"delivery_method_change_slot\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"delivery_method_change_slot_change_id_order_id_key\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change_slot\" ADD CONSTRAINT \"delivery_method_change_slot_change_id_order_id_key\" UNIQUE (\"change_id\", \"order_id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"delivery_method_change_slot_change_id_order_id_key\" exists on (change_id, order_id)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_change_id_order_id_key",
+          "public",
+          "\"public\".\"delivery_method_change_slot\"",
+          "u",
+          "[\"change_id\",\"order_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delivery_method_change.delivery_method_change_needs_refund_idx_12ceb89e",
+    "label": "Create index \"delivery_method_change_needs_refund_idx_12ceb89e\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delivery_method_change_needs_refund_idx_12ceb89e",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delivery_method_change_needs_refund_idx_12ceb89e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_needs_refund_idx_12ceb89e\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"delivery_method_change_needs_refund_idx_12ceb89e\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delivery_method_change_needs_refund_idx_12ceb89e\"",
+        "sql": "CREATE INDEX \"delivery_method_change_needs_refund_idx_12ceb89e\" ON \"public\".\"delivery_method_change\" (\"needs_refund\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delivery_method_change_needs_refund_idx_12ceb89e\" exists on \"delivery_method_change\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_needs_refund_idx_12ceb89e\"",
+          "i",
+          "I",
+          "\"public\".\"delivery_method_change\"",
+          "btree",
+          "[\"needs_refund\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delivery_method_change.delivery_method_change_requested_by_id_idx_d76f2dd3",
+    "label": "Create index \"delivery_method_change_requested_by_id_idx_d76f2dd3\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delivery_method_change_requested_by_id_idx_d76f2dd3",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delivery_method_change_requested_by_id_idx_d76f2dd3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_requested_by_id_idx_d76f2dd3\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"delivery_method_change_requested_by_id_idx_d76f2dd3\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delivery_method_change_requested_by_id_idx_d76f2dd3\"",
+        "sql": "CREATE INDEX \"delivery_method_change_requested_by_id_idx_d76f2dd3\" ON \"public\".\"delivery_method_change\" (\"requested_by_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delivery_method_change_requested_by_id_idx_d76f2dd3\" exists on \"delivery_method_change\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_requested_by_id_idx_d76f2dd3\"",
+          "i",
+          "I",
+          "\"public\".\"delivery_method_change\"",
+          "btree",
+          "[\"requested_by_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delivery_method_change.delivery_method_change_subscription_id_idx_1e74615f",
+    "label": "Create index \"delivery_method_change_subscription_id_idx_1e74615f\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delivery_method_change_subscription_id_idx_1e74615f",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delivery_method_change_subscription_id_idx_1e74615f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_subscription_id_idx_1e74615f\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"delivery_method_change_subscription_id_idx_1e74615f\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delivery_method_change_subscription_id_idx_1e74615f\"",
+        "sql": "CREATE INDEX \"delivery_method_change_subscription_id_idx_1e74615f\" ON \"public\".\"delivery_method_change\" (\"subscription_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delivery_method_change_subscription_id_idx_1e74615f\" exists on \"delivery_method_change\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_subscription_id_idx_1e74615f\"",
+          "i",
+          "I",
+          "\"public\".\"delivery_method_change\"",
+          "btree",
+          "[\"subscription_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delivery_method_change_slot.delivery_method_change_slot_change_id_idx_582c0040",
+    "label": "Create index \"delivery_method_change_slot_change_id_idx_582c0040\" on \"delivery_method_change_slot\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delivery_method_change_slot_change_id_idx_582c0040",
+        "table": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delivery_method_change_slot_change_id_idx_582c0040\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot_change_id_idx_582c0040\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"delivery_method_change_slot_change_id_idx_582c0040\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delivery_method_change_slot_change_id_idx_582c0040\"",
+        "sql": "CREATE INDEX \"delivery_method_change_slot_change_id_idx_582c0040\" ON \"public\".\"delivery_method_change_slot\" (\"change_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delivery_method_change_slot_change_id_idx_582c0040\" exists on \"delivery_method_change_slot\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot_change_id_idx_582c0040\"",
+          "i",
+          "I",
+          "\"public\".\"delivery_method_change_slot\"",
+          "btree",
+          "[\"change_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delivery_method_change_slot.delivery_method_change_slot_order_id_idx_39ad19ad",
+    "label": "Create index \"delivery_method_change_slot_order_id_idx_39ad19ad\" on \"delivery_method_change_slot\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delivery_method_change_slot_order_id_idx_39ad19ad",
+        "table": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delivery_method_change_slot_order_id_idx_39ad19ad\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot_order_id_idx_39ad19ad\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"delivery_method_change_slot_order_id_idx_39ad19ad\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delivery_method_change_slot_order_id_idx_39ad19ad\"",
+        "sql": "CREATE INDEX \"delivery_method_change_slot_order_id_idx_39ad19ad\" ON \"public\".\"delivery_method_change_slot\" (\"order_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delivery_method_change_slot_order_id_idx_39ad19ad\" exists on \"delivery_method_change_slot\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"delivery_method_change_slot_order_id_idx_39ad19ad\"",
+          "i",
+          "I",
+          "\"public\".\"delivery_method_change_slot\"",
+          "btree",
+          "[\"order_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.delivery_method_change.delivery_method_change_subscription_id_fkey",
+    "label": "Add foreign key \"delivery_method_change_subscription_id_fkey\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "delivery_method_change_subscription_id_fkey",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"delivery_method_change_subscription_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_subscription_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"delivery_method_change_subscription_id_fkey\" on \"delivery_method_change\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"delivery_method_change_subscription_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change\"\nADD CONSTRAINT \"delivery_method_change_subscription_id_fkey\"\nFOREIGN KEY (\"subscription_id\")\nREFERENCES \"public\".\"subscription\" (\"id\")\nON DELETE RESTRICT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"delivery_method_change_subscription_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "delivery_method_change_subscription_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\"",
+          "f",
+          "[\"subscription_id\"]",
+          "\"public\".\"subscription\"",
+          "[\"id\"]",
+          "r",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.delivery_method_change.delivery_method_change_requested_by_id_fkey",
+    "label": "Add foreign key \"delivery_method_change_requested_by_id_fkey\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "delivery_method_change_requested_by_id_fkey",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"delivery_method_change_requested_by_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_requested_by_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"delivery_method_change_requested_by_id_fkey\" on \"delivery_method_change\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"delivery_method_change_requested_by_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change\"\nADD CONSTRAINT \"delivery_method_change_requested_by_id_fkey\"\nFOREIGN KEY (\"requested_by_id\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE RESTRICT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"delivery_method_change_requested_by_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "delivery_method_change_requested_by_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\"",
+          "f",
+          "[\"requested_by_id\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "r",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.delivery_method_change.delivery_method_change_payment_id_fkey",
+    "label": "Add foreign key \"delivery_method_change_payment_id_fkey\" on \"delivery_method_change\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "delivery_method_change_payment_id_fkey",
+        "table": "delivery_method_change"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"delivery_method_change_payment_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_payment_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"delivery_method_change_payment_id_fkey\" on \"delivery_method_change\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"delivery_method_change_payment_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change\"\nADD CONSTRAINT \"delivery_method_change_payment_id_fkey\"\nFOREIGN KEY (\"payment_id\")\nREFERENCES \"public\".\"payment\" (\"id\")\nON DELETE RESTRICT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"delivery_method_change_payment_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "delivery_method_change_payment_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change\"",
+          "f",
+          "[\"payment_id\"]",
+          "\"public\".\"payment\"",
+          "[\"id\"]",
+          "r",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.delivery_method_change_slot.delivery_method_change_slot_change_id_fkey",
+    "label": "Add foreign key \"delivery_method_change_slot_change_id_fkey\" on \"delivery_method_change_slot\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "delivery_method_change_slot_change_id_fkey",
+        "table": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"delivery_method_change_slot_change_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_change_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change_slot\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"delivery_method_change_slot_change_id_fkey\" on \"delivery_method_change_slot\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"delivery_method_change_slot_change_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change_slot\"\nADD CONSTRAINT \"delivery_method_change_slot_change_id_fkey\"\nFOREIGN KEY (\"change_id\")\nREFERENCES \"public\".\"delivery_method_change\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"delivery_method_change_slot_change_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_change_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change_slot\"",
+          "f",
+          "[\"change_id\"]",
+          "\"public\".\"delivery_method_change\"",
+          "[\"id\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.delivery_method_change_slot.delivery_method_change_slot_order_id_fkey",
+    "label": "Add foreign key \"delivery_method_change_slot_order_id_fkey\" on \"delivery_method_change_slot\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "delivery_method_change_slot_order_id_fkey",
+        "table": "delivery_method_change_slot"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"delivery_method_change_slot_order_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_order_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change_slot\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"delivery_method_change_slot_order_id_fkey\" on \"delivery_method_change_slot\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"delivery_method_change_slot_order_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"delivery_method_change_slot\"\nADD CONSTRAINT \"delivery_method_change_slot_order_id_fkey\"\nFOREIGN KEY (\"order_id\")\nREFERENCES \"public\".\"order\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"delivery_method_change_slot_order_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "delivery_method_change_slot_order_id_fkey",
+          "public",
+          "\"public\".\"delivery_method_change_slot\"",
+          "f",
+          "[\"order_id\"]",
+          "\"public\".\"order\"",
+          "[\"id\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  }
+]

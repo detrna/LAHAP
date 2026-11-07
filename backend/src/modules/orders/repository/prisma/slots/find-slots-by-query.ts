@@ -15,6 +15,7 @@ function matchingOrders(orm: Db["orm"], query: SlotQuery) {
         orders = orders.where({ usesAlternativeMenu: query.usesAlternativeMenu });
     }
     if (query.courierId !== undefined) orders = orders.where({ courierId: query.courierId });
+    if (query.isDelivery !== undefined) orders = orders.where({ isDelivery: query.isDelivery });
     if (query.statuses !== undefined)
         orders = orders.where(row => row.status.in([...query.statuses!] as Varchar<30>[]));
     if (query.serviceDateFrom !== undefined) orders = orders.where(row => row.serviceDate.gte(query.serviceDateFrom!));
@@ -33,10 +34,9 @@ export async function findSlots(
             .all();
         if (orders.length === 0) return [];
         const subscriptionIds = [...new Set(orders.map(row => row.subscriptionId))];
-        let matching = this.db.orm.public.Subscription.where(row => row.id.in(subscriptionIds as Varchar<36>[])).where(
-            row => row.status.in([...query.subscriptionStatuses] as Varchar<30>[]),
-        );
-        if (query.isDelivery !== undefined) matching = matching.where({ isDelivery: query.isDelivery });
+        const matching = this.db.orm.public.Subscription.where(row =>
+            row.id.in(subscriptionIds as Varchar<36>[]),
+        ).where(row => row.status.in([...query.subscriptionStatuses] as Varchar<30>[]));
         const subscriptions = await matching.all();
         const byId = new Map(subscriptions.map(row => [row.id, toSubscriptionRecord(row)]));
         return orders.flatMap(row => {

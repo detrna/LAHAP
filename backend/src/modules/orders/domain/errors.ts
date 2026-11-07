@@ -21,6 +21,15 @@ export class SubscriptionNotFoundError extends AppError {
     }
 }
 
+export class DeliveryMethodChangeNotFoundError extends AppError {
+    readonly code = "DELIVERY_METHOD_CHANGE_NOT_FOUND";
+    readonly statusCode = 404;
+
+    constructor(options?: { cause?: unknown }) {
+        super("delivery method change not found", options);
+    }
+}
+
 export class PaymentNotFoundError extends AppError {
     readonly code = "PAYMENT_NOT_FOUND";
     readonly statusCode = 404;
