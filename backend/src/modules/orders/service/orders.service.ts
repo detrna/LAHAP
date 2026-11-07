@@ -59,7 +59,9 @@ import {
 import { findLastSuccessEndDates } from "./provided/find-last-success-end-dates.js";
 import { findUserIdsWithLastSuccessEndBefore } from "./provided/find-user-ids-with-last-success-end-before.js";
 import { countPaidServiceDays, sumTierDiscounts } from "./provided/order-stats.js";
+import { listCourierSlots } from "./provided/courier-slots.js";
 import { listKitchenSlots } from "./provided/kitchen-slots.js";
+import { getSlotForObstacle } from "./provided/slot-for-obstacle.js";
 import { countPortionsBySchedule } from "./provided/portion-counts.js";
 import { countPromoUses, countPromoUsesByUser, hasPendingSubscriptions } from "./provided/promo-usage.js";
 import { getDashboard } from "./reports/get-dashboard.js";
@@ -178,4 +180,6 @@ export class OrdersService {
     findCustomerIdsForSchedule = findCustomerIdsForSchedule;
     findAnnouncementTargetsOf = findAnnouncementTargetsOf;
     listKitchenSlots = listKitchenSlots;
+    listCourierSlots = listCourierSlots;
+    getSlotForObstacle = getSlotForObstacle;
 }

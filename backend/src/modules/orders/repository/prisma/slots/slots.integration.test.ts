@@ -1,3 +1,4 @@
+import type { Varchar } from "@prisma/orm-postgres/contract-builder";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestMenu, createTestSchedule } from "../../../../../../tests/utils/fixtures/schedules.js";
@@ -238,5 +239,46 @@ describe("PrismaOrdersRepository slots (integration)", () => {
         ]);
         const refunds = await repository.listPayments({ userId, needsRefund: true, skip: 0, take: 10 });
         expect(refunds.total).toBe(0);
+    });
+
+    it("finds a courier's delivery slots and leaves out other couriers, pick-up and unpaid orders", async () => {
+        const userId = await createTestUser(db, rows);
+        const courierId = await createTestUser(db, rows, { role: "COURIER" });
+        const otherCourierId = await createTestUser(db, rows, { role: "COURIER" });
+        const date = base.add({ days: 40 });
+        const scheduleIds = [await scheduleOn(date), await scheduleOn(date), await scheduleOn(date)];
+        const mine = await createTestSlots(db, rows, {
+            userId,
+            packageId,
+            status: "Success",
+            isDelivery: true,
+            slots: [
+                { scheduleId: scheduleIds[0]!, courierId },
+                { scheduleId: scheduleIds[1]!, courierId, status: "Selesai" },
+                { scheduleId: scheduleIds[2]!, courierId: otherCourierId },
+            ],
+        });
+        const pickup = await order(userId, "Success", [date]);
+        const pending = await createTestSlots(db, rows, {
+            userId,
+            packageId,
+            status: "Pending",
+            isDelivery: true,
+            slots: [{ scheduleId: await scheduleOn(date), courierId }],
+        });
+        const allSchedules = await db.orm.public.Order.where(row =>
+            row.id.in([...mine.slotIds, ...pickup.slotIds, ...pending.slotIds] as Varchar<36>[]),
+        )
+            .select("menuScheduleId")
+            .all();
+
+        const found = await repository.findSlots({
+            menuScheduleIds: allSchedules.map(row => row.menuScheduleId),
+            courierId,
+            isDelivery: true,
+            subscriptionStatuses: ["Success"],
+        });
+
+        expect(found.map(item => item.order.id).sort()).toEqual([mine.slotIds[0]!, mine.slotIds[1]!].sort());
     });
 });

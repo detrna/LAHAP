@@ -196,6 +196,8 @@ export interface SlotQuery {
     readonly orderIds?: readonly string[] | undefined;
     readonly menuScheduleIds?: readonly string[] | undefined;
     readonly usesAlternativeMenu?: boolean | undefined;
+    readonly courierId?: string | undefined;
+    readonly isDelivery?: boolean | undefined;
     readonly statuses?: readonly OrderStatus[] | undefined;
     readonly serviceDateFrom?: Temporal.PlainDate | undefined;
     readonly serviceDateTo?: Temporal.PlainDate | undefined;
