@@ -20,7 +20,7 @@ export class IngredientsContainer {
     readonly service: IngredientsService;
     readonly router: Router;
 
-    constructor({ db, adapters, photoKeys, allergies, menus, portions }: IngredientsContainerDeps) {
+    constructor({ db, adapters, http, photoKeys, allergies, menus, portions }: IngredientsContainerDeps) {
         const repository = new PrismaIngredientsRepository(db);
         this.service = new IngredientsService(repository, {
             objectStorage: adapters.objectStorage,
@@ -29,8 +29,13 @@ export class IngredientsContainer {
             clock: adapters.clock,
             menus,
             portions,
+            stockLevelEstimator: adapters.stockLevelEstimator,
         });
         const controller = new IngredientsController(this.service);
-        this.router = createIngredientsRouter({ controller, tokenProvider: adapters.tokenProvider });
+        this.router = createIngredientsRouter({
+            controller,
+            tokenProvider: adapters.tokenProvider,
+            maxBytes: http.UPLOAD_MAX_BYTES,
+        });
     }
 }

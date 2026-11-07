@@ -3,6 +3,7 @@ import {
     authenticate,
     authorize,
     paginate,
+    uploadImage,
     validateBody,
     validateParams,
     validateQuery,
@@ -24,9 +25,10 @@ import {
 export interface IngredientsRouterDeps {
     readonly controller: IngredientsController;
     readonly tokenProvider: TokenProvider;
+    readonly maxBytes: number;
 }
 
-export function createIngredientsRouter({ controller, tokenProvider }: IngredientsRouterDeps): Router {
+export function createIngredientsRouter({ controller, tokenProvider, maxBytes }: IngredientsRouterDeps): Router {
     const router = Router();
     const signedIn = authenticate({ tokenProvider });
     const admin = authorize("ADMIN");
@@ -97,6 +99,15 @@ export function createIngredientsRouter({ controller, tokenProvider }: Ingredien
         staff,
         validateRequest({ params: ingredientIdParamsSchema, body: stockUpdateSchema }),
         controller.updateStock,
+    );
+
+    router.post(
+        "/kitchen/ingredients/:id/photo-estimate",
+        signedIn,
+        staff,
+        uploadImage({ field: "image", maxBytes }),
+        validateParams(ingredientIdParamsSchema),
+        controller.estimateStock,
     );
 
     return router;

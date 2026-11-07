@@ -1,7 +1,9 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
 import type { ObjectStorage } from "../../../shared/ports/object-storage/object-storage.js";
+import type { StockLevelEstimator } from "../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import { createIngredients } from "./create-ingredients.js";
 import { deleteIngredients } from "./delete-ingredients.js";
+import { estimateStock } from "./estimate-stock.js";
 import { findMissingIngredientIds } from "./find-missing-ingredient-ids.js";
 import { getIngredient } from "./get-ingredient.js";
 import { getIngredientsByIds } from "./get-ingredients-by-ids.js";
@@ -24,6 +26,7 @@ export interface IngredientsServiceDeps {
     readonly clock: Clock;
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
+    readonly stockLevelEstimator: StockLevelEstimator;
 }
 
 export class IngredientsService {
@@ -33,6 +36,7 @@ export class IngredientsService {
     readonly clock: Clock;
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
+    readonly stockLevelEstimator: StockLevelEstimator;
 
     constructor(
         readonly ingredientsRepository: IngredientsRepository,
@@ -44,6 +48,7 @@ export class IngredientsService {
         this.clock = deps.clock;
         this.menus = deps.menus;
         this.portions = deps.portions;
+        this.stockLevelEstimator = deps.stockLevelEstimator;
     }
 
     presentIngredients = presentIngredients;
@@ -58,4 +63,5 @@ export class IngredientsService {
     getIngredientsByIds = getIngredientsByIds;
     findMissingIngredientIds = findMissingIngredientIds;
     getShoppingList = getShoppingList;
+    estimateStock = estimateStock;
 }

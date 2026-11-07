@@ -9,6 +9,13 @@ import type { PortionCount } from "../../../../src/modules/ingredients/service/i
 import { FilesService } from "../../../../src/modules/files/service/files.service.js";
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
+import {
+    LowConfidenceError,
+    StockLevelEstimatorProviderError,
+    type StockLevelEstimateInput,
+    type StockLevelEstimateOutput,
+    type StockLevelEstimator,
+} from "../../../../src/shared/ports/stock-level-estimator/stock-level-estimator.js";
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import { createCatalogContainer } from "../../../utils/app/catalog-container.js";
 import { createIngredientsContainer } from "../../../utils/app/ingredients-container.js";
@@ -20,6 +27,21 @@ const objectStorage = {
     exists: async (key: string) => !key.includes("missing"),
     getSignedUrl: async (key: string) => `https://storage.test/${key}`,
 } as unknown as ObjectStorage;
+
+const countTwoBottles = async (): Promise<StockLevelEstimateOutput> => ({
+    item: { name: "ignored", quantity: 2, unit: "bottle" },
+});
+let estimateResult = countTwoBottles;
+const estimateCalls: StockLevelEstimateInput[] = [];
+const stockLevelEstimator: StockLevelEstimator = {
+    estimate: async input => {
+        estimateCalls.push(input);
+        return estimateResult();
+    },
+};
+
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+const UPLOAD_MAX_BYTES = 1024;
 
 const asRole = (role: Role) => createAuthHeaders({ role, sub: { userId: randomUUID(), name: `E2E ${role}` } });
 
@@ -75,7 +97,8 @@ describe("ingredients routes (e2e)", () => {
         rows = trackCreated(db);
         testApp = await createTestApp({
             db,
-            adapters: { objectStorage },
+            adapters: { objectStorage, stockLevelEstimator },
+            http: { UPLOAD_MAX_BYTES },
             mount: deps => {
                 const catalog = createCatalogContainer(deps);
                 return [
@@ -113,6 +136,7 @@ describe("ingredients routes (e2e)", () => {
             ["get", "/api/admin/ingredients/shopping-list"],
             ["get", "/api/kitchen/ingredients"],
             ["put", `/api/kitchen/ingredients/${id}/stock`],
+            ["post", `/api/kitchen/ingredients/${id}/photo-estimate`],
         ] as const)("answers 401 to %s %s without a token", async (method, path) => {
             expect((await request(app)[method](path)).status).toBe(401);
         });
@@ -131,6 +155,14 @@ describe("ingredients routes (e2e)", () => {
             expect(
                 (await request(app).put(`/api/kitchen/ingredients/${id}/stock`).set(asRole(role)).send({ stock: 1 }))
                     .status,
+            ).toBe(403);
+            expect(
+                (
+                    await request(app)
+                        .post(`/api/kitchen/ingredients/${id}/photo-estimate`)
+                        .set(asRole(role))
+                        .attach("image", PNG, "photo.png")
+                ).status,
             ).toBe(403);
         });
     });
@@ -608,6 +640,94 @@ describe("ingredients routes (e2e)", () => {
 
             expect(response.status).toBe(400);
             expect(response.body.error.code).toBe("VALIDATION_ERROR");
+        });
+    });
+
+    describe("photo estimate", () => {
+        const estimate = (id: string, headers: Record<string, string>, file: Buffer | null, name = "photo.png") => {
+            const call = request(app).post(`/api/kitchen/ingredients/${id}/photo-estimate`).set(headers);
+            return file === null ? call : call.attach("image", file, name);
+        };
+
+        afterEach(() => {
+            estimateResult = countTwoBottles;
+            estimateCalls.length = 0;
+        });
+
+        it("answers the counted containers in the ingredient's unit and saves nothing", async () => {
+            const created = await createIngredient("Minyak Estimate", { unit: "liter", stock: 7 });
+
+            const byKitchen = await estimate(created.id, kitchen(), PNG);
+            const byAdmin = await estimate(created.id, admin(), PNG);
+
+            expect(byKitchen.status).toBe(200);
+            expect(byKitchen.body).toEqual({
+                data: { ingredientId: created.id, estimatedQuantity: 2, unit: "liter" },
+            });
+            expect(byAdmin.status).toBe(200);
+            expect(estimateCalls[0]).toMatchObject({
+                mimeType: "image/png",
+                ingredient: { name: created.name, unit: "liter" },
+            });
+            expect(estimateCalls[0]?.image.equals(PNG)).toBe(true);
+            const after = await request(app).get(`/api/admin/ingredients/${created.id}`).set(admin());
+            expect(after.body.data.stock).toBe(7);
+        });
+
+        it("answers 400 without an image and for a bad id", async () => {
+            const created = await createIngredient("Estimate No Image");
+
+            const missing = await estimate(created.id, kitchen(), null);
+            const badId = await estimate("not-a-uuid", kitchen(), PNG);
+
+            expect(missing.status).toBe(400);
+            expect(missing.body.error.code).toBe("VALIDATION_ERROR");
+            expect(badId.status).toBe(400);
+            expect(estimateCalls).toHaveLength(0);
+        });
+
+        it("answers 415 for a file that is not an image and 413 above the upload limit", async () => {
+            const created = await createIngredient("Estimate Bad File");
+
+            const text = await estimate(created.id, kitchen(), Buffer.from("just text"), "photo.png");
+            const large = await estimate(
+                created.id,
+                kitchen(),
+                Buffer.concat([PNG, Buffer.alloc(UPLOAD_MAX_BYTES)]),
+                "photo.png",
+            );
+
+            expect(text.status).toBe(415);
+            expect(text.body.error.code).toBe("UNSUPPORTED_MEDIA_TYPE");
+            expect(large.status).toBe(413);
+            expect(large.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+            expect(estimateCalls).toHaveLength(0);
+        });
+
+        it("answers 404 for an unknown ingredient without calling the estimator", async () => {
+            const response = await estimate(randomUUID(), kitchen(), PNG);
+
+            expect(response.status).toBe(404);
+            expect(response.body.error.code).toBe("INGREDIENT_NOT_FOUND");
+            expect(estimateCalls).toHaveLength(0);
+        });
+
+        it("passes the estimator's errors through", async () => {
+            const created = await createIngredient("Estimate Errors");
+
+            estimateResult = async () => {
+                throw new LowConfidenceError("low confidence estimation");
+            };
+            const lowConfidence = await estimate(created.id, kitchen(), PNG);
+            estimateResult = async () => {
+                throw new StockLevelEstimatorProviderError("stock level estimator provider request failed");
+            };
+            const providerDown = await estimate(created.id, kitchen(), PNG);
+
+            expect(lowConfidence.status).toBe(400);
+            expect(lowConfidence.body.error.code).toBe("LOW_CONFIDENCE");
+            expect(providerDown.status).toBe(502);
+            expect(providerDown.body.error.code).toBe("STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR");
         });
     });
 });

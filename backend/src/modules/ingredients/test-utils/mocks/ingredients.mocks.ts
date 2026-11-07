@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { StockLevelEstimator } from "../../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import type { IngredientsService } from "../../service/ingredients.service.js";
 import type { AllergyLookup } from "../../service/interfaces/allergy-lookup.js";
 import type { IngredientsRepository } from "../../service/interfaces/ingredients.repository.js";
@@ -22,6 +23,7 @@ export type MockedIngredientsService = Mocked<
         | "updateStock"
         | "deleteIngredients"
         | "getShoppingList"
+        | "estimateStock"
     >
 >;
 
@@ -66,6 +68,12 @@ export function createMockPortionCounts(): Mocked<PortionCounts> {
     return { countPortionsBySchedule: vi.fn(async () => []) } as Mocked<PortionCounts>;
 }
 
+export function createMockStockLevelEstimator(): Mocked<StockLevelEstimator> {
+    return {
+        estimate: vi.fn(async () => ({ item: { name: "", quantity: 0, unit: "" } })),
+    } as Mocked<StockLevelEstimator>;
+}
+
 export function createMockIngredientsService(): MockedIngredientsService {
     return {
         listIngredients: vi.fn(),
@@ -76,5 +84,6 @@ export function createMockIngredientsService(): MockedIngredientsService {
         updateStock: vi.fn(),
         deleteIngredients: vi.fn(),
         getShoppingList: vi.fn(),
+        estimateStock: vi.fn(),
     } as MockedIngredientsService;
 }

@@ -1,5 +1,6 @@
 import { createFixedClock, type FixedClock } from "../../../../../tests/utils/factory/clock/clock.js";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { StockLevelEstimator } from "../../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import { IngredientsController } from "../../controller/ingredients.controller.js";
 import { IngredientsService } from "../../service/ingredients.service.js";
 import type { AllergyLookup } from "../../service/interfaces/allergy-lookup.js";
@@ -15,6 +16,7 @@ import {
     createMockObjectStorage,
     createMockPhotoKeys,
     createMockPortionCounts,
+    createMockStockLevelEstimator,
     type Mocked,
     type MockedIngredientsService,
     type MockedObjectStorage,
@@ -28,6 +30,7 @@ export interface IngredientsServiceSetup {
     readonly clock: FixedClock;
     readonly menus: Mocked<MenuLookup>;
     readonly portions: Mocked<PortionCounts>;
+    readonly stockLevelEstimator: Mocked<StockLevelEstimator>;
     readonly service: IngredientsService;
 }
 
@@ -44,6 +47,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
     const clock = createFixedClock();
     const menus = createMockMenuLookup();
     const portions = createMockPortionCounts();
+    const stockLevelEstimator = createMockStockLevelEstimator();
     return {
         repository,
         objectStorage,
@@ -52,6 +56,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
         clock,
         menus,
         portions,
+        stockLevelEstimator,
         service: new IngredientsService(repository, {
             objectStorage: objectStorage as unknown as ObjectStorage,
             photoKeys,
@@ -59,6 +64,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
             clock,
             menus,
             portions,
+            stockLevelEstimator,
         }),
     };
 }

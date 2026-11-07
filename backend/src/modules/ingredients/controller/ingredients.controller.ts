@@ -1,6 +1,7 @@
 import type { IngredientsService } from "../service/ingredients.service.js";
 import { createIngredients } from "./create-ingredients.js";
 import { deleteIngredients } from "./delete-ingredients.js";
+import { estimateStock } from "./estimate-stock.js";
 import { getIngredient } from "./get-ingredient.js";
 import { getShoppingList } from "./get-shopping-list.js";
 import { listIngredients } from "./list-ingredients.js";
@@ -19,4 +20,5 @@ export class IngredientsController {
     deleteIngredients = deleteIngredients.bind(this);
     updateStock = updateStock.bind(this);
     getShoppingList = getShoppingList.bind(this);
+    estimateStock = estimateStock.bind(this);
 }
