@@ -1,13 +1,11 @@
 import { AuthContainer } from "./auth/container/auth.container.js";
 import { CatalogContainer } from "./catalog/container/catalog.container.js";
-import { noOrderActivity } from "./catalog/service/interfaces/order-activity.js";
 import { DeliveryContainer } from "./delivery/container/delivery.container.js";
 import { FilesContainer } from "./files/container/files.container.js";
 import { IngredientsContainer } from "./ingredients/container/ingredients.container.js";
 import { KitchenContainer } from "./kitchen/container/kitchen.container.js";
 import type { ModuleDeps } from "./module-deps.js";
 import { NotificationsContainer } from "./notifications/container/notifications.container.js";
-import { noAnnouncementAudience } from "./notifications/service/interfaces/announcement-audience.js";
 import { OrdersContainer } from "./orders/container/orders.container.js";
 import { noSlotObstacles } from "./orders/service/interfaces/slot-obstacles.js";
 import { PromoCodesContainer } from "./promo-codes/container/promo-codes.container.js";
@@ -50,7 +48,11 @@ export function createModules(deps: ModuleDeps): Modules {
             findMissingPackageIds: ids => catalog.service.findMissingPackageIds(ids),
             findMissingScheduleIds: ids => catalog.service.findMissingScheduleIds(ids),
         },
-        audience: noAnnouncementAudience,
+        audience: {
+            findCustomerIdsForPackage: (packageId, today) => orders.service.findCustomerIdsForPackage(packageId, today),
+            findCustomerIdsForSchedule: scheduleId => orders.service.findCustomerIdsForSchedule(scheduleId),
+            findAnnouncementTargetsOf: (userId, today) => orders.service.findAnnouncementTargetsOf(userId, today),
+        },
     });
     const catalog: CatalogContainer = new CatalogContainer({
         ...deps,
@@ -59,7 +61,15 @@ export function createModules(deps: ModuleDeps): Modules {
             findMissingIngredientIds: ids => ingredients.service.findMissingIngredientIds(ids),
             getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
         },
-        orderActivity: noOrderActivity,
+        announcer: notifications.service,
+        orderActivity: {
+            countActiveSubscribers: (packageIds, today) => orders.service.countActiveSubscribers(packageIds, today),
+            findSchedulesWithOrders: (scheduleIds, statuses) =>
+                orders.service.findSchedulesWithOrders(scheduleIds, statuses),
+            findSchedulesUsingAlternative: scheduleIds => orders.service.findSchedulesUsingAlternative(scheduleIds),
+            findSubscriptionPeriods: scheduleIds => orders.service.findSubscriptionPeriods(scheduleIds),
+            deleteInactiveSlots: scheduleIds => orders.service.deleteInactiveSlots(scheduleIds),
+        },
     });
     const ingredients: IngredientsContainer = new IngredientsContainer({
         ...deps,

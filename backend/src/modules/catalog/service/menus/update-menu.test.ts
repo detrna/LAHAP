@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InvalidStateError } from "../../../../shared/errors/invalid-state-error.js";
 import { ValidationError } from "../../../../shared/errors/validation-error.js";
-import { buildMenuRecord } from "../../test-utils/factory/catalog.factory.js";
+import { buildMenuRecord, buildScheduleRecord } from "../../test-utils/factory/catalog.factory.js";
 import { setupCatalogService } from "../../test-utils/setup/catalog.setup.js";
 import { MenuNotFoundError, UnknownIngredientError } from "../interfaces/catalog.repository.js";
 
@@ -107,6 +107,40 @@ describe("CatalogService.updateMenu (unit)", () => {
             await service.updateMenu("m-1", { ingredients: NEW_RECIPE, changeReason: "bahan diganti" });
 
             expect(repository.updateMenu).toHaveBeenCalledWith("m-1", { ingredients: NEW_RECIPE });
+        });
+
+        it("announces the change on each paid schedule that uses the menu, with the reason", async () => {
+            const { repository, orderActivity, announcer, service } = setup();
+            repository.findScheduleIdsUsingMenu.mockResolvedValue(["s-1", "s-2"]);
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-2"]);
+            repository.findSchedules.mockResolvedValue([buildScheduleRecord({ id: "s-2" })]);
+
+            await service.updateMenu("m-1", { ingredients: NEW_RECIPE, changeReason: "bahan diganti" });
+
+            expect(announcer.announce).toHaveBeenCalledTimes(1);
+            expect(announcer.announce.mock.calls[0]?.[0]).toMatchObject({ scope: "SCHEDULE", menuScheduleId: "s-2" });
+            expect(announcer.announce.mock.calls[0]?.[0].body).toContain("bahan diganti");
+        });
+
+        it("announces nothing when no schedule has paid orders", async () => {
+            const { repository, announcer, service } = setup();
+            repository.findScheduleIdsUsingMenu.mockResolvedValue(["s-1"]);
+
+            await service.updateMenu("m-1", { ingredients: NEW_RECIPE });
+
+            expect(announcer.announce).not.toHaveBeenCalled();
+        });
+
+        it("announces nothing when the update is refused", async () => {
+            const { repository, orderActivity, announcer, service } = setup();
+            repository.findScheduleIdsUsingMenu.mockResolvedValue(["s-1"]);
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-1"]);
+
+            await expect(service.updateMenu("m-1", { ingredients: NEW_RECIPE })).rejects.toBeInstanceOf(
+                ValidationError,
+            );
+
+            expect(announcer.announce).not.toHaveBeenCalled();
         });
 
         it("needs no reason when the recipe is resent unchanged", async () => {

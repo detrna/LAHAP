@@ -1,3 +1,4 @@
+import { announceScheduleChanges, type ScheduleChange } from "./announce-schedule-changes.js";
 import { InvalidStateError } from "../../../../shared/errors/invalid-state-error.js";
 import { ValidationError } from "../../../../shared/errors/validation-error.js";
 import type { ValidationIssue } from "../../../../shared/response/error-response.js";
@@ -148,6 +149,7 @@ export async function applyScheduleUpdates(
     }
 
     const state = await findOrderState(service, planned);
+    const announcements: ScheduleChange[] = [];
     for (const entry of planned) {
         const id = entry.existing.id;
         if (entry.moved && state.active.has(id)) {
@@ -164,11 +166,13 @@ export async function applyScheduleUpdates(
         }
         if ((entry.moved || entry.menuChanged) && state.paid.has(id)) {
             assertChangeReason(entry.item.changeReason, entry.path("changeReason"));
+            announcements.push({ scheduleId: id, changeReason: entry.item.changeReason as string });
         }
     }
 
     const records = await service.catalogRepository.updateSchedules(
         items.map(item => ({ id: item.id, changes: toChanges(item) })),
     );
+    await announceScheduleChanges(service, announcements);
     return service.presentSchedules(records);
 }

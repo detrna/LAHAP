@@ -1,3 +1,4 @@
+import { createMockLogger, type MockLogger } from "../../../../../tests/utils/mocks/logger.js";
 import { createFixedClock, type FixedClock } from "../../../../../tests/utils/factory/clock/clock.js";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
 import { CatalogController } from "../../controller/catalog.controller.js";
@@ -6,6 +7,7 @@ import type { CatalogRepository } from "../../service/interfaces/catalog.reposit
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
+import type { ScheduleAnnouncer } from "../../service/interfaces/schedule-announcer.js";
 import {
     createMockCatalogRepository,
     createMockCatalogService,
@@ -13,6 +15,7 @@ import {
     createMockObjectStorage,
     createMockOrderActivity,
     createMockPhotoKeys,
+    createMockScheduleAnnouncer,
     type Mocked,
     type MockedCatalogService,
     type MockedObjectStorage,
@@ -25,6 +28,8 @@ export interface CatalogServiceSetup {
     readonly photoKeys: Mocked<PhotoKeys>;
     readonly ingredients: Mocked<IngredientLookup>;
     readonly orderActivity: Mocked<OrderActivity>;
+    readonly announcer: Mocked<ScheduleAnnouncer>;
+    readonly logger: MockLogger;
     readonly service: CatalogService;
 }
 
@@ -40,6 +45,8 @@ export function setupCatalogService(): CatalogServiceSetup {
     const photoKeys = createMockPhotoKeys();
     const ingredients = createMockIngredientLookup();
     const orderActivity = createMockOrderActivity();
+    const announcer = createMockScheduleAnnouncer();
+    const logger = createMockLogger();
     return {
         repository,
         objectStorage,
@@ -47,6 +54,8 @@ export function setupCatalogService(): CatalogServiceSetup {
         photoKeys,
         ingredients,
         orderActivity,
+        announcer,
+        logger,
         service: new CatalogService(
             repository,
             objectStorage as unknown as ObjectStorage,
@@ -54,6 +63,8 @@ export function setupCatalogService(): CatalogServiceSetup {
             photoKeys,
             ingredients,
             orderActivity,
+            announcer,
+            logger,
         ),
     };
 }

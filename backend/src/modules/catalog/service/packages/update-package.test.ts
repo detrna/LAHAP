@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InvalidStateError } from "../../../../shared/errors/invalid-state-error.js";
 import { ValidationError } from "../../../../shared/errors/validation-error.js";
-import { buildPackageRecord } from "../../test-utils/factory/catalog.factory.js";
+import { buildPackageRecord, buildScheduleRecord } from "../../test-utils/factory/catalog.factory.js";
 import { setupCatalogService } from "../../test-utils/setup/catalog.setup.js";
 import { PackageNotFoundError } from "../interfaces/catalog.repository.js";
 
@@ -203,6 +203,32 @@ describe("CatalogService.updatePackage (unit)", () => {
 
             await service.updatePackage("p-1", { deliveryTimeChanges: RENAME, changeReason: "jam baru" });
             expect(repository.updatePackage).toHaveBeenCalledTimes(1);
+        });
+
+        it("announces the new time on each moved schedule that has paid orders, with the reason", async () => {
+            const { repository, orderActivity, announcer, service } = setup();
+            repository.findScheduleIdsAtTimes.mockResolvedValue(["s-1", "s-2"]);
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-1"]);
+            repository.findSchedules.mockResolvedValue([
+                buildScheduleRecord({ id: "s-1", deliveryTime: time("12:30") }),
+            ]);
+
+            await service.updatePackage("p-1", { deliveryTimeChanges: RENAME, changeReason: "jam baru" });
+
+            expect(announcer.announce).toHaveBeenCalledTimes(1);
+            const input = announcer.announce.mock.calls[0]?.[0];
+            expect(input).toMatchObject({ scope: "SCHEDULE", menuScheduleId: "s-1" });
+            expect(input.body).toContain("12:30");
+            expect(input.body).toContain("jam baru");
+        });
+
+        it("announces nothing when no moved schedule has paid orders", async () => {
+            const { repository, announcer, service } = setup();
+            repository.findScheduleIdsAtTimes.mockResolvedValue(["s-1"]);
+
+            await service.updatePackage("p-1", { deliveryTimeChanges: RENAME });
+
+            expect(announcer.announce).not.toHaveBeenCalled();
         });
 
         it("refuses a time the package doesn't have, or a target it already has", async () => {

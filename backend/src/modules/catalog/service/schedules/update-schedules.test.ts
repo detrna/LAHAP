@@ -139,6 +139,16 @@ describe("CatalogService.updateSchedules (unit)", () => {
             expect(repository.updateSchedules).toHaveBeenCalled();
         });
 
+        it("announces the move to the customers, with the reason", async () => {
+            const { announcer, service } = withOrders();
+
+            await service.updateSchedules([{ id: "s-1", date: date("2026-11-14"), changeReason: "libur" }]);
+
+            expect(announcer.announce).toHaveBeenCalledTimes(1);
+            expect(announcer.announce.mock.calls[0]?.[0]).toMatchObject({ scope: "SCHEDULE", menuScheduleId: "s-1" });
+            expect(announcer.announce.mock.calls[0]?.[0].body).toContain("libur");
+        });
+
         it("refuses a move onto today", async () => {
             const { service } = withOrders();
 
@@ -199,6 +209,53 @@ describe("CatalogService.updateSchedules (unit)", () => {
             await expect(service.updateSchedules([{ id: "s-1", primaryMenuId: "m-other" }])).rejects.toBeInstanceOf(
                 ValidationError,
             );
+        });
+
+        it("announces the change to the customers of a paid schedule, with the reason", async () => {
+            const { orderActivity, announcer, service } = setup();
+            orderActivity.findSchedulesWithOrders.mockImplementation(async (_ids, statuses) =>
+                statuses.includes("Pending") ? [] : ["s-1"],
+            );
+
+            await service.updateSchedules([{ id: "s-1", primaryMenuId: "m-other", changeReason: "ayam habis" }]);
+
+            expect(announcer.announce).toHaveBeenCalledTimes(1);
+            const input = announcer.announce.mock.calls[0]?.[0];
+            expect(input).toMatchObject({ scope: "SCHEDULE", menuScheduleId: "s-1" });
+            expect(input.body).toContain("ayam habis");
+        });
+
+        it("announces nothing when the schedule has no paid orders", async () => {
+            const { orderActivity, announcer, service } = setup();
+            orderActivity.findSchedulesWithOrders.mockImplementation(async (_ids, statuses) =>
+                statuses.includes("Pending") ? ["s-1"] : [],
+            );
+
+            await service.updateSchedules([{ id: "s-1", primaryMenuId: "m-other" }]);
+
+            expect(announcer.announce).not.toHaveBeenCalled();
+        });
+
+        it("announces nothing when the change is refused", async () => {
+            const { orderActivity, announcer, service } = setup();
+            orderActivity.findSchedulesWithOrders.mockImplementation(async (_ids, statuses) =>
+                statuses.includes("Pending") ? [] : ["s-1"],
+            );
+
+            await expect(service.updateSchedules([{ id: "s-1", primaryMenuId: "m-other" }])).rejects.toBeInstanceOf(
+                ValidationError,
+            );
+
+            expect(announcer.announce).not.toHaveBeenCalled();
+        });
+
+        it("does not announce a change that only publishes the schedule", async () => {
+            const { orderActivity, announcer, service } = setup();
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-1"]);
+
+            await service.updateSchedules([{ id: "s-1", isPublished: true }]);
+
+            expect(announcer.announce).not.toHaveBeenCalled();
         });
 
         it("needs no reason when only pending orders exist", async () => {

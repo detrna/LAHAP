@@ -1,4 +1,5 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
+import type { Logger } from "../../../shared/ports/logger/logger.js";
 import type { ObjectStorage } from "../../../shared/ports/object-storage/object-storage.js";
 import { createAllergy } from "./allergies/create-allergy.js";
 import { deleteAllergy } from "./allergies/delete-allergy.js";
@@ -12,6 +13,7 @@ import type { CatalogRepository } from "./interfaces/catalog.repository.js";
 import type { IngredientLookup } from "./interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "./interfaces/order-activity.js";
 import type { PhotoKeys } from "./interfaces/photo-keys.js";
+import type { ScheduleAnnouncer } from "./interfaces/schedule-announcer.js";
 import { createPackage } from "./packages/create-package.js";
 import { deletePackage } from "./packages/delete-package.js";
 import { findMissingPackageIds } from "./packages/find-missing-package-ids.js";
@@ -51,6 +53,8 @@ export class CatalogService {
         readonly photoKeys: PhotoKeys,
         readonly ingredients: IngredientLookup,
         readonly orderActivity: OrderActivity,
+        readonly announcer: ScheduleAnnouncer,
+        readonly logger: Logger,
     ) {}
 
     findMissingAllergyIds = findMissingAllergyIds;

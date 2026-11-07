@@ -4,6 +4,7 @@ import type { CatalogService } from "../../service/catalog.service.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
+import type { ScheduleAnnouncer } from "../../service/interfaces/schedule-announcer.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
 
 export type Mocked<T> = { [K in keyof T]: T[K] & ReturnType<typeof vi.fn> };
@@ -99,6 +100,10 @@ export function createMockOrderActivity(): Mocked<OrderActivity> {
         findSubscriptionPeriods: vi.fn(async () => []),
         deleteInactiveSlots: vi.fn(async () => undefined),
     } as Mocked<OrderActivity>;
+}
+
+export function createMockScheduleAnnouncer(): Mocked<ScheduleAnnouncer> {
+    return { announce: vi.fn(async () => undefined) } as Mocked<ScheduleAnnouncer>;
 }
 
 export function createMockIngredientLookup(): Mocked<IngredientLookup> {

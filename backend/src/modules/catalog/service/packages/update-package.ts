@@ -11,6 +11,7 @@ import type {
     UpdatePackageOptions,
 } from "../interfaces/catalog.repository.js";
 import { PackageNotFoundError } from "../interfaces/catalog.repository.js";
+import { announceScheduleChanges } from "../schedules/announce-schedule-changes.js";
 import { assertSalesWindow } from "./assert-sales-window.js";
 import { renameMealTimes } from "./rename-meal-times.js";
 
@@ -50,12 +51,17 @@ async function planRemoval(
     return removal;
 }
 
+interface RenamePlan {
+    readonly move: NonNullable<UpdatePackageOptions["moveSchedulesAt"]>;
+    readonly paidScheduleIds: readonly string[];
+}
+
 async function planRename(
     service: CatalogService,
     existing: PackageRecord,
     input: UpdatePackageInput,
     today: Temporal.PlainDate,
-): Promise<UpdatePackageOptions["moveSchedulesAt"]> {
+): Promise<RenamePlan | undefined> {
     if (input.deliveryTimeChanges === undefined) return undefined;
 
     const from = today.add({ days: 1 });
@@ -63,11 +69,10 @@ async function planRename(
         times: input.deliveryTimeChanges.map(change => change.from),
         from,
     });
-    if (scheduleIds.length > 0) {
-        const paid = await service.orderActivity.findSchedulesWithOrders(scheduleIds, ["Success"]);
-        if (paid.length > 0) assertChangeReason(input.changeReason, "changeReason");
-    }
-    return { changes: input.deliveryTimeChanges, from };
+    const paid =
+        scheduleIds.length > 0 ? await service.orderActivity.findSchedulesWithOrders(scheduleIds, ["Success"]) : [];
+    if (paid.length > 0) assertChangeReason(input.changeReason, "changeReason");
+    return { move: { changes: input.deliveryTimeChanges, from }, paidScheduleIds: paid };
 }
 
 export async function updatePackage(this: CatalogService, id: string, input: UpdatePackageInput): Promise<Package> {
@@ -87,7 +92,7 @@ export async function updatePackage(this: CatalogService, id: string, input: Upd
             ? renameMealTimes(existing.deliveryTimes, input.deliveryTimeChanges)
             : undefined;
     const removal = await planRemoval(this, existing, input.deliveryTimes, today);
-    const move = await planRename(this, existing, input, today);
+    const rename = await planRename(this, existing, input, today);
 
     const { deliveryTimes, deliveryTimeChanges: _changes, changeReason: _reason, ...rest } = input;
     const nextTimes = renamedTimes ?? deliveryTimes;
@@ -97,8 +102,14 @@ export async function updatePackage(this: CatalogService, id: string, input: Upd
     };
     const record = await this.catalogRepository.updatePackage(id, changes, {
         ...(removal !== undefined ? { deleteSchedulesAt: removal } : {}),
-        ...(move !== undefined ? { moveSchedulesAt: move } : {}),
+        ...(rename !== undefined ? { moveSchedulesAt: rename.move } : {}),
     });
     if (record === null) throw new PackageNotFoundError(id);
+    if (rename !== undefined && input.changeReason !== undefined) {
+        await announceScheduleChanges(
+            this,
+            rename.paidScheduleIds.map(scheduleId => ({ scheduleId, changeReason: input.changeReason as string })),
+        );
+    }
     return this.presentPackage(record, { withSubscriberCount: true });
 }
