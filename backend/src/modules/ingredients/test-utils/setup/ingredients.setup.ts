@@ -52,15 +52,14 @@ export function setupIngredientsService(): IngredientsServiceSetup {
         clock,
         menus,
         portions,
-        service: new IngredientsService(
-            repository,
-            objectStorage as unknown as ObjectStorage,
+        service: new IngredientsService(repository, {
+            objectStorage: objectStorage as unknown as ObjectStorage,
             photoKeys,
             allergies,
             clock,
             menus,
             portions,
-        ),
+        }),
     };
 }
 

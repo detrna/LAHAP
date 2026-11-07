@@ -17,16 +17,34 @@ import { updateIngredient } from "./update-ingredient.js";
 import { updateIngredients } from "./update-ingredients.js";
 import { updateStock } from "./update-stock.js";
 
+export interface IngredientsServiceDeps {
+    readonly objectStorage: ObjectStorage;
+    readonly photoKeys: PhotoKeys;
+    readonly allergies: AllergyLookup;
+    readonly clock: Clock;
+    readonly menus: MenuLookup;
+    readonly portions: PortionCounts;
+}
+
 export class IngredientsService {
+    readonly objectStorage: ObjectStorage;
+    readonly photoKeys: PhotoKeys;
+    readonly allergies: AllergyLookup;
+    readonly clock: Clock;
+    readonly menus: MenuLookup;
+    readonly portions: PortionCounts;
+
     constructor(
         readonly ingredientsRepository: IngredientsRepository,
-        readonly objectStorage: ObjectStorage,
-        readonly photoKeys: PhotoKeys,
-        readonly allergies: AllergyLookup,
-        readonly clock: Clock,
-        readonly menus: MenuLookup,
-        readonly portions: PortionCounts,
-    ) {}
+        deps: IngredientsServiceDeps,
+    ) {
+        this.objectStorage = deps.objectStorage;
+        this.photoKeys = deps.photoKeys;
+        this.allergies = deps.allergies;
+        this.clock = deps.clock;
+        this.menus = deps.menus;
+        this.portions = deps.portions;
+    }
 
     presentIngredients = presentIngredients;
     presentIngredient = presentIngredient;

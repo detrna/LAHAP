@@ -22,15 +22,14 @@ export class IngredientsContainer {
 
     constructor({ db, adapters, photoKeys, allergies, menus, portions }: IngredientsContainerDeps) {
         const repository = new PrismaIngredientsRepository(db);
-        this.service = new IngredientsService(
-            repository,
-            adapters.objectStorage,
+        this.service = new IngredientsService(repository, {
+            objectStorage: adapters.objectStorage,
             photoKeys,
             allergies,
-            adapters.clock,
+            clock: adapters.clock,
             menus,
             portions,
-        );
+        });
         const controller = new IngredientsController(this.service);
         this.router = createIngredientsRouter({ controller, tokenProvider: adapters.tokenProvider });
     }
