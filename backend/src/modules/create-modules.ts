@@ -119,7 +119,12 @@ export function createModules(deps: ModuleDeps): Modules {
         sessions: { revokeSessionsOfUser: userId => auth.service.revokeSessionsOfUser(userId) },
     });
     const auth: AuthContainer = new AuthContainer({ ...deps, users: users.service });
-    const kitchen: KitchenContainer = new KitchenContainer(deps);
+    const kitchen: KitchenContainer = new KitchenContainer({
+        ...deps,
+        catalog: catalog.service,
+        slots: orders.service,
+        customers: users.service,
+    });
     const delivery: DeliveryContainer = new DeliveryContainer(deps);
     const retention: RetentionContainer = new RetentionContainer(deps);
 

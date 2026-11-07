@@ -2075,7 +2075,7 @@
           "Kitchen"
         ],
         "summary": "Get the production list",
-        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nComputed on request from `Success` orders' non-skipped slots (UC-26, UC-39). Primary and alternative portions are separate lines. Prices and fees are never included.",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nComputed on request from `Success` orders' slots of every status except `Dilewati` (UC-26, UC-39), so the day's totals do not shrink as deliveries finish. Primary and alternative portions are separate lines, and an alternative nobody uses has no line. Every date in the range gets a report, also when it has no slots. A range of more than 7 days, or one that ends before it starts, answers 400. Prices and fees are never included.",
         "x-roles": [
           "KITCHEN",
           "ADMIN"
@@ -2095,7 +2095,7 @@
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Last date (default `from`; max 7 days for the weekly admin view, UC-26).",
+            "description": "Last date (default `from`; max 7 days for the weekly admin view, UC-26; a longer range answers 400).",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2139,7 +2139,7 @@
                           "items": {
                             "$ref": "#/components/schemas/ToCookReport"
                           },
-                          "description": "One report per date."
+                          "description": "One report per date from `from` to `to`, including dates with no slots."
                         }
                       }
                     }
