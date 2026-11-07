@@ -28,6 +28,7 @@ const asIds = (ids: readonly string[]): Varchar<36>[] => ids as Varchar<36>[];
 export async function cleanSeed(tx: SeedTx, logger?: Logger): Promise<Record<string, number>> {
     await tx.orm.public.DeliveryObstacle.where(r => r.authorId.in(asIds(SEED_IDS.users))).deleteAndCount();
     await tx.orm.public.OrderStatusHistory.where(r => r.changedById.in(asIds(SEED_IDS.users))).deleteAndCount();
+    await tx.orm.public.IngredientStockHistory.where(r => r.changedById.in(asIds(SEED_IDS.users))).deleteAndCount();
 
     const [userSubs, pkgSubs, pkgSchedules] = await Promise.all([
         tx.orm.public.Subscription.where(s => s.userId.in(asIds(SEED_IDS.users)))

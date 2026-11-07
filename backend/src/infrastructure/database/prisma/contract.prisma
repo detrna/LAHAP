@@ -62,6 +62,7 @@ model User {
   obstacles     DeliveryObstacle[]
   refreshTokens RefreshToken[]
   deliveryMethodChanges DeliveryMethodChange[]
+  stockChanges  IngredientStockHistory[]
 
   @@index([role])
   @@map("user")
@@ -294,9 +295,26 @@ model Ingredient {
 
   menuIngredients   MenuIngredient[]
   ingredientAllergy IngredientAllergy[]
+  stockHistory      IngredientStockHistory[]
 
   @@index([stock, minimumThreshold])
   @@map("ingredient")
+}
+
+model IngredientStockHistory {
+  id            VarChar(36)    @id @onCreate(uuid())
+  ingredientId  VarChar(36)    @map("ingredient_id")
+  changedById   VarChar(36)    @map("changed_by_id")
+  previousStock Numeric(10, 2) @map("previous_stock")
+  newStock      Numeric(10, 2) @map("new_stock")
+  changedAt     Timestamp      @default(now()) @onCreate(now()) @map("changed_at")
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  changedBy  User       @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([ingredientId, changedAt])
+  @@index([changedById])
+  @@map("ingredient_stock_history")
 }
 
 model MenuIngredient {

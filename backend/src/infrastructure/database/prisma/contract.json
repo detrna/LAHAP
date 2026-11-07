@@ -40,6 +40,10 @@
       "model": "IngredientAllergy",
       "namespace": "public"
     },
+    "ingredient_stock_history": {
+      "model": "IngredientStockHistory",
+      "namespace": "public"
+    },
     "membership": {
       "model": "Membership",
       "namespace": "public"
@@ -1102,6 +1106,21 @@
                   "model": "MenuIngredient",
                   "namespace": "public"
                 }
+              },
+              "stockHistory": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "ingredientId"
+                  ]
+                },
+                "to": {
+                  "model": "IngredientStockHistory",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -1216,6 +1235,127 @@
               },
               "namespaceId": "public",
               "table": "ingredient_allergy"
+            }
+          },
+          "IngredientStockHistory": {
+            "fields": {
+              "changedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "changedById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "ingredientId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "newStock": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              },
+              "previousStock": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              }
+            },
+            "relations": {
+              "changedBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "changedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "ingredient": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "ingredientId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Ingredient",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "changedAt": {
+                  "column": "changed_at"
+                },
+                "changedById": {
+                  "column": "changed_by_id"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "ingredientId": {
+                  "column": "ingredient_id"
+                },
+                "newStock": {
+                  "column": "new_stock"
+                },
+                "previousStock": {
+                  "column": "previous_stock"
+                }
+              },
+              "namespaceId": "public",
+              "table": "ingredient_stock_history"
             }
           },
           "JobRun": {
@@ -3960,6 +4100,21 @@
                   "namespace": "public"
                 }
               },
+              "stockChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "changedById"
+                  ]
+                },
+                "to": {
+                  "model": "IngredientStockHistory",
+                  "namespace": "public"
+                }
+              },
               "subscriptions": {
                 "cardinality": "1:N",
                 "on": {
@@ -5172,6 +5327,136 @@
                   ]
                 }
               ]
+            },
+            "ingredient_stock_history": {
+              "columns": {
+                "changed_at": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "dataType": "pg/timestamp",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "changed_by_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "ingredient_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "new_stock": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                },
+                "previous_stock": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "ingredient_stock_history_ingredient_id_idx_30032a11"
+                  },
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "ingredient_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "ingredient_stock_history"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "ingredient"
+                  }
+                },
+                {
+                  "index": {
+                    "name": "ingredient_stock_history_changed_by_id_idx_dd031b3b"
+                  },
+                  "onDelete": "restrict",
+                  "source": {
+                    "columns": [
+                      "changed_by_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "ingredient_stock_history"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "changed_by_id"
+                  ],
+                  "name": "ingredient_stock_history_changed_by_id_idx_dd031b3b",
+                  "prefix": "ingredient_stock_history_changed_by_id_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "ingredient_id",
+                    "changed_at"
+                  ],
+                  "name": "ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa",
+                  "prefix": "ingredient_stock_history_ingredient_id_changed_at_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "ingredient_id"
+                  ],
+                  "name": "ingredient_stock_history_ingredient_id_idx_30032a11",
+                  "prefix": "ingredient_stock_history_ingredient_id_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "membership": {
               "columns": {
@@ -7524,10 +7809,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "eaaa12097b855472fefde902e39ad6e7bc2776b0a86bf4289e4cb3b10166896f"
+    "storageHash": "0a20c98b56378e59c979ccae2f886d55cbfc1052faf3d77a07597ead00714174"
   },
   "execution": {
-    "executionHash": "00f3f985c96fd60a3c85fdf4d5114891a06bdf6d53645fca3015335e166714c8",
+    "executionHash": "e9e47c1ae9e00e08b6de151e8c8284e250c8ef49c0b0ef71fd6fc2d1833771df",
     "mutations": {
       "defaults": [
         {
@@ -7777,6 +8062,28 @@
           },
           "ref": {
             "entry": "ingredient_allergy",
+            "field": "id",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "ingredient_stock_history",
+            "field": "changed_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "ingredient_stock_history",
             "field": "id",
             "namespace": "public"
           }

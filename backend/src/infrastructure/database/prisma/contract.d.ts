@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'eaaa12097b855472fefde902e39ad6e7bc2776b0a86bf4289e4cb3b10166896f'>;
+  StorageHashBase<'0a20c98b56378e59c979ccae2f886d55cbfc1052faf3d77a07597ead00714174'>;
 export type ExecutionHash =
-  ExecutionHashBase<'00f3f985c96fd60a3c85fdf4d5114891a06bdf6d53645fca3015335e166714c8'>;
+  ExecutionHashBase<'e9e47c1ae9e00e08b6de151e8c8284e250c8ef49c0b0ef71fd6fc2d1833771df'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -363,7 +363,8 @@ export namespace Models {
     updatedAt: FieldOutputTypes['public']['Ingredient']['updatedAt'];
     ingredientAllergy: public_IngredientAllergy[];
     menuIngredients: public_MenuIngredient[];
-    readonly [RelationKeys]?: 'ingredientAllergy' | 'menuIngredients';
+    stockHistory: public_IngredientStockHistory[];
+    readonly [RelationKeys]?: 'ingredientAllergy' | 'menuIngredients' | 'stockHistory';
   };
   export type public_IngredientAllergy = {
     allergyId: FieldOutputTypes['public']['IngredientAllergy']['allergyId'];
@@ -372,6 +373,17 @@ export namespace Models {
     allergy: public_Allergy;
     ingredient: public_Ingredient;
     readonly [RelationKeys]?: 'allergy' | 'ingredient';
+  };
+  export type public_IngredientStockHistory = {
+    changedAt: FieldOutputTypes['public']['IngredientStockHistory']['changedAt'];
+    changedById: FieldOutputTypes['public']['IngredientStockHistory']['changedById'];
+    id: FieldOutputTypes['public']['IngredientStockHistory']['id'];
+    ingredientId: FieldOutputTypes['public']['IngredientStockHistory']['ingredientId'];
+    newStock: FieldOutputTypes['public']['IngredientStockHistory']['newStock'];
+    previousStock: FieldOutputTypes['public']['IngredientStockHistory']['previousStock'];
+    changedBy: public_User;
+    ingredient: public_Ingredient;
+    readonly [RelationKeys]?: 'changedBy' | 'ingredient';
   };
   export type public_JobRun = {
     error: FieldOutputTypes['public']['JobRun']['error'];
@@ -635,6 +647,7 @@ export namespace Models {
     payments: public_Payment[];
     refreshTokens: public_RefreshToken[];
     statusChanges: public_OrderStatusHistory[];
+    stockChanges: public_IngredientStockHistory[];
     subscriptions: public_Subscription[];
     readonly [RelationKeys]?:
       | 'allergies'
@@ -646,6 +659,7 @@ export namespace Models {
       | 'payments'
       | 'refreshTokens'
       | 'statusChanges'
+      | 'stockChanges'
       | 'subscriptions';
   };
   export type public_UserAllergy = {
@@ -669,6 +683,7 @@ export declare const models: {
     DeliveryObstacle: Models.public_DeliveryObstacle;
     Ingredient: Models.public_Ingredient;
     IngredientAllergy: Models.public_IngredientAllergy;
+    IngredientStockHistory: Models.public_IngredientStockHistory;
     JobRun: Models.public_JobRun;
     Membership: Models.public_Membership;
     Menu: Models.public_Menu;
@@ -1460,6 +1475,100 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'allergy';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly ingredient_stock_history: {
+              columns: {
+                readonly changed_at: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly many: false;
+                };
+                readonly changed_by_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly ingredient_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly new_stock: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                  readonly many: false;
+                };
+                readonly previous_stock: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'ingredient_stock_history_changed_by_id_idx_dd031b3b';
+                  readonly prefix: 'ingredient_stock_history_changed_by_id_idx';
+                  readonly columns: readonly ['changed_by_id'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa';
+                  readonly prefix: 'ingredient_stock_history_ingredient_id_changed_at_idx';
+                  readonly columns: readonly ['ingredient_id', 'changed_at'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'ingredient_stock_history_ingredient_id_idx_30032a11';
+                  readonly prefix: 'ingredient_stock_history_ingredient_id_idx';
+                  readonly columns: readonly ['ingredient_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'ingredient_stock_history';
+                    readonly columns: readonly ['ingredient_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'ingredient';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'ingredient_stock_history';
+                    readonly columns: readonly ['changed_by_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -3348,6 +3457,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'IngredientAllergy';
     };
+    readonly ingredient_stock_history: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'IngredientStockHistory';
+    };
     readonly membership: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'Membership';
@@ -4104,6 +4217,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['ingredientId'];
                 };
               };
+              readonly stockHistory: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'IngredientStockHistory';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['ingredientId'];
+                };
+              };
             };
             readonly storage: {
               readonly table: 'ingredient';
@@ -4180,6 +4304,92 @@ type ContractBase = Omit<
                 readonly allergyId: { readonly column: 'allergy_id' };
                 readonly id: { readonly column: 'id' };
                 readonly ingredientId: { readonly column: 'ingredient_id' };
+              };
+            };
+          };
+          readonly IngredientStockHistory: {
+            readonly fields: {
+              readonly changedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-temporal@1';
+                };
+              };
+              readonly changedById: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly ingredientId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly newStock: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
+              };
+              readonly previousStock: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly changedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['changedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly ingredient: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Ingredient';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['ingredientId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'ingredient_stock_history';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly changedAt: { readonly column: 'changed_at' };
+                readonly changedById: { readonly column: 'changed_by_id' };
+                readonly id: { readonly column: 'id' };
+                readonly ingredientId: { readonly column: 'ingredient_id' };
+                readonly newStock: { readonly column: 'new_stock' };
+                readonly previousStock: { readonly column: 'previous_stock' };
               };
             };
           };
@@ -6101,6 +6311,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['changedById'];
                 };
               };
+              readonly stockChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'IngredientStockHistory';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['changedById'];
+                };
+              };
               readonly subscriptions: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6406,6 +6627,22 @@ type ContractBase = Omit<
           readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
           readonly ref: {
             readonly entry: 'ingredient_allergy';
+            readonly field: 'id';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'plainDateTimeNow'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'ingredient_stock_history';
+            readonly field: 'changed_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'ingredient_stock_history';
             readonly field: 'id';
             readonly namespace: 'public';
           };

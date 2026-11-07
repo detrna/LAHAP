@@ -152,6 +152,7 @@ describe("cleanSeed (unit)", () => {
         expect(deletes).toEqual([
             { model: "DeliveryObstacle", action: "delete", column: "authorId", values: SEED_IDS.users },
             { model: "OrderStatusHistory", action: "delete", column: "changedById", values: SEED_IDS.users },
+            { model: "IngredientStockHistory", action: "delete", column: "changedById", values: SEED_IDS.users },
             { model: "DeliveryMethodChange", action: "delete", column: "requestedById", values: SEED_IDS.users },
             {
                 model: "DeliveryMethodChange",

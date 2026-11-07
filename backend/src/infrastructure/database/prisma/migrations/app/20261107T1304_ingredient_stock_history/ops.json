@@ -1,0 +1,299 @@
+[
+  {
+    "id": "table.ingredient_stock_history",
+    "label": "Create table \"ingredient_stock_history\"",
+    "summary": "Creates table \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ingredient_stock_history\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"ingredient_stock_history\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ingredient_stock_history\"",
+        "sql": "CREATE TABLE \"public\".\"ingredient_stock_history\" (\n  \"changed_at\" timestamp DEFAULT (now()) NOT NULL,\n  \"changed_by_id\" character varying(36) NOT NULL,\n  \"id\" character varying(36) NOT NULL,\n  \"ingredient_id\" character varying(36) NOT NULL,\n  \"new_stock\" numeric(10,2) NOT NULL,\n  \"previous_stock\" numeric(10,2) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ingredient_stock_history\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"ingredient_stock_history\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.ingredient_stock_history.ingredient_stock_history_changed_by_id_idx_dd031b3b",
+    "label": "Create index \"ingredient_stock_history_changed_by_id_idx_dd031b3b\" on \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ingredient_stock_history_changed_by_id_idx_dd031b3b",
+        "table": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ingredient_stock_history_changed_by_id_idx_dd031b3b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_changed_by_id_idx_dd031b3b\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ingredient_stock_history_changed_by_id_idx_dd031b3b\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ingredient_stock_history_changed_by_id_idx_dd031b3b\"",
+        "sql": "CREATE INDEX \"ingredient_stock_history_changed_by_id_idx_dd031b3b\" ON \"public\".\"ingredient_stock_history\" (\"changed_by_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ingredient_stock_history_changed_by_id_idx_dd031b3b\" exists on \"ingredient_stock_history\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_changed_by_id_idx_dd031b3b\"",
+          "i",
+          "I",
+          "\"public\".\"ingredient_stock_history\"",
+          "btree",
+          "[\"changed_by_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ingredient_stock_history.ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa",
+    "label": "Create index \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\" on \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa",
+        "table": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\"",
+        "sql": "CREATE INDEX \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\" ON \"public\".\"ingredient_stock_history\" (\"ingredient_id\", \"changed_at\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\" exists on \"ingredient_stock_history\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_ingredient_id_changed_at_idx_4ed4c9fa\"",
+          "i",
+          "I",
+          "\"public\".\"ingredient_stock_history\"",
+          "btree",
+          "[\"ingredient_id\",\"changed_at\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ingredient_stock_history.ingredient_stock_history_ingredient_id_idx_30032a11",
+    "label": "Create index \"ingredient_stock_history_ingredient_id_idx_30032a11\" on \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ingredient_stock_history_ingredient_id_idx_30032a11",
+        "table": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ingredient_stock_history_ingredient_id_idx_30032a11\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_ingredient_id_idx_30032a11\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ingredient_stock_history_ingredient_id_idx_30032a11\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ingredient_stock_history_ingredient_id_idx_30032a11\"",
+        "sql": "CREATE INDEX \"ingredient_stock_history_ingredient_id_idx_30032a11\" ON \"public\".\"ingredient_stock_history\" (\"ingredient_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ingredient_stock_history_ingredient_id_idx_30032a11\" exists on \"ingredient_stock_history\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ingredient_stock_history_ingredient_id_idx_30032a11\"",
+          "i",
+          "I",
+          "\"public\".\"ingredient_stock_history\"",
+          "btree",
+          "[\"ingredient_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ingredient_stock_history.ingredient_stock_history_ingredient_id_fkey",
+    "label": "Add foreign key \"ingredient_stock_history_ingredient_id_fkey\" on \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ingredient_stock_history_ingredient_id_fkey",
+        "table": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ingredient_stock_history_ingredient_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ingredient_stock_history_ingredient_id_fkey",
+          "public",
+          "\"public\".\"ingredient_stock_history\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ingredient_stock_history_ingredient_id_fkey\" on \"ingredient_stock_history\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ingredient_stock_history_ingredient_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ingredient_stock_history\"\nADD CONSTRAINT \"ingredient_stock_history_ingredient_id_fkey\"\nFOREIGN KEY (\"ingredient_id\")\nREFERENCES \"public\".\"ingredient\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ingredient_stock_history_ingredient_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ingredient_stock_history_ingredient_id_fkey",
+          "public",
+          "\"public\".\"ingredient_stock_history\"",
+          "f",
+          "[\"ingredient_id\"]",
+          "\"public\".\"ingredient\"",
+          "[\"id\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ingredient_stock_history.ingredient_stock_history_changed_by_id_fkey",
+    "label": "Add foreign key \"ingredient_stock_history_changed_by_id_fkey\" on \"ingredient_stock_history\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ingredient_stock_history_changed_by_id_fkey",
+        "table": "ingredient_stock_history"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ingredient_stock_history_changed_by_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ingredient_stock_history_changed_by_id_fkey",
+          "public",
+          "\"public\".\"ingredient_stock_history\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ingredient_stock_history_changed_by_id_fkey\" on \"ingredient_stock_history\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ingredient_stock_history_changed_by_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ingredient_stock_history\"\nADD CONSTRAINT \"ingredient_stock_history_changed_by_id_fkey\"\nFOREIGN KEY (\"changed_by_id\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE RESTRICT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ingredient_stock_history_changed_by_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ingredient_stock_history_changed_by_id_fkey",
+          "public",
+          "\"public\".\"ingredient_stock_history\"",
+          "f",
+          "[\"changed_by_id\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "r",
+          "a"
+        ]
+      }
+    ]
+  }
+]
