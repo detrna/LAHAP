@@ -2534,7 +2534,7 @@
           "Kitchen"
         ],
         "summary": "Estimate stock from a photo",
-        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nAI estimate (Could Have, UC-56). Nothing is saved; confirm with the stock update.",
+        "description": "**Roles:** `KITCHEN`, `ADMIN`.\n\nAI estimate (Could Have, UC-56). The model counts the containers of the ingredient in the photo (the fill levels summed, rounded up to a whole container), and `estimatedQuantity` is that count, labelled with the ingredient's `unit` but not converted: two 1.5 L bottles give `2` `liter`. The kitchen converts it before saving. Nothing is saved; confirm with `PUT /kitchen/ingredients/{id}/stock`. Not rate-limited (staff only).",
         "x-roles": [
           "KITCHEN",
           "ADMIN"
@@ -2558,7 +2558,7 @@
                   "image": {
                     "type": "string",
                     "format": "binary",
-                    "description": "Photo of the container."
+                    "description": "Photo of the containers. JPEG, PNG or WebP (detected from the file's bytes), at most `UPLOAD_MAX_BYTES`."
                   }
                 }
               }
@@ -2589,7 +2589,60 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "The request or the photo was refused. `VALIDATION_ERROR` for a missing `image` or a bad id; `INVALID_STOCK_IMAGE`, `LOW_CONFIDENCE` (the liquid level isn't clear) or `CONTAINER_NOT_VISIBLE` (no container of this ingredient in the photo) from the estimator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "image",
+                            "message": "image is required",
+                            "code": "required"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "INVALID_STOCK_IMAGE": {
+                    "summary": "INVALID_STOCK_IMAGE",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_STOCK_IMAGE",
+                        "message": "image is empty"
+                      }
+                    }
+                  },
+                  "LOW_CONFIDENCE": {
+                    "summary": "LOW_CONFIDENCE",
+                    "value": {
+                      "error": {
+                        "code": "LOW_CONFIDENCE",
+                        "message": "low confidence estimation: liquid level is not clearly visible in the image"
+                      }
+                    }
+                  },
+                  "CONTAINER_NOT_VISIBLE": {
+                    "summary": "CONTAINER_NOT_VISIBLE",
+                    "value": {
+                      "error": {
+                        "code": "CONTAINER_NOT_VISIBLE",
+                        "message": "no containers of 'Minyak Goreng' visible in image"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2608,6 +2661,36 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "description": "The AI provider failed (`STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR`) or returned output that couldn't be read even after one retry (`STOCK_LEVEL_ESTIMATION_FAILED`). Nothing was saved; try again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR": {
+                    "summary": "STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR",
+                        "message": "stock level estimator provider request failed"
+                      }
+                    }
+                  },
+                  "STOCK_LEVEL_ESTIMATION_FAILED": {
+                    "summary": "STOCK_LEVEL_ESTIMATION_FAILED",
+                    "value": {
+                      "error": {
+                        "code": "STOCK_LEVEL_ESTIMATION_FAILED",
+                        "message": "stock level estimator output was not valid json or failed schema validation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9919,7 +10002,7 @@
       },
       "PhotoEstimate": {
         "type": "object",
-        "description": "AI estimate of an ingredient's remaining quantity from a photo. Not persisted; the admin confirms by updating `stock`.",
+        "description": "AI count of an ingredient's containers from a photo. Not persisted; the kitchen converts it to the ingredient's unit and confirms with the stock update.",
         "required": [
           "ingredientId",
           "estimatedQuantity",
@@ -9934,8 +10017,11 @@
           "estimatedQuantity": {
             "type": "number",
             "format": "double",
-            "description": "Estimated remaining quantity in `unit`.",
-            "minimum": 0
+            "description": "Number of containers counted in the photo (fill levels summed, rounded up to a whole container), labelled with `unit` but not converted: two 1.5 L bottles give `2`.",
+            "minimum": 0,
+            "examples": [
+              4
+            ]
           },
           "unit": {
             "$ref": "#/components/schemas/IngredientUnit"
@@ -9943,7 +10029,7 @@
           "confidence": {
             "type": "number",
             "format": "double",
-            "description": "Optional model confidence (0–1).",
+            "description": "Model confidence (0–1). Not returned yet; a low-confidence result is refused with 400 `LOW_CONFIDENCE` instead.",
             "minimum": 0,
             "maximum": 1
           }
