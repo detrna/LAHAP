@@ -3,6 +3,7 @@ import {
     EXPIRE_PENDING_PAYMENTS_JOB_NAME,
     HEARTBEAT_JOB_NAME,
     PREPARE_DUE_SLOTS_JOB_NAME,
+    REMIND_EMPTY_SCHEDULES_JOB_NAME,
 } from "./register-schedules.js";
 
 export interface ScheduledCheckJobContext {
@@ -30,6 +31,7 @@ export interface HandlerDependencies {
     readonly heartbeatHandler?: (() => Promise<unknown> | unknown) | undefined;
     readonly expirePendingPayments?: (() => Promise<unknown>) | undefined;
     readonly prepareDueSlots?: (() => Promise<unknown>) | undefined;
+    readonly remindEmptySchedules?: (() => Promise<unknown>) | undefined;
 }
 
 /**
@@ -41,13 +43,16 @@ export interface HandlerDependencies {
  * Adding a real scheduled check later requires adding one entry here.
  */
 export const createScheduledJobHandlerMap = (deps: HandlerDependencies = {}): ScheduledJobHandlerMap => {
-    const { expirePendingPayments, prepareDueSlots } = deps;
+    const { expirePendingPayments, prepareDueSlots, remindEmptySchedules } = deps;
     return {
         [HEARTBEAT_JOB_NAME]: async () => (deps.heartbeatHandler ? deps.heartbeatHandler() : defaultHeartbeatHandler()),
         ...(expirePendingPayments !== undefined
             ? { [EXPIRE_PENDING_PAYMENTS_JOB_NAME]: () => expirePendingPayments() }
             : {}),
         ...(prepareDueSlots !== undefined ? { [PREPARE_DUE_SLOTS_JOB_NAME]: () => prepareDueSlots() } : {}),
+        ...(remindEmptySchedules !== undefined
+            ? { [REMIND_EMPTY_SCHEDULES_JOB_NAME]: () => remindEmptySchedules() }
+            : {}),
     };
 };
 

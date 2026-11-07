@@ -14,6 +14,8 @@ import {
     HEARTBEAT_SCHEDULE_ID,
     PREPARE_DUE_SLOTS_JOB_NAME,
     PREPARE_DUE_SLOTS_SCHEDULE_ID,
+    REMIND_EMPTY_SCHEDULES_JOB_NAME,
+    REMIND_EMPTY_SCHEDULES_SCHEDULE_ID,
     registerSchedules,
 } from "./register-schedules.js";
 
@@ -153,6 +155,7 @@ describe("Scheduler handlers and schedule registration", () => {
                 HEARTBEAT: "* * * * *",
                 EXPIRE_PENDING_PAYMENTS: "*/2 * * * *",
                 PREPARE_DUE_SLOTS: "*/15 * * * *",
+                REMIND_EMPTY_SCHEDULES: "0 9 * * *",
             },
             SLOT_PREPARATION_LEAD_MINUTES: 180,
         };
@@ -176,6 +179,12 @@ describe("Scheduler handlers and schedule registration", () => {
                 id: PREPARE_DUE_SLOTS_SCHEDULE_ID,
                 jobName: PREPARE_DUE_SLOTS_JOB_NAME,
                 cronPattern: "*/15 * * * *",
+                timezone: "Asia/Jakarta",
+            },
+            {
+                id: REMIND_EMPTY_SCHEDULES_SCHEDULE_ID,
+                jobName: REMIND_EMPTY_SCHEDULES_JOB_NAME,
+                cronPattern: "0 9 * * *",
                 timezone: "Asia/Jakarta",
             },
         ]);
@@ -205,7 +214,25 @@ describe("Scheduler handlers and schedule registration", () => {
         expect(prepareDueSlots).toHaveBeenCalledTimes(1);
     });
 
+    it("runs the reminder use case for the remind-empty-schedules job", async () => {
+        const remindEmptySchedules = vi.fn().mockResolvedValue({ emptyPackageIds: ["p-1"] });
+        const jobRunRepo = new InMemoryJobRunRepository();
+        const processor = createScheduledCheckProcessor(
+            createScheduledJobHandlerMap({ remindEmptySchedules }),
+            jobRunRepo,
+        );
+
+        await processor({ id: "job-5", name: REMIND_EMPTY_SCHEDULES_JOB_NAME, data: {} });
+
+        expect(remindEmptySchedules).toHaveBeenCalledTimes(1);
+        expect(jobRunRepo.runs[0]?.status).toBe("SUCCESS");
+    });
+
     it("has no expiry handler unless the use case is given", () => {
         expect(createScheduledJobHandlerMap()[EXPIRE_PENDING_PAYMENTS_JOB_NAME]).toBeUndefined();
+    });
+
+    it("has no reminder handler unless the use case is given", () => {
+        expect(createScheduledJobHandlerMap()[REMIND_EMPTY_SCHEDULES_JOB_NAME]).toBeUndefined();
     });
 });

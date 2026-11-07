@@ -60,7 +60,7 @@ async function bootstrapWorker(): Promise<void> {
         const [loadedAdapters, db] = await Promise.all([createAdapters(config), loadDatabase(config.DATABASE)]);
         const adapters = { ...loadedAdapters, logger };
         logger.info("[Worker] Adapters and database connected successfully");
-        const { orders } = createModules({ db, adapters, http: config.HTTP });
+        const { catalog, orders } = createModules({ db, adapters, http: config.HTTP });
 
         const jobRunRepository = new PrismaJobRunRepository(db);
 
@@ -86,6 +86,7 @@ async function bootstrapWorker(): Promise<void> {
             handlers: {
                 expirePendingPayments: () => orders.service.expirePendingPayments(),
                 prepareDueSlots: () => orders.service.prepareDueSlots(config.SCHEDULER.SLOT_PREPARATION_LEAD_MINUTES),
+                remindEmptySchedules: () => catalog.service.remindEmptySchedules(),
             },
         });
 

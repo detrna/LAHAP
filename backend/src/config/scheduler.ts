@@ -4,6 +4,7 @@ export interface SchedulerCronConfig {
     readonly HEARTBEAT: string;
     readonly EXPIRE_PENDING_PAYMENTS: string;
     readonly PREPARE_DUE_SLOTS: string;
+    readonly REMIND_EMPTY_SCHEDULES: string;
 }
 
 export interface SchedulerConfig {
@@ -17,6 +18,7 @@ export const schedulerEnvSchema = z.object({
     SCHEDULER_HEARTBEAT_CRON: z.string().min(1).default("* * * * *"),
     SCHEDULER_EXPIRE_PENDING_PAYMENTS_CRON: z.string().min(1).default("* * * * *"),
     SCHEDULER_PREPARE_DUE_SLOTS_CRON: z.string().min(1).default("*/15 * * * *"),
+    SCHEDULER_REMIND_EMPTY_SCHEDULES_CRON: z.string().min(1).default("0 9 * * *"),
     SLOT_PREPARATION_LEAD_MINUTES: z.coerce.number().int().min(0).max(1440).default(180),
 });
 
@@ -28,6 +30,7 @@ export const toSchedulerConfig = (env: SchedulerEnv): SchedulerConfig => ({
         HEARTBEAT: env.SCHEDULER_HEARTBEAT_CRON,
         EXPIRE_PENDING_PAYMENTS: env.SCHEDULER_EXPIRE_PENDING_PAYMENTS_CRON,
         PREPARE_DUE_SLOTS: env.SCHEDULER_PREPARE_DUE_SLOTS_CRON,
+        REMIND_EMPTY_SCHEDULES: env.SCHEDULER_REMIND_EMPTY_SCHEDULES_CRON,
     },
     SLOT_PREPARATION_LEAD_MINUTES: env.SLOT_PREPARATION_LEAD_MINUTES,
 });

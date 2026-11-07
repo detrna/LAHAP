@@ -7,6 +7,8 @@ export const EXPIRE_PENDING_PAYMENTS_SCHEDULE_ID = "expire-pending-payments-sche
 export const EXPIRE_PENDING_PAYMENTS_JOB_NAME = "expire-pending-payments";
 export const PREPARE_DUE_SLOTS_SCHEDULE_ID = "prepare-due-slots-schedule";
 export const PREPARE_DUE_SLOTS_JOB_NAME = "prepare-due-slots";
+export const REMIND_EMPTY_SCHEDULES_SCHEDULE_ID = "remind-empty-schedules-schedule";
+export const REMIND_EMPTY_SCHEDULES_JOB_NAME = "remind-empty-schedules";
 
 /**
  * Builds the declarative list of recurring schedule definitions.
@@ -32,6 +34,12 @@ export const buildScheduleDefinitions = (schedulerConfig: SchedulerConfig): read
         id: PREPARE_DUE_SLOTS_SCHEDULE_ID,
         jobName: PREPARE_DUE_SLOTS_JOB_NAME,
         cronPattern: schedulerConfig.CRON.PREPARE_DUE_SLOTS,
+        timezone: schedulerConfig.TIMEZONE,
+    },
+    {
+        id: REMIND_EMPTY_SCHEDULES_SCHEDULE_ID,
+        jobName: REMIND_EMPTY_SCHEDULES_JOB_NAME,
+        cronPattern: schedulerConfig.CRON.REMIND_EMPTY_SCHEDULES,
         timezone: schedulerConfig.TIMEZONE,
     },
 ];
