@@ -7989,7 +7989,7 @@
           "Admin · Retention"
         ],
         "summary": "List churned customers",
-        "description": "**Roles:** `ADMIN`.\n\nDetected on request (UC-29); customers who order again drop out automatically.",
+        "description": "**Roles:** `ADMIN`.\n\nDetected on request (UC-29); customers who order again drop out automatically. Only active `CUSTOMER` accounts are listed, most recent churners first (`lastEndDate` descending, then name).",
         "x-roles": [
           "ADMIN"
         ],
@@ -8004,7 +8004,7 @@
             "name": "search",
             "in": "query",
             "required": false,
-            "description": "Case-insensitive name search.",
+            "description": "Case-insensitive search on the name or the phone.",
             "schema": {
               "type": "string",
               "minLength": 1
@@ -8065,7 +8065,7 @@
           "Admin · Retention"
         ],
         "summary": "Build a WhatsApp follow-up",
-        "description": "**Roles:** `ADMIN`.\n\nFills the template's placeholders and returns a `wa.me` link (UC-29, UC-48). Nothing is sent or stored. 422 when the user is not churned or the promo code is not active.",
+        "description": "**Roles:** `ADMIN`.\n\nFills the template's placeholders and returns a `wa.me` link (UC-29, UC-48). Nothing is sent or stored.\n\n- 404 `USER_NOT_FOUND` for an unknown user or a staff account; 404 `MESSAGE_TEMPLATE_NOT_FOUND` for an unknown template.\n- 422 `INVALID_STATE`: `customer account is inactive`; `customer is not churned`; `template needs a promo code` (the template has `{kode_promo}` but no code was given); `promo code is not active` (unknown, switched off or expired); `promo code quota is exhausted`; `customer already used this promo code`. The code is checked like checkout's, except `minPurchase`, which checkout still enforces.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8141,7 +8141,7 @@
           "Admin · Retention"
         ],
         "summary": "List message templates",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\nNewest first.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8205,7 +8205,7 @@
           "Admin · Retention"
         ],
         "summary": "Create a message template",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\n409 when another template has the same name, ignoring case. 400 for an unknown placeholder.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8334,7 +8334,7 @@
           "Admin · Retention"
         ],
         "summary": "Update a message template",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\n409 when another template has the same name, ignoring case (a template may keep its own). 400 for an unknown placeholder.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8408,7 +8408,7 @@
           "Admin · Retention"
         ],
         "summary": "Delete a message template",
-        "description": "**Roles:** `ADMIN`.",
+        "description": "**Roles:** `ADMIN`.\n\nNothing references templates, so deleting never conflicts.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8432,9 +8432,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -12457,7 +12454,8 @@
           },
           "body": {
             "type": "string",
-            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`)."
+            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`).",
+            "maxLength": 2000
           },
           "createdAt": {
             "type": "string",
@@ -12484,17 +12482,18 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Template name.",
+            "description": "Template name, trimmed. Unique ignoring case (409 `CONFLICT`).",
             "minLength": 1,
             "maxLength": 100
           },
           "body": {
             "type": "string",
-            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`).",
+            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`). Trimmed; any other lowercase `{token}` is rejected with 400, while other braces (`{Nama}`, `{ }`) are kept as text.",
             "minLength": 1,
             "examples": [
               "Halo {nama}, sudah {lama_tidak_memesan} hari sejak {paket_terakhir} berakhir. Pakai {kode_promo} untuk diskon!"
-            ]
+            ],
+            "maxLength": 2000
           }
         },
         "x-apidog-folder": "Retention"
@@ -12506,17 +12505,18 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Template name.",
+            "description": "Template name, trimmed. Unique ignoring case (409 `CONFLICT`).",
             "minLength": 1,
             "maxLength": 100
           },
           "body": {
             "type": "string",
-            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`).",
+            "description": "Message with placeholders: `{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`. The fixed list lives in code (`MESSAGE_PLACEHOLDERS`). Trimmed; any other lowercase `{token}` is rejected with 400, while other braces (`{Nama}`, `{ }`) are kept as text.",
             "minLength": 1,
             "examples": [
               "Halo {nama}, sudah {lama_tidak_memesan} hari sejak {paket_terakhir} berakhir. Pakai {kode_promo} untuk diskon!"
-            ]
+            ],
+            "maxLength": 2000
           }
         },
         "x-apidog-folder": "Retention"
@@ -12538,7 +12538,7 @@
               "string",
               "null"
             ],
-            "description": "Code to put in `{kode_promo}`, if any.",
+            "description": "Code to put in `{kode_promo}`, trimmed; `null` or an empty string means none. Required when the template contains `{kode_promo}`. Must be usable by this customer (active, not expired, quota left, not used by them before).",
             "maxLength": 50
           }
         },
