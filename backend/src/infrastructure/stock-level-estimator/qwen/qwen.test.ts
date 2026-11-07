@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { StockLevelEstimatorConfig } from "../../../config/stock-level-estimator.js";
 import { AppError } from "../../../shared/errors/app-error.js";
 import {
-    ErrorContainerNotVisible,
-    ErrorLowConfidence,
+    ContainerNotVisibleError,
+    LowConfidenceError,
     InvalidStockImageError,
     StockLevelEstimationError,
     StockLevelEstimatorProviderError,
@@ -94,6 +94,7 @@ describe("QwenStockLevelEstimator (unit)", () => {
         await expect(promise).rejects.toThrow(InvalidStockImageError);
         await expect(promise).rejects.toThrow(StockLevelEstimationError);
         await expect(promise).rejects.toThrow(AppError);
+        await expect(promise).rejects.toThrow("unsupported image type: image/gif");
         await promise.catch((err: unknown) => {
             expect(err).toBeInstanceOf(AppError);
             if (err instanceof AppError) {
@@ -111,7 +112,7 @@ describe("QwenStockLevelEstimator (unit)", () => {
                 mimeType: "image/jpeg",
                 ingredient: { name: "Minyak", unit: "botol" },
             }),
-        ).rejects.toThrow(InvalidStockImageError);
+        ).rejects.toThrow("image is empty");
     });
 
     it("throws InvalidStockImageError for oversized image (> 10MB)", async () => {
@@ -272,7 +273,7 @@ describe("QwenStockLevelEstimator (unit)", () => {
         expect(result.item.quantity).toBe(2);
     });
 
-    it("throws ErrorContainerNotVisible when fills array is empty", async () => {
+    it("throws ContainerNotVisibleError when fills array is empty", async () => {
         const estimator = makeEstimator();
         const client = (estimator as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
         client.chat.completions.create = vi.fn().mockResolvedValue({
@@ -291,10 +292,15 @@ describe("QwenStockLevelEstimator (unit)", () => {
                 mimeType: "image/jpeg",
                 ingredient: { name: "Minyak Goreng", unit: "botol" },
             }),
-        ).rejects.toThrow(ErrorContainerNotVisible);
+        ).rejects.toMatchObject({
+            constructor: ContainerNotVisibleError,
+            code: "CONTAINER_NOT_VISIBLE",
+            statusCode: 400,
+            message: "no containers of 'Minyak Goreng' visible in image",
+        });
     });
 
-    it("throws ErrorLowConfidence when model returns low confidence (handled internally in infrastructure)", async () => {
+    it("throws LowConfidenceError when model returns low confidence (handled internally in infrastructure)", async () => {
         const estimator = makeEstimator();
         const client = (estimator as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
         client.chat.completions.create = vi.fn().mockResolvedValue({
@@ -313,7 +319,7 @@ describe("QwenStockLevelEstimator (unit)", () => {
                 mimeType: "image/jpeg",
                 ingredient: { name: "Minyak Goreng", unit: "botol" },
             }),
-        ).rejects.toThrow(ErrorLowConfidence);
+        ).rejects.toMatchObject({ constructor: LowConfidenceError, code: "LOW_CONFIDENCE", statusCode: 400 });
     });
 
     it("throws StockLevelEstimatorProviderError when API call fails", async () => {
@@ -327,7 +333,46 @@ describe("QwenStockLevelEstimator (unit)", () => {
                 mimeType: "image/jpeg",
                 ingredient: { name: "Minyak Goreng", unit: "botol" },
             }),
-        ).rejects.toThrow(StockLevelEstimatorProviderError);
+        ).rejects.toMatchObject({
+            constructor: StockLevelEstimatorProviderError,
+            code: "STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR",
+            statusCode: 502,
+            message: "stock level estimator provider request failed",
+        });
+    });
+
+    it("throws a 502 StockLevelEstimationError when the output stays invalid after the retry", async () => {
+        const estimator = makeEstimator();
+        const client = (estimator as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
+        client.chat.completions.create = vi.fn().mockResolvedValue({
+            choices: [{ message: { content: "invalid json string" } }],
+        });
+
+        await expect(
+            estimator.estimate({
+                image: Buffer.from("fake-image-bytes"),
+                mimeType: "image/jpeg",
+                ingredient: { name: "Minyak Goreng", unit: "botol" },
+            }),
+        ).rejects.toMatchObject({
+            constructor: StockLevelEstimationError,
+            code: "STOCK_LEVEL_ESTIMATION_FAILED",
+            statusCode: 502,
+        });
+    });
+
+    it("throws a provider error when the provider returns no content", async () => {
+        const estimator = makeEstimator();
+        const client = (estimator as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
+        client.chat.completions.create = vi.fn().mockResolvedValue({ choices: [{ message: { content: "" } }] });
+
+        await expect(
+            estimator.estimate({
+                image: Buffer.from("fake-image-bytes"),
+                mimeType: "image/jpeg",
+                ingredient: { name: "Minyak Goreng", unit: "botol" },
+            }),
+        ).rejects.toMatchObject({ code: "STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR", statusCode: 502 });
     });
 
     it("retries once when output is malformed JSON and succeeds on second attempt", async () => {

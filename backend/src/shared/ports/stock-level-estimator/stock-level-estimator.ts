@@ -5,7 +5,6 @@ export * from "./errors.js";
 export interface StockLevelIngredientInput {
     name: string;
     unit: string;
-    containerCapacity?: number | undefined;
 }
 
 export interface StockLevelEstimateInput {

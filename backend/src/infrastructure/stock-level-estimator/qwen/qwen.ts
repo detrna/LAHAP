@@ -2,9 +2,9 @@ import type OpenAI from "openai";
 import { z } from "zod";
 import type { StockLevelEstimatorConfig } from "../../../config/stock-level-estimator.js";
 import {
-    ErrorContainerNotVisible,
-    ErrorLowConfidence,
+    ContainerNotVisibleError,
     InvalidStockImageError,
+    LowConfidenceError,
     StockLevelEstimationError,
     StockLevelEstimatorProviderError,
     type StockLevelEstimateInput,
@@ -64,13 +64,13 @@ export class QwenStockLevelEstimator implements StockLevelEstimator {
         const { image, mimeType, ingredient } = input;
 
         if (!SUPPORTED_MIME_TYPES.has(mimeType)) {
-            throw new InvalidStockImageError(`Unsupported image type: ${mimeType}`);
+            throw new InvalidStockImageError(`unsupported image type: ${mimeType}`);
         }
         if (image.length === 0) {
-            throw new InvalidStockImageError("Image is empty");
+            throw new InvalidStockImageError("image is empty");
         }
         if (image.length > MAX_IMAGE_BYTES) {
-            throw new InvalidStockImageError("Image is too large");
+            throw new InvalidStockImageError("image is too large");
         }
 
         const dataUrl = `data:${mimeType};base64,${image.toString("base64")}`;
@@ -100,14 +100,14 @@ export class QwenStockLevelEstimator implements StockLevelEstimator {
                     ],
                 });
             } catch (cause) {
-                throw new StockLevelEstimatorProviderError("Stock level estimator provider request failed", { cause });
+                throw new StockLevelEstimatorProviderError("stock level estimator provider request failed", { cause });
             }
 
             this.onUsage?.(completion.usage);
 
             const content = completion.choices[0]?.message.content;
             if (!content) {
-                throw new StockLevelEstimatorProviderError("Stock level estimator provider returned no content");
+                throw new StockLevelEstimatorProviderError("stock level estimator provider returned no content");
             }
 
             return content;
@@ -121,7 +121,7 @@ export class QwenStockLevelEstimator implements StockLevelEstimator {
                 throw cause;
             }
             throw new StockLevelEstimationError(
-                "Stock level estimator output was not valid JSON or failed schema validation",
+                "stock level estimator output was not valid json or failed schema validation",
                 { cause },
             );
         }
@@ -130,7 +130,7 @@ export class QwenStockLevelEstimator implements StockLevelEstimator {
 
         // If no containers were identified
         if (data.fills.length === 0) {
-            throw new ErrorContainerNotVisible(`No containers of '${ingredient.name}' visible in image`);
+            throw new ContainerNotVisibleError(`no containers of '${ingredient.name}' visible in image`);
         }
 
         // If confidence is low, handle error inside infrastructure (just like ReceiptExtractor).
@@ -138,7 +138,7 @@ export class QwenStockLevelEstimator implements StockLevelEstimator {
         // because no liquid level is visible; empty containers count as 0.
         const isAllEmpty = data.fills.every(fill => fill === 0);
         if (data.confidence === "low" && !isAllEmpty) {
-            throw new ErrorLowConfidence("Low confidence estimation: liquid level is not clearly visible in the image");
+            throw new LowConfidenceError("low confidence estimation: liquid level is not clearly visible in the image");
         }
 
         // Convert fills into whole quantity of bottles using tolerance
