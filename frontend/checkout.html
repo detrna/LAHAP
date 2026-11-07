@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pesan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body>
+<title>Pesan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
 <header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
-<nav class="nav" aria-label="Menu utama"><a href="index.html" aria-current="page">Paket</a><a href="status.html">Pesanan</a><a href="kurir.html">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
+<nav class="nav" aria-label="Menu utama"><a href="index.html" aria-current="page">Paket</a><a href="langganan.html">Langganan Saya</a><a href="kurir.html">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pesan paket <span id="namaPaket">Hemat</span></h1>
 <form class="stack-lg" onsubmit="return false">
@@ -53,4 +53,4 @@ function hitung(){
 }
 $('#pakai').onclick=()=>{kode=$('#promo').value.trim().toUpperCase()==='MERDEKA';$('#promoErr').hidden=kode;hitung()};
 document.querySelector('form').addEventListener('input',hitung);hitung();
-</script></main></body></html>
+</script></main><script src="js/auth.js"></script></body></html>

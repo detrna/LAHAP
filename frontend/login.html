@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Masuk · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body>
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container" style="max-width:440px">
+ <div class="stack-lg">
+  <div><h1 class="t-h1" id="judul">Masuk ke LAHAP</h1><p class="t-muted">Pelanggan, admin, dapur, dan kurir masuk dari halaman yang sama.</p></div>
+
+  <form id="formMasuk" class="stack card" novalidate>
+   <div class="alert alert--error" id="errMasuk" hidden><span class="alert-title">Gagal masuk</span>Nomor HP atau password salah.</div>
+   <div class="field"><label for="id">Nomor HP atau email</label><input class="input" id="id" autocomplete="username"></div>
+   <div class="field"><label for="pw">Password</label><input class="input" id="pw" type="password" autocomplete="current-password"></div>
+   <button class="btn btn-primary btn-block" type="submit">Masuk</button>
+   <button class="btn btn-ghost btn-block" type="button" id="keDaftar">Belum punya akun? Daftar</button>
+   <div class="alert alert--info"><span class="alert-title">Akun demo (password demo123)</span>081111 admin · 082222 pelanggan · 083333 dapur · 084444 kurir</div>
+  </form>
+
+  <form id="formDaftar" class="stack card" novalidate hidden>
+   <div class="field" id="fHp"><label for="dHp">Nomor HP</label><input class="input" id="dHp" inputmode="tel" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid. Contoh: 081234567890</p></div>
+   <div class="field" id="fPw"><label for="dPw">Password</label><input class="input" id="dPw" type="password" autocomplete="new-password"><p class="hint">Minimal 6 karakter.</p><p class="error-msg" hidden>Password minimal 6 karakter.</p></div>
+   <div class="field"><label for="dNama">Nama (opsional)</label><input class="input" id="dNama"></div>
+   <div class="field"><label for="dEmail">Email (opsional)</label><input class="input" id="dEmail" type="email"></div>
+   <button class="btn btn-primary btn-block" type="submit">Daftar</button>
+   <button class="btn btn-ghost btn-block" type="button" id="keMasuk">Sudah punya akun? Masuk</button>
+  </form>
+ </div>
+</main>
+<script src="js/auth.js"></script>
+<script>
+var $ = function (s) { return document.querySelector(s); };
+if (currentUser()) location.href = HOME[currentUser().role];
+function tampil(daftar) {
+  $('#formMasuk').hidden = daftar; $('#formDaftar').hidden = !daftar;
+  $('#judul').textContent = daftar ? 'Daftar akun pelanggan' : 'Masuk ke LAHAP';
+}
+$('#keDaftar').onclick = function () { tampil(true); };
+$('#keMasuk').onclick = function () { tampil(false); };
+$('#formMasuk').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var u = login($('#id').value.trim(), $('#pw').value);
+  $('#errMasuk').hidden = !!u;
+  if (u) location.href = HOME[u.role]; // arahkan sesuai peran (UC-13)
+});
+$('#formDaftar').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var hpOk = /^(08|\+628|628)\d{8,11}$/.test($('#dHp').value.trim());
+  var pwOk = $('#dPw').value.length >= 6;
+  [['#fHp', hpOk], ['#fPw', pwOk]].forEach(function (x) {
+    $(x[0]).classList.toggle('is-error', !x[1]);
+    $(x[0] + ' .error-msg').hidden = x[1];
+  });
+  if (!hpOk || !pwOk) return;
+  // Ganti dengan panggilan API daftar. Setelah berhasil, langsung login (auto-login).
+  var baru = { hp: $('#dHp').value.trim(), nama: $('#dNama').value.trim() || 'Pelanggan', role: 'pelanggan' };
+  localStorage.setItem('lahap_user', JSON.stringify(baru));
+  location.href = HOME.pelanggan;
+});
+</script></body></html>

@@ -120,3 +120,7 @@ h1,h2,h3,p{margin:0}
 .invoice{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);flex-wrap:wrap;padding:var(--sp-3) 0}
 .footer{margin-top:var(--sp-7);padding:var(--sp-5) 0;border-top:1px solid var(--line);color:var(--muted)}
 .btn-sm{min-height:44px;padding:0 var(--sp-3)}
+
+/* Admin */
+.grid-4{grid-template-columns:1fr 1fr}
+@media(min-width:720px){.grid-4{grid-template-columns:repeat(4,1fr)}}
