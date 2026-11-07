@@ -122,7 +122,7 @@ ightarrow 	ext{Data Pemesan \& Catatan}
 ightarrow 	ext{Metode Diantar/Ambil Sendiri} 
 ightarrow 	ext{Ringkasan} 
 ightarrow 	ext{Pembayaran}$$
-* **BR-13 (Konsistensi Metode Penerimaan):** Metode Diantar atau Ambil Sendiri berlaku untuk seluruh pesanan (tidak bisa dicampur per hari). Jika pelanggan ingin berganti metode, pelanggan harus membatalkan pesanan sebelum cut-off lalu membuat pesanan baru.
+* **BR-13 (Konsistensi Metode Penerimaan):** Metode Diantar atau Ambil Sendiri berlaku untuk seluruh pesanan saat checkout (tidak bisa dicampur per hari). Pada cakupan awal, pelanggan yang ingin berganti metode harus membatalkan pesanan sebelum cut-off lalu membuat pesanan baru; untuk pengembangan pasca-rilis (§7.5), pelanggan atau admin dapat mengubah metode mulai tanggal layanan tertentu (`effective_from` > hari ini) tanpa membatalkan pesanan (Diantar → Ambil Sendiri me-refund ongkir slot `'Terjadwal'` yang beralih; Ambil Sendiri → Diantar menagih ongkir dengan tarif hari ini sebagai pembayaran `DELIVERY_SERVICE_UPGRADE`).
 * **BR-14 (3 Parameter Tarif Ongkir):** Perhitungan ongkir menggunakan 3 parameter admin:
   1. **Radius Gratis (`radius_gratis`):** dalam km (contoh default: 1 km).
   2. **Jarak Maksimum Layanan (`jarak_maksimum`):** dalam km (contoh: 10 km).

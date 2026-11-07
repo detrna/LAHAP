@@ -1537,7 +1537,7 @@
           "Subscriptions"
         ],
         "summary": "Get my order",
-        "description": "**Roles:** `CUSTOMER`.\n\nWith `orders` (slots: menu, status, obstacles) and `payments` (UC-11). Other customers' orders return 404.",
+        "description": "**Roles:** `CUSTOMER`.\n\nWith `orders` (slots: menu, status, obstacles), `payments` and `deliveryMethodChanges` (UC-11). Other customers' orders return 404.",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -1667,6 +1667,227 @@
         ],
         "summary": "Resume payment",
         "description": "**Roles:** `CUSTOMER`.\n\nReturns the Snap session of the order's `Pending` `MIDTRANS` payment (e.g. after closing the popup). The session is kept in Redis until the order expires. 404 for another customer's order. 422 when the order is not `Pending` (`subscription is not waiting for payment`), pays by cash (`cash orders are paid at the cashier`), or the session is gone (`payment session has expired`).",
+        "x-roles": [
+          "CUSTOMER"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PaymentSession"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Subscriptions"
+      }
+    },
+    "/subscriptions/{id}/delivery-method/preview": {
+      "post": {
+        "operationId": "previewDeliveryMethodChange",
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Preview a delivery method change",
+        "description": "**Roles:** `CUSTOMER`.\n\nQuotes switching a paid (`Success`) order's `Terjadwal` slots from `effectiveFrom` onward (default: the first switchable slot after today) without saving anything (PRD §7.5). `Dilewati` slots are left as they are. For pick-up → delivery (`isDelivery: true`), delivery is quoted at today's rates; past the max distance, `delivery.available` is `false` (not an error). 400 when `effectiveFrom` is today/earlier (`must be after today`) or after `endDate` (`must not be after the order's end date`), or when `isDelivery: true` is missing the delivery address or pin. 404 for another customer's order. 422 when the order is not `Success` (`subscription is not paid`) or has no switchable slot on or after `effectiveFrom` (`no slot can switch method`).",
+        "x-roles": [
+          "CUSTOMER"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryMethodChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DeliveryMethodPreview"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Subscriptions"
+      }
+    },
+    "/subscriptions/{id}/delivery-method": {
+      "post": {
+        "operationId": "changeDeliveryMethod",
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Change the delivery method",
+        "description": "**Roles:** `CUSTOMER`.\n\nSwitches a paid (`Success`) order's `Terjadwal` slots from `effectiveFrom` onward (PRD §7.5):\n- **Delivery → pick-up (`isDelivery: false`):** switches the slots at once (`isDelivery = false`, `deliveryFee = 0`, `courierId = null`), updates `subscription.isDelivery = false`, and creates a `Success` change with `needsRefund = amount > 0` (`payment` and `paymentSession` are `null`). The customer, admins (when a refund is due) and couriers who lost slots are notified.\n- **Pick-up → delivery (`isDelivery: true`):** quotes today's delivery rates. When `amount > 0`, opens a `Pending` `DELIVERY_SERVICE_UPGRADE` payment and a `Pending` change, leaving the slots as pick-up until the payment succeeds; when `amount = 0` (inside the free radius), applies the switch at once without a payment.\n\n404 for another customer's order. 422 `INVALID_STATE` messages: `subscription is not paid`, `no slot can switch method`, `another delivery method change is waiting for payment`, `delivery is not available for this address`, `online orders cannot be paid in cash`, `slots changed, try again`. 502 when Midtrans fails; nothing is saved.",
+        "x-roles": [
+          "CUSTOMER"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryMethodChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DeliveryMethodChangeResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Subscriptions"
+      }
+    },
+    "/delivery-method-changes/{id}/payment-session": {
+      "post": {
+        "operationId": "getDeliveryMethodChangePaymentSession",
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Resume an upgrade payment",
+        "description": "**Roles:** `CUSTOMER`.\n\nReturns the Snap session of a `Pending` `MIDTRANS` `DELIVERY_SERVICE_UPGRADE` payment. 404 for an unknown change or another customer's order. 422 when the change is not waiting for payment (`delivery method change is not waiting for payment`), pays by cash (`cash payments are paid at the cashier`), or the session is gone (`payment session has expired`).",
         "x-roles": [
           "CUSTOMER"
         ],
@@ -6998,7 +7219,7 @@
           "Admin · Orders"
         ],
         "summary": "Get an order",
-        "description": "**Roles:** `ADMIN`.\n\nWith the customer, the slots (served menu, obstacles, `completedAt`) and payments. 404 for an unknown order.",
+        "description": "**Roles:** `ADMIN`.\n\nWith the customer, the slots (served menu, obstacles, `completedAt`), payments and `deliveryMethodChanges`. 404 for an unknown order.",
         "x-roles": [
           "ADMIN"
         ],
@@ -7052,6 +7273,302 @@
           }
         ],
         "x-apidog-folder": "Admin/Orders"
+      }
+    },
+    "/admin/subscriptions/{id}/delivery-method/preview": {
+      "post": {
+        "operationId": "previewDeliveryMethodChangeForAdmin",
+        "tags": [
+          "Admin · Orders"
+        ],
+        "summary": "Preview a delivery method change",
+        "description": "**Roles:** `ADMIN`.\n\nAdmin counterpart of `POST /subscriptions/{id}/delivery-method/preview` for any customer's paid (`Success`) order.",
+        "x-roles": [
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryMethodChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DeliveryMethodPreview"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Admin/Orders"
+      }
+    },
+    "/admin/subscriptions/{id}/delivery-method": {
+      "post": {
+        "operationId": "changeDeliveryMethodForAdmin",
+        "tags": [
+          "Admin · Orders"
+        ],
+        "summary": "Change the delivery method",
+        "description": "**Roles:** `ADMIN`.\n\nAdmin counterpart of `POST /subscriptions/{id}/delivery-method` for any customer's paid (`Success`) order, including `CASH` upgrade payments for `Offline` orders.",
+        "x-roles": [
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryMethodChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DeliveryMethodChangeResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Admin/Orders"
+      }
+    },
+    "/admin/delivery-method-changes": {
+      "get": {
+        "operationId": "listDeliveryMethodChanges",
+        "tags": [
+          "Admin · Orders"
+        ],
+        "summary": "List delivery method changes",
+        "description": "**Roles:** `ADMIN`.\n\nNewest first. Filter with `needsRefund=true` to see downgrades (or late-paid upgrades) waiting for a manual refund.",
+        "x-roles": [
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "needsRefund",
+            "in": "query",
+            "required": false,
+            "description": "Filter by whether a manual refund is still due.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DeliveryMethodChange"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Admin/Orders"
+      }
+    },
+    "/admin/delivery-method-changes/{id}/confirm-refund": {
+      "post": {
+        "operationId": "confirmDeliveryMethodChangeRefund",
+        "tags": [
+          "Admin · Payments"
+        ],
+        "summary": "Confirm a delivery method change refund",
+        "description": "**Roles:** `ADMIN`.\n\nAfter refunding the delivery fee outside the app: sets `needsRefund = false` and `refundedAt = now` (deducted from `deliveryRevenue` and `totalRevenue` in the period of `refundedAt`). 404 for an unknown change. 422 when `needsRefund` is already `false` (`delivery method change does not need a refund`).",
+        "x-roles": [
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DeliveryMethodChange"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Admin/Payments"
       }
     },
     "/admin/orders": {
@@ -7579,6 +8096,15 @@
             }
           },
           {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Payment type filter.",
+            "schema": {
+              "$ref": "#/components/schemas/PaymentType"
+            }
+          },
+          {
             "name": "method",
             "in": "query",
             "required": false,
@@ -7928,7 +8454,7 @@
           "Admin · Reports"
         ],
         "summary": "Get income",
-        "description": "**Roles:** `ADMIN`.\n\nIncome from the price snapshots of `Success` orders **created** in the period (Asia/Jakarta; the week starts Monday): the total, by package and by purchase type (UC-31). Skipped slots still count (BR-11); cancelled or expired orders don't.",
+        "description": "**Roles:** `ADMIN`.\n\nIncome from the price snapshots of `Success` orders **created** in the period (Asia/Jakarta; the week starts Monday), plus `DELIVERY_SERVICE_UPGRADE` payments paid in the period (`paidAt`) and minus confirmed delivery-method-change refunds in the period (`refundedAt`): the total, by package and by purchase type (UC-31). Skipped slots still count (BR-11); cancelled or expired orders don't.",
         "x-roles": [
           "ADMIN"
         ],
@@ -8618,12 +9144,23 @@
       },
       "PaymentType": {
         "type": "string",
-        "description": "`DELIVERY_SERVICE_UPGRADE` is reserved for the post-release change-delivery-method feature (PRD §7.5); the MVP only creates `SUBSCRIPTION`.",
+        "description": "`SUBSCRIPTION` (subscription checkout) or `DELIVERY_SERVICE_UPGRADE` (extra delivery fee when switching pick-up → delivery, PRD §7.5).",
         "enum": [
           "SUBSCRIPTION",
           "DELIVERY_SERVICE_UPGRADE"
         ],
         "default": "SUBSCRIPTION",
+        "x-apidog-folder": "Enums"
+      },
+      "DeliveryMethodChangeStatus": {
+        "type": "string",
+        "description": "`Pending` while waiting for an upgrade payment, `Success` once applied, `Expire` when the upgrade payment expires or is paid after a slot passed its cut-off.",
+        "enum": [
+          "Pending",
+          "Success",
+          "Expire"
+        ],
+        "default": "Success",
         "x-apidog-folder": "Enums"
       },
       "PaymentStatus": {
@@ -11098,7 +11635,7 @@
       },
       "Subscription": {
         "type": "object",
-        "description": "A customer's order (PRD \"Pesanan\"). Delivery vs pick-up applies to every slot (BR-13). Recipient, delivery point and the full price breakdown are snapshotted at checkout and never change afterwards (BR-16).",
+        "description": "A customer's order (PRD \"Pesanan\"). `isDelivery` reflects the order's current method (updated when a delivery method switch succeeds), while each slot carries its own `Order.isDelivery`. Recipient and the full checkout price breakdown are snapshotted at checkout and never change afterwards (BR-16).",
         "required": [
           "id",
           "userId",
@@ -11186,7 +11723,7 @@
           },
           "isDelivery": {
             "type": "boolean",
-            "description": "`true` = courier delivery, `false` = pick-up, for every slot."
+            "description": "Current method for the order (`true` = courier delivery, `false` = pick-up); each slot carries its own `Order.isDelivery`."
           },
           "recipientName": {
             "type": "string",
@@ -11343,6 +11880,14 @@
               "$ref": "#/components/schemas/Payment"
             },
             "description": "Payments for this order.",
+            "readOnly": true
+          },
+          "deliveryMethodChanges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMethodChange"
+            },
+            "description": "Delivery method switches on this order, oldest first.",
             "readOnly": true
           }
         },
@@ -11519,6 +12064,8 @@
           "status",
           "usesAlternativeMenu",
           "skipReason",
+          "isDelivery",
+          "deliveryFee",
           "completedAt",
           "createdAt",
           "updatedAt"
@@ -11562,6 +12109,16 @@
               "null"
             ],
             "description": "Optional reason; only when `status = Dilewati` (UC-44)."
+          },
+          "isDelivery": {
+            "type": "boolean",
+            "description": "This slot's fulfillment method (`true` = courier delivery, `false` = pick-up)."
+          },
+          "deliveryFee": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Delivery fee paid for this slot (0 for pick-up)."
           },
           "completedAt": {
             "type": [
@@ -13280,6 +13837,365 @@
           },
           "paymentSession": {
             "description": "Present for `MIDTRANS`; `null` for `CASH` (pay at the cashier, admin verifies).",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentSession"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "x-apidog-folder": "Orders"
+      },
+      "DeliveryMethodChangeSlot": {
+        "type": "object",
+        "description": "A slot covered by a delivery method switch, with its per-slot fee.",
+        "required": [
+          "orderId",
+          "serviceDate",
+          "fee"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Slot ID."
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Slot service date."
+          },
+          "fee": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Charged fee (upgrade) or fee to refund (downgrade) for this slot."
+          }
+        },
+        "x-apidog-folder": "Orders"
+      },
+      "DeliveryMethodChange": {
+        "type": "object",
+        "description": "A delivery method switch on a paid (`Success`) order from `effectiveFrom` onward (PRD §7.5). The checkout snapshot on `Subscription` never changes.",
+        "required": [
+          "id",
+          "subscriptionId",
+          "requestedById",
+          "toDelivery",
+          "effectiveFrom",
+          "status",
+          "slotCount",
+          "deliveryFeePerSlot",
+          "amount",
+          "needsRefund",
+          "refundedAt",
+          "paymentId",
+          "deliveryAddress",
+          "deliveryLatitude",
+          "deliveryLongitude",
+          "deliveryDistanceKm",
+          "slots",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Primary key (UUID v4).",
+            "readOnly": true
+          },
+          "subscriptionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Switched order."
+          },
+          "requestedById": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Customer or admin who requested the switch."
+          },
+          "toDelivery": {
+            "type": "boolean",
+            "description": "`true` = pick-up → delivery upgrade, `false` = delivery → pick-up downgrade."
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "First service date of the switch."
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeliveryMethodChangeStatus"
+          },
+          "slotCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "description": "Number of switched slots."
+          },
+          "deliveryFeePerSlot": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Quoted fee per slot at today's rates (upgrade); 0 for downgrades."
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Charged upgrade amount or downgrade refund amount."
+          },
+          "needsRefund": {
+            "type": "boolean",
+            "description": "`true` when a manual refund is due (downgrade with `amount > 0` or late-paid upgrade).",
+            "default": false
+          },
+          "refundedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the admin confirmed the manual refund (income deduction date)."
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "`DELIVERY_SERVICE_UPGRADE` payment ID for upgrades; `null` for downgrades or 0-fee upgrades."
+          },
+          "deliveryAddress": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New delivery address for upgrades."
+          },
+          "deliveryLatitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "New delivery pin latitude for upgrades."
+          },
+          "deliveryLongitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "New delivery pin longitude for upgrades."
+          },
+          "deliveryDistanceKm": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0,
+            "description": "`ceil(Haversine km)` for upgrades (BR-15)."
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMethodChangeSlot"
+            },
+            "description": "Switched slots, oldest service date first."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the record was created.",
+            "readOnly": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the record was last changed (auto-updated).",
+            "readOnly": true
+          }
+        },
+        "x-apidog-folder": "Orders"
+      },
+      "DeliveryMethodChangeRequest": {
+        "type": "object",
+        "description": "Request to preview or apply a delivery method switch (PRD §7.5). `deliveryAddress`, `deliveryLatitude` and `deliveryLongitude` are required when `isDelivery = true`.",
+        "required": [
+          "isDelivery"
+        ],
+        "properties": {
+          "isDelivery": {
+            "type": "boolean",
+            "description": "Target method: `true` = switch to delivery, `false` = switch to pick-up."
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "First service date to switch (after today, `≤ endDate`). Defaults to the first switchable slot."
+          },
+          "deliveryAddress": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New delivery address (required when `isDelivery = true`)."
+          },
+          "deliveryLatitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "New delivery pin latitude (required when `isDelivery = true`; send together with `deliveryLongitude`)."
+          },
+          "deliveryLongitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "New delivery pin longitude (required when `isDelivery = true`; send together with `deliveryLatitude`)."
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "MIDTRANS",
+              "CASH"
+            ],
+            "default": "MIDTRANS",
+            "description": "Payment method for an upgrade (`CASH` is allowed only on `Offline` orders)."
+          }
+        },
+        "x-apidog-folder": "Orders"
+      },
+      "DeliveryMethodPreview": {
+        "type": "object",
+        "description": "Quote for a delivery method switch before confirming (PRD §7.5).",
+        "required": [
+          "toDelivery",
+          "effectiveFrom",
+          "slots",
+          "slotCount",
+          "deliveryFeePerSlot",
+          "amount",
+          "delivery"
+        ],
+        "properties": {
+          "toDelivery": {
+            "type": "boolean",
+            "description": "Target method (`true` = delivery, `false` = pick-up)."
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "Resolved start date of the switch."
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMethodChangeSlot"
+            },
+            "description": "Slots that will switch, in service date order."
+          },
+          "slotCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "description": "Number of slots that will switch."
+          },
+          "deliveryFeePerSlot": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Quoted fee per slot at today's rates (upgrade); 0 for downgrades."
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "description": "Extra fee to pay (upgrade) or fee to refund (downgrade)."
+          },
+          "delivery": {
+            "description": "Delivery distance quote at today's rates for upgrades; `null` for downgrades.",
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "available",
+                  "distanceKm",
+                  "maxDistanceKm",
+                  "feePerSlot"
+                ],
+                "properties": {
+                  "available": {
+                    "type": "boolean",
+                    "description": "`false` when the pin is beyond the max distance."
+                  },
+                  "distanceKm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "`ceil(Haversine km)`."
+                  },
+                  "maxDistanceKm": {
+                    "type": "number",
+                    "format": "double",
+                    "description": "Resolved max distance."
+                  },
+                  "feePerSlot": {
+                    "type": "number",
+                    "format": "double",
+                    "minimum": 0,
+                    "description": "Fee per delivered slot."
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "x-apidog-folder": "Orders"
+      },
+      "DeliveryMethodChangeResult": {
+        "type": "object",
+        "description": "Created delivery method change, with its upgrade payment and Snap session when applicable.",
+        "required": [
+          "change",
+          "payment",
+          "paymentSession"
+        ],
+        "properties": {
+          "change": {
+            "$ref": "#/components/schemas/DeliveryMethodChange"
+          },
+          "payment": {
+            "description": "`DELIVERY_SERVICE_UPGRADE` payment when `toDelivery = true` and `amount > 0`; `null` otherwise.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Payment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paymentSession": {
+            "description": "Present for a `MIDTRANS` upgrade with `amount > 0`; `null` otherwise.",
             "anyOf": [
               {
                 "$ref": "#/components/schemas/PaymentSession"
