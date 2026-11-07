@@ -4,12 +4,14 @@ export const PHOTO_FOLDERS = ["menus", "packages", "ingredients", "tiers", "obst
 
 export type PhotoFolder = (typeof PHOTO_FOLDERS)[number];
 
-export async function toPhotoUrl(storage: ObjectStorage, key: string | null): Promise<string | null> {
+type SigningStorage = Pick<ObjectStorage, "getSignedUrl">;
+
+export async function toPhotoUrl(storage: SigningStorage, key: string | null): Promise<string | null> {
     return key === null ? null : storage.getSignedUrl(key);
 }
 
 export async function toPhotoUrls(
-    storage: ObjectStorage,
+    storage: SigningStorage,
     keys: readonly (string | null)[],
 ): Promise<(string | null)[]> {
     const distinctKeys = [...new Set(keys.filter((key): key is string => key !== null))];
