@@ -152,6 +152,13 @@ describe("cleanSeed (unit)", () => {
         expect(deletes).toEqual([
             { model: "DeliveryObstacle", action: "delete", column: "authorId", values: SEED_IDS.users },
             { model: "OrderStatusHistory", action: "delete", column: "changedById", values: SEED_IDS.users },
+            { model: "DeliveryMethodChange", action: "delete", column: "requestedById", values: SEED_IDS.users },
+            {
+                model: "DeliveryMethodChange",
+                action: "delete",
+                column: "subscriptionId",
+                values: ["sub-1", "sub-2", "sub-3"],
+            },
             { model: "Payment", action: "delete", column: "userId", values: SEED_IDS.users },
             { model: "Payment", action: "delete", column: "subscriptionId", values: ["sub-1", "sub-2", "sub-3"] },
             { model: "Order", action: "delete", column: "menuScheduleId", values: ["sched-1"] },
@@ -180,6 +187,7 @@ describe("cleanSeed (unit)", () => {
         await cleanSeed(tx);
 
         const deletedModels = operations.filter(op => op.action === "delete").map(op => `${op.model}.${op.column}`);
+        expect(deletedModels).not.toContain("DeliveryMethodChange.subscriptionId");
         expect(deletedModels).not.toContain("Payment.subscriptionId");
         expect(deletedModels).not.toContain("Order.menuScheduleId");
         expect(deletedModels).not.toContain("Subscription.id");

@@ -44,6 +44,12 @@ export async function cleanSeed(tx: SeedTx, logger?: Logger): Promise<Record<str
     const subscriptionIds = [...new Set([...userSubs, ...pkgSubs].map(s => s.id))];
     const scheduleIds = pkgSchedules.map(s => s.id);
 
+    await tx.orm.public.DeliveryMethodChange.where(c => c.requestedById.in(asIds(SEED_IDS.users))).deleteAndCount();
+    if (subscriptionIds.length > 0) {
+        await tx.orm.public.DeliveryMethodChange.where(c =>
+            c.subscriptionId.in(asIds(subscriptionIds)),
+        ).deleteAndCount();
+    }
     await tx.orm.public.Payment.where(p => p.userId.in(asIds(SEED_IDS.users))).deleteAndCount();
     if (subscriptionIds.length > 0) {
         await tx.orm.public.Payment.where(p => p.subscriptionId.in(asIds(subscriptionIds))).deleteAndCount();

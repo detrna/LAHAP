@@ -140,7 +140,7 @@ export async function seedOrders({ db, logger, today, config }: OrdersSeedContex
 
             clock.advanceTo(meal.add({ minutes: 30 }));
             for (const slot of await slotsOnDay(day, ["Diantar", "Siap Diambil"])) {
-                if (slot.subscription.isDelivery) {
+                if (slot.order.isDelivery) {
                     await service.completeDelivery(
                         { userId: slot.order.courierId ?? COURIER_JOKO_ID, role: "COURIER" },
                         slot.order.id,
@@ -177,6 +177,20 @@ export async function seedOrders({ db, logger, today, config }: OrdersSeedContex
             { customer: RINA.name, from: plan.monthly.periodStart.toString() },
             "seeded a monthly delivery order",
         );
+        if (plan.monthly.switchToPickupFrom !== null) {
+            const switched = await service.changeDeliveryMethod({ userId: RINA.id, asAdmin: false }, monthly.id, {
+                isDelivery: false,
+                effectiveFrom: plan.monthly.switchToPickupFrom,
+                deliveryAddress: null,
+                deliveryLatitude: null,
+                deliveryLongitude: null,
+                paymentMethod: "MIDTRANS",
+            });
+            logger.info(
+                { customer: RINA.name, from: switched.change.effectiveFrom, refund: switched.change.amount },
+                "seeded a switch to pick-up waiting for its delivery fee refund",
+            );
+        }
 
         clock.advanceTo(at(plan.delivery.checkoutDay, "15:00"));
         const todayIds = await scheduleIdsOn(reguler, plan.delivery.today, ["07:00", "12:00", "18:30"]);

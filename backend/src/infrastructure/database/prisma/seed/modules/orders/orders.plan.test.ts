@@ -19,6 +19,7 @@ describe("planOrderDates (unit)", () => {
         expect(plan.churned.serviceDays.map(day => day.toString())).toEqual(["2026-10-07", "2026-10-08", "2026-10-09"]);
         expect(plan.monthly.periodStart.toString()).toBe("2026-11-01");
         expect(plan.monthly.checkoutDay.toString()).toBe("2026-10-31");
+        expect(plan.monthly.switchToPickupFrom?.toString()).toBe("2026-11-12");
         expect(plan.monthly.pastServiceDays.map(day => day.toString())).toEqual(
             Array.from({ length: 9 }, (_, i) => `2026-11-0${i + 1}`),
         );
@@ -54,6 +55,19 @@ describe("planOrderDates (unit)", () => {
             expect(isMonday(plan.weekly.periodStart)).toBe(true);
             expect(Temporal.PlainDate.compare(plan.weekly.periodStart, today)).toBeGreaterThan(0);
             expect(plan.cancelled.serviceDay.since(today, { largestUnit: "days" }).days).toBe(3);
+        }
+    });
+
+    it("switches Rina to pick-up two days ahead only while her month still has those days", () => {
+        expect(planOrderDates(Temporal.PlainDate.from("2026-11-28")).monthly.switchToPickupFrom?.toString()).toBe(
+            "2026-11-30",
+        );
+        expect(planOrderDates(Temporal.PlainDate.from("2026-11-29")).monthly.switchToPickupFrom).toBeNull();
+        for (const today of everyDayOf("2026-01-01", 400)) {
+            const from = planOrderDates(today).monthly.switchToPickupFrom;
+            if (from === null) continue;
+            expect(Temporal.PlainDate.compare(from, today)).toBeGreaterThan(0);
+            expect(from.month).toBe(today.month);
         }
     });
 });
