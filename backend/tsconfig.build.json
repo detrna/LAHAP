@@ -9,10 +9,5 @@
         "sourceMap": true
     },
     "include": ["src/**/*.ts"],
-    "exclude": [
-        "src/**/*.test.ts",
-        "src/**/test-utils/**",
-        "src/infrastructure/database/prisma/migrations/**",
-        "src/infrastructure/database/prisma/seed/**"
-    ]
+    "exclude": ["src/**/*.test.ts", "src/**/test-utils/**", "src/infrastructure/database/prisma/seed/**"]
 }
