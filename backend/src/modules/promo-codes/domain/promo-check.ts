@@ -24,7 +24,7 @@ export interface PromoCandidate extends ValidPromo {
 export interface PromoCheckContext {
     readonly usedCount: number;
     readonly userUseCount: number;
-    readonly foodSubtotal: number;
+    readonly foodSubtotal?: number | undefined;
     readonly now: Temporal.PlainDateTime;
 }
 
@@ -33,7 +33,9 @@ function rejectionOf(candidate: PromoCandidate, context: PromoCheckContext): Pro
     if (Temporal.PlainDateTime.compare(candidate.validUntil, context.now) <= 0) return "EXPIRED";
     if (context.usedCount >= candidate.quota) return "QUOTA_EXHAUSTED";
     if (context.userUseCount > 0) return "ALREADY_USED";
-    if (context.foodSubtotal < candidate.minPurchase) return "MIN_PURCHASE_NOT_MET";
+    if (context.foodSubtotal !== undefined && context.foodSubtotal < candidate.minPurchase) {
+        return "MIN_PURCHASE_NOT_MET";
+    }
     return null;
 }
 

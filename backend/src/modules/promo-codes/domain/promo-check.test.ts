@@ -45,4 +45,16 @@ describe("evaluatePromo", () => {
         const candidate = { ...CANDIDATE, validUntil: NOW.add({ seconds: 1 }) };
         expect(evaluatePromo(candidate, CONTEXT).valid).toBe(true);
     });
+
+    it("skips the minimum purchase when there is no subtotal yet, but keeps every other rule", () => {
+        const { foodSubtotal: _, ...withoutSubtotal } = CONTEXT;
+
+        expect(evaluatePromo(CANDIDATE, withoutSubtotal)).toMatchObject({ valid: true });
+        expect(evaluatePromo(CANDIDATE, { ...withoutSubtotal, usedCount: 2 })).toMatchObject({
+            reason: "QUOTA_EXHAUSTED",
+        });
+        expect(evaluatePromo(CANDIDATE, { ...withoutSubtotal, userUseCount: 1 })).toMatchObject({
+            reason: "ALREADY_USED",
+        });
+    });
 });

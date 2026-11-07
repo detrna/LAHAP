@@ -6,7 +6,7 @@ import type { PromoCodesService } from "./promo-codes.service.js";
 export interface PromoCheckInput {
     readonly code: string;
     readonly userId: string;
-    readonly foodSubtotal: number;
+    readonly foodSubtotal?: number | undefined;
 }
 
 export async function checkPromo(this: PromoCodesService, input: PromoCheckInput): Promise<PromoCheckResult> {
@@ -23,7 +23,7 @@ export async function checkPromo(this: PromoCodesService, input: PromoCheckInput
     return evaluatePromo(record, {
         usedCount: uses.get(record.id) ?? 0,
         userUseCount,
-        foodSubtotal: input.foodSubtotal,
+        ...(input.foodSubtotal !== undefined ? { foodSubtotal: input.foodSubtotal } : {}),
         now: toDbTimestamp(this.clock.now()),
     });
 }
