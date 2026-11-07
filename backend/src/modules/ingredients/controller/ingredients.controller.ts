@@ -5,6 +5,7 @@ import { estimateStock } from "./estimate-stock.js";
 import { getIngredient } from "./get-ingredient.js";
 import { getShoppingList } from "./get-shopping-list.js";
 import { listIngredients } from "./list-ingredients.js";
+import { listStockHistory } from "./list-stock-history.js";
 import { updateIngredient } from "./update-ingredient.js";
 import { updateIngredients } from "./update-ingredients.js";
 import { updateStock } from "./update-stock.js";
@@ -13,6 +14,7 @@ export class IngredientsController {
     constructor(readonly ingredientsService: IngredientsService) {}
 
     listIngredients = listIngredients.bind(this);
+    listStockHistory = listStockHistory.bind(this);
     getIngredient = getIngredient.bind(this);
     createIngredients = createIngredients.bind(this);
     updateIngredients = updateIngredients.bind(this);

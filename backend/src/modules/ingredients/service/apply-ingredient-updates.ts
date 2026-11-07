@@ -1,3 +1,4 @@
+import { toDbTimestamp } from "../../../shared/time/timestamp.js";
 import type { Ingredient } from "../domain/ingredient.domain.js";
 import { assertDistinctNames } from "./assert-distinct-names.js";
 import { ensureKnownAllergies } from "./ensure-known-allergies.js";
@@ -8,6 +9,7 @@ import { IngredientNotFoundError } from "./interfaces/ingredients.repository.js"
 export async function applyIngredientUpdates(
     this: IngredientsService,
     updates: readonly IngredientUpdateRecord[],
+    actorId: string,
     photoPath: (index: number) => string,
 ): Promise<Ingredient[]> {
     const existing = await this.ingredientsRepository.findByIds(updates.map(update => update.id));
@@ -30,5 +32,10 @@ export async function applyIngredientUpdates(
         }),
     );
 
-    return this.presentIngredients(await this.ingredientsRepository.updateMany(updates));
+    return this.presentIngredients(
+        await this.ingredientsRepository.updateMany(updates, {
+            changedById: actorId,
+            changedAt: toDbTimestamp(this.clock.now()),
+        }),
+    );
 }

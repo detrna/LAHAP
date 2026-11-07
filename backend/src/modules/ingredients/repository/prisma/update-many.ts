@@ -1,10 +1,11 @@
 import type { Varchar } from "@prisma/orm-postgres/contract-builder";
-import { toNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
+import { fromNumeric, toNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
 import { getUniqueViolationConstraint } from "../../../../infrastructure/database/prisma/sql-errors.js";
 import type {
     IngredientChanges,
     IngredientRecord,
     IngredientUpdateRecord,
+    StockChangeAudit,
 } from "../../service/interfaces/ingredients.repository.js";
 import {
     IngredientAlreadyExistsError,
@@ -28,6 +29,7 @@ function toIngredientColumns(changes: IngredientChanges) {
 export async function updateMany(
     this: PrismaIngredientsRepository,
     updates: readonly IngredientUpdateRecord[],
+    audit: StockChangeAudit,
 ): Promise<readonly IngredientRecord[]> {
     let writing: IngredientUpdateRecord | undefined;
 
@@ -35,10 +37,30 @@ export async function updateMany(
         return await this.db.transaction(async tx => {
             for (const update of updates) {
                 writing = update;
+                const existing = await tx.orm.public.Ingredient.where({ id: update.id })
+                    .select("id", "stock")
+                    .forUpdate()
+                    .first();
+                if (existing === null) throw new IngredientNotFoundError(update.id);
+
                 const columns = toIngredientColumns(update.changes);
-                const target = tx.orm.public.Ingredient.where({ id: update.id }).select("id");
-                const found = Object.keys(columns).length > 0 ? await target.update(columns) : await target.first();
-                if (found === null) throw new IngredientNotFoundError(update.id);
+                if (Object.keys(columns).length > 0) {
+                    await tx.orm.public.Ingredient.where({ id: update.id }).update(columns);
+                }
+
+                if (update.changes.stock !== undefined) {
+                    const previousStock = fromNumeric(existing.stock);
+                    const nextStock = toNumeric(update.changes.stock, 2);
+                    if (fromNumeric(nextStock) !== previousStock) {
+                        await tx.orm.public.IngredientStockHistory.create({
+                            ingredientId: update.id,
+                            changedById: audit.changedById,
+                            previousStock: existing.stock,
+                            newStock: nextStock,
+                            changedAt: audit.changedAt,
+                        });
+                    }
+                }
 
                 if (update.changes.allergyIds !== undefined) {
                     await tx.orm.public.IngredientAllergy.where({ ingredientId: update.id }).deleteAndCount();

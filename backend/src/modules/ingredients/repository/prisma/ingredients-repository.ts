@@ -6,12 +6,14 @@ import { findById } from "./find-by-id.js";
 import { findByIds } from "./find-by-ids.js";
 import { findMissingIds } from "./find-missing-ids.js";
 import { list } from "./list.js";
+import { listStockHistory } from "./list-stock-history.js";
 import { updateMany } from "./update-many.js";
 
 export class PrismaIngredientsRepository implements IngredientsRepository {
     constructor(readonly db: Db) {}
 
     list = list;
+    listStockHistory = listStockHistory;
     findById = findById;
     findByIds = findByIds;
     findMissingIds = findMissingIds;

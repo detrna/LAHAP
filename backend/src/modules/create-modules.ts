@@ -77,6 +77,7 @@ export function createModules(deps: ModuleDeps): Modules {
         allergies: catalog.service,
         menus: catalog.service,
         portions: { countPortionsBySchedule: scheduleIds => orders.service.countPortionsBySchedule(scheduleIds) },
+        users: { getSummaries: ids => users.service.getSummaries(ids) },
     });
     const tiers: TiersContainer = new TiersContainer({
         ...deps,

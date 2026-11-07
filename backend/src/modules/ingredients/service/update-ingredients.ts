@@ -10,10 +10,12 @@ export interface BatchUpdateIngredientInput extends UpdateIngredientInput {
 export async function updateIngredients(
     this: IngredientsService,
     inputs: readonly BatchUpdateIngredientInput[],
+    actorId: string,
 ): Promise<Ingredient[]> {
     return applyIngredientUpdates.call(
         this,
         inputs.map(({ id, ...changes }) => ({ id, changes })),
+        actorId,
         index => `items.${index}.photoKey`,
     );
 }

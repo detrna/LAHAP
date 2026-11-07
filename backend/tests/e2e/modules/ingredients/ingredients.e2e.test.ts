@@ -22,6 +22,7 @@ import { createIngredientsContainer } from "../../../utils/app/ingredients-conta
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
 import { createTestMenu, createTestSchedule, type TestRecipeLine } from "../../../utils/fixtures/schedules.js";
 import { createTestPackage } from "../../../utils/fixtures/subscriptions.js";
+import { createTestUser } from "../../../utils/fixtures/users.js";
 
 const objectStorage = {
     exists: async (key: string) => !key.includes("missing"),
@@ -43,7 +44,8 @@ const stockLevelEstimator: StockLevelEstimator = {
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
 const UPLOAD_MAX_BYTES = 1024;
 
-const asRole = (role: Role) => createAuthHeaders({ role, sub: { userId: randomUUID(), name: `E2E ${role}` } });
+const asRole = (role: Role, userId: string = randomUUID(), name = `E2E ${role}`) =>
+    createAuthHeaders({ role, sub: { userId, name } });
 
 const PHOTO = "ingredients/2026/11/e2e.webp";
 
@@ -64,11 +66,13 @@ describe("ingredients routes (e2e)", () => {
     let rows: CreatedRows;
     let testApp: TestApp;
     let app: Express;
+    let adminId: string;
+    let kitchenId: string;
     let portionCounts: PortionCount[] = [];
     const tag = randomUUID().slice(0, 8);
 
-    const admin = () => asRole("ADMIN");
-    const kitchen = () => asRole("KITCHEN");
+    const admin = () => asRole("ADMIN", adminId, "Admin Satu");
+    const kitchen = () => asRole("KITCHEN", kitchenId, "Dapur Satu");
 
     async function createAllergy(name: string): Promise<string> {
         const allergy = await db.orm.public.Allergy.create({ name: `Zz E2E ${tag} ${name}` });
@@ -95,6 +99,8 @@ describe("ingredients routes (e2e)", () => {
     beforeAll(async () => {
         db = await loadDatabase(loadConfig().DATABASE);
         rows = trackCreated(db);
+        adminId = await createTestUser(db, rows, { role: "ADMIN", name: "Admin Satu" });
+        kitchenId = await createTestUser(db, rows, { role: "KITCHEN", name: "Dapur Satu" });
         testApp = await createTestApp({
             db,
             adapters: { objectStorage, stockLevelEstimator },
@@ -109,6 +115,17 @@ describe("ingredients routes (e2e)", () => {
                         portions: {
                             countPortionsBySchedule: async scheduleIds =>
                                 portionCounts.filter(count => scheduleIds.includes(count.scheduleId)),
+                        },
+                        users: {
+                            getSummaries: async userIds => {
+                                const users = await db.orm.public.User.where(user => user.id.in([...userIds])).all();
+                                return users.map(user => ({
+                                    id: user.id,
+                                    name: user.name,
+                                    phone: user.phone,
+                                    role: user.role as Role,
+                                }));
+                            },
                         },
                     }).router,
                 ];
@@ -135,6 +152,7 @@ describe("ingredients routes (e2e)", () => {
             ["patch", `/api/admin/ingredients/${id}`],
             ["get", "/api/admin/ingredients/shopping-list"],
             ["get", "/api/kitchen/ingredients"],
+            ["get", `/api/kitchen/ingredients/${id}/stock-history`],
             ["put", `/api/kitchen/ingredients/${id}/stock`],
             ["post", `/api/kitchen/ingredients/${id}/photo-estimate`],
         ] as const)("answers 401 to %s %s without a token", async (method, path) => {
@@ -152,6 +170,9 @@ describe("ingredients routes (e2e)", () => {
 
         it.each(["CUSTOMER", "COURIER"] as const)("answers 403 to a %s on the kitchen routes", async role => {
             expect((await request(app).get("/api/kitchen/ingredients").set(asRole(role))).status).toBe(403);
+            expect(
+                (await request(app).get(`/api/kitchen/ingredients/${id}/stock-history`).set(asRole(role))).status,
+            ).toBe(403);
             expect(
                 (await request(app).put(`/api/kitchen/ingredients/${id}/stock`).set(asRole(role)).send({ stock: 1 }))
                     .status,
@@ -728,6 +749,85 @@ describe("ingredients routes (e2e)", () => {
             expect(lowConfidence.body.error.code).toBe("LOW_CONFIDENCE");
             expect(providerDown.status).toBe(502);
             expect(providerDown.body.error.code).toBe("STOCK_LEVEL_ESTIMATOR_PROVIDER_ERROR");
+        });
+    });
+
+    describe("stock history", () => {
+        it("records initial positive stock, admin patches and kitchen counts with hydrated actors, skipping unchanged stock", async () => {
+            const zero = await createIngredient("History Zero", { stock: 0 });
+            const tracked = await createIngredient("History Tracked", { stock: 10 });
+
+            await request(app)
+                .patch(`/api/admin/ingredients/${tracked.id}`)
+                .set(admin())
+                .send({ stock: 10, minimumThreshold: 4 });
+            await request(app).patch(`/api/admin/ingredients/${tracked.id}`).set(admin()).send({ stock: 25.5 });
+            await request(app).put(`/api/kitchen/ingredients/${tracked.id}/stock`).set(kitchen()).send({ stock: 18.2 });
+
+            const zeroHistory = await request(app)
+                .get(`/api/kitchen/ingredients/${zero.id}/stock-history`)
+                .set(kitchen());
+            const firstPage = await request(app)
+                .get(`/api/kitchen/ingredients/${tracked.id}/stock-history`)
+                .query({ page: 1, limit: 2 })
+                .set(kitchen());
+            const secondPage = await request(app)
+                .get(`/api/kitchen/ingredients/${tracked.id}/stock-history`)
+                .query({ page: 2, limit: 2 })
+                .set(admin());
+
+            expect(zeroHistory.status).toBe(200);
+            expect(zeroHistory.body.data).toEqual([]);
+            expect(zeroHistory.body.meta).toMatchObject({ page: 1, limit: 20, total: 0, totalPages: 0 });
+
+            expect(firstPage.status).toBe(200);
+            expect(firstPage.body.meta).toMatchObject({ page: 1, limit: 2, total: 3, totalPages: 2 });
+            expect(firstPage.body.data).toMatchObject([
+                {
+                    ingredientId: tracked.id,
+                    previousStock: 25.5,
+                    newStock: 18.2,
+                    delta: -7.3,
+                    changedBy: { id: kitchenId, name: "Dapur Satu", role: "KITCHEN" },
+                },
+                {
+                    ingredientId: tracked.id,
+                    previousStock: 10,
+                    newStock: 25.5,
+                    delta: 15.5,
+                    changedBy: { id: adminId, name: "Admin Satu", role: "ADMIN" },
+                },
+            ]);
+            expect(firstPage.body.data[0].changedAt).toMatch(/\+07:00$/);
+
+            expect(secondPage.status).toBe(200);
+            expect(secondPage.body.meta).toMatchObject({ page: 2, limit: 2, total: 3, totalPages: 2 });
+            expect(secondPage.body.data).toMatchObject([
+                {
+                    ingredientId: tracked.id,
+                    previousStock: 0,
+                    newStock: 10,
+                    delta: 10,
+                    changedBy: { id: adminId, name: "Admin Satu", role: "ADMIN" },
+                },
+            ]);
+        });
+
+        it("answers 404 for an unknown ingredient and 400 for a bad id or query", async () => {
+            const created = await createIngredient("History Errors");
+
+            const missing = await request(app)
+                .get(`/api/kitchen/ingredients/${randomUUID()}/stock-history`)
+                .set(kitchen());
+            const badId = await request(app).get("/api/kitchen/ingredients/not-a-uuid/stock-history").set(kitchen());
+            const badQuery = await request(app)
+                .get(`/api/kitchen/ingredients/${created.id}/stock-history?limit=0`)
+                .set(kitchen());
+
+            expect(missing.status).toBe(404);
+            expect(missing.body.error.code).toBe("INGREDIENT_NOT_FOUND");
+            expect(badId.status).toBe(400);
+            expect(badQuery.status).toBe(400);
         });
     });
 });

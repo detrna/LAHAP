@@ -1,5 +1,10 @@
-import type { Ingredient, ShoppingListItem, PhotoEstimate } from "../../domain/ingredient.domain.js";
-import type { IngredientRecord } from "../../service/interfaces/ingredients.repository.js";
+import type {
+    Ingredient,
+    IngredientStockChange,
+    PhotoEstimate,
+    ShoppingListItem,
+} from "../../domain/ingredient.domain.js";
+import type { IngredientRecord, IngredientStockChangeRecord } from "../../service/interfaces/ingredients.repository.js";
 
 export function buildIngredient(overrides: Partial<Ingredient> = {}): Ingredient {
     return {
@@ -46,4 +51,32 @@ export function buildShoppingListItem(overrides: Partial<ShoppingListItem> = {})
 
 export function buildPhotoEstimate(overrides: Partial<PhotoEstimate> = {}): PhotoEstimate {
     return { ingredientId: "00000000-0000-4000-8000-000000000001", estimatedQuantity: 0, unit: "kg", ...overrides };
+}
+
+export function buildIngredientStockChange(overrides: Partial<IngredientStockChange> = {}): IngredientStockChange {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        ingredientId: "00000000-0000-4000-8000-000000000002",
+        previousStock: 0,
+        newStock: 10,
+        delta: 10,
+        changedById: "00000000-0000-4000-8000-000000000003",
+        changedBy: null,
+        changedAt: "2026-11-03T08:00:00.000+07:00",
+        ...overrides,
+    };
+}
+
+export function buildIngredientStockChangeRecord(
+    overrides: Partial<IngredientStockChangeRecord> = {},
+): IngredientStockChangeRecord {
+    return {
+        id: "00000000-0000-4000-8000-000000000001",
+        ingredientId: "00000000-0000-4000-8000-000000000002",
+        previousStock: 0,
+        newStock: 10,
+        changedById: "00000000-0000-4000-8000-000000000003",
+        changedAt: Temporal.PlainDateTime.from("2026-11-03T01:00:00"),
+        ...overrides,
+    };
 }

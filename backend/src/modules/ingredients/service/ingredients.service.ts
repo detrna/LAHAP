@@ -13,7 +13,9 @@ import type { IngredientsRepository } from "./interfaces/ingredients.repository.
 import type { MenuLookup } from "./interfaces/menu-lookup.js";
 import type { PhotoKeys } from "./interfaces/photo-keys.js";
 import type { PortionCounts } from "./interfaces/portion-counts.js";
+import type { UserDirectory } from "./interfaces/user-directory.js";
 import { listIngredients } from "./list-ingredients.js";
+import { listStockHistory } from "./list-stock-history.js";
 import { presentIngredient, presentIngredients } from "./present-ingredients.js";
 import { updateIngredient } from "./update-ingredient.js";
 import { updateIngredients } from "./update-ingredients.js";
@@ -27,6 +29,7 @@ export interface IngredientsServiceDeps {
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
     readonly stockLevelEstimator: StockLevelEstimator;
+    readonly users: UserDirectory;
 }
 
 export class IngredientsService {
@@ -37,6 +40,7 @@ export class IngredientsService {
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
     readonly stockLevelEstimator: StockLevelEstimator;
+    readonly users: UserDirectory;
 
     constructor(
         readonly ingredientsRepository: IngredientsRepository,
@@ -49,11 +53,13 @@ export class IngredientsService {
         this.menus = deps.menus;
         this.portions = deps.portions;
         this.stockLevelEstimator = deps.stockLevelEstimator;
+        this.users = deps.users;
     }
 
     presentIngredients = presentIngredients;
     presentIngredient = presentIngredient;
     listIngredients = listIngredients;
+    listStockHistory = listStockHistory;
     getIngredient = getIngredient;
     createIngredients = createIngredients;
     updateIngredients = updateIngredients;

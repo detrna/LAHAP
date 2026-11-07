@@ -1,7 +1,11 @@
 import type { Varchar } from "@prisma/orm-postgres/contract-builder";
-import { toNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
+import { fromNumeric, toNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
 import { getUniqueViolationConstraint } from "../../../../infrastructure/database/prisma/sql-errors.js";
-import type { IngredientRecord, NewIngredientRecord } from "../../service/interfaces/ingredients.repository.js";
+import type {
+    IngredientRecord,
+    NewIngredientRecord,
+    StockChangeAudit,
+} from "../../service/interfaces/ingredients.repository.js";
 import {
     IngredientAlreadyExistsError,
     IngredientsRepositoryFailureError,
@@ -13,6 +17,7 @@ import { toIngredientRecord } from "./to-ingredient-record.js";
 export async function createMany(
     this: PrismaIngredientsRepository,
     records: readonly NewIngredientRecord[],
+    audit: StockChangeAudit,
 ): Promise<readonly IngredientRecord[]> {
     let writing: NewIngredientRecord | undefined;
 
@@ -28,6 +33,15 @@ export async function createMany(
                     minimumThreshold: toNumeric(record.minimumThreshold, 2),
                     photoKey: record.photoKey,
                 });
+                if (fromNumeric(created.stock) > 0) {
+                    await tx.orm.public.IngredientStockHistory.create({
+                        ingredientId: created.id,
+                        changedById: audit.changedById,
+                        previousStock: toNumeric(0, 2),
+                        newStock: created.stock,
+                        changedAt: audit.changedAt,
+                    });
+                }
                 if (record.allergyIds.length > 0) {
                     await tx.orm.public.IngredientAllergy.createAll(
                         record.allergyIds.map(allergyId => ({ ingredientId: created.id, allergyId })),

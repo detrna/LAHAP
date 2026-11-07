@@ -82,6 +82,8 @@ export const ingredientListQuerySchema = paginationQuerySchema.extend({
     lowStock: queryBooleanSchema.optional(),
 });
 
+export const stockHistoryListQuerySchema = paginationQuerySchema;
+
 export const shoppingListQuerySchema = z.object({
     from: isoDateSchema.optional(),
     to: isoDateSchema.optional(),

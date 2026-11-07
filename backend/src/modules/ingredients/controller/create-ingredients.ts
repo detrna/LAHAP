@@ -5,5 +5,7 @@ import type { IngredientsController } from "./ingredients.controller.js";
 
 export async function createIngredients(this: IngredientsController, req: Request, res: Response): Promise<void> {
     const { items } = req.body as IngredientBatchCreateBody;
-    res.status(201).json(createSuccessResponse(await this.ingredientsService.createIngredients(items)));
+    res.status(201).json(
+        createSuccessResponse(await this.ingredientsService.createIngredients(items, req.user!.userId)),
+    );
 }

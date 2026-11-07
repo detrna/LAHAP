@@ -1,3 +1,4 @@
+import { toDbTimestamp } from "../../../shared/time/timestamp.js";
 import type { Ingredient, IngredientUnit } from "../domain/ingredient.domain.js";
 import { assertDistinctNames } from "./assert-distinct-names.js";
 import { ensureKnownAllergies } from "./ensure-known-allergies.js";
@@ -18,6 +19,7 @@ export interface CreateIngredientInput {
 export async function createIngredients(
     this: IngredientsService,
     inputs: readonly CreateIngredientInput[],
+    actorId: string,
 ): Promise<Ingredient[]> {
     assertDistinctNames(inputs.map(input => input.name));
     await ensureKnownAllergies(
@@ -37,6 +39,7 @@ export async function createIngredients(
             photoKey: input.photoKey,
             allergyIds: input.allergyIds ?? [],
         })),
+        { changedById: actorId, changedAt: toDbTimestamp(this.clock.now()) },
     );
     return this.presentIngredients(records);
 }

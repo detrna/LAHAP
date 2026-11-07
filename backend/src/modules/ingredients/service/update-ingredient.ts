@@ -15,8 +15,9 @@ export async function updateIngredient(
     this: IngredientsService,
     id: string,
     input: UpdateIngredientInput,
+    actorId: string,
 ): Promise<Ingredient> {
-    const [item] = await applyIngredientUpdates.call(this, [{ id, changes: input }], () => "photoKey");
+    const [item] = await applyIngredientUpdates.call(this, [{ id, changes: input }], actorId, () => "photoKey");
     if (item === undefined) throw new Error(`ingredient ${id} missing from its own update result`);
     return item;
 }

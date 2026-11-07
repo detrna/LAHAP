@@ -19,6 +19,7 @@ import {
     ingredientListQuerySchema,
     ingredientUpdateSchema,
     shoppingListQuerySchema,
+    stockHistoryListQuerySchema,
     stockUpdateSchema,
 } from "../schema/ingredients.schemas.js";
 
@@ -99,6 +100,14 @@ export function createIngredientsRouter({ controller, tokenProvider, maxBytes }:
         staff,
         validateRequest({ params: ingredientIdParamsSchema, body: stockUpdateSchema }),
         controller.updateStock,
+    );
+    router.get(
+        "/kitchen/ingredients/:id/stock-history",
+        signedIn,
+        staff,
+        validateRequest({ params: ingredientIdParamsSchema, query: stockHistoryListQuerySchema }),
+        paginate(),
+        controller.listStockHistory,
     );
 
     router.post(

@@ -6,6 +6,10 @@ import {
     noPortionCounts,
     type PortionCounts,
 } from "../../../src/modules/ingredients/service/interfaces/portion-counts.js";
+import {
+    noUserDirectory,
+    type UserDirectory,
+} from "../../../src/modules/ingredients/service/interfaces/user-directory.js";
 import type { ModuleDeps } from "../../../src/modules/module-deps.js";
 
 export interface IngredientsContainerOverrides {
@@ -13,6 +17,7 @@ export interface IngredientsContainerOverrides {
     readonly allergies: AllergyLookup;
     readonly menus: MenuLookup;
     readonly portions?: PortionCounts | undefined;
+    readonly users?: UserDirectory | undefined;
 }
 
 const acceptAnyPhoto: PhotoKeys = { assertPhotoKeyExists: async () => undefined };
@@ -27,5 +32,6 @@ export function createIngredientsContainer(
         allergies: overrides.allergies,
         menus: overrides.menus,
         portions: overrides.portions ?? noPortionCounts,
+        users: overrides.users ?? noUserDirectory,
     });
 }

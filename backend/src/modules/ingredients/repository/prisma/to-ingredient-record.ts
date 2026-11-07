@@ -1,6 +1,6 @@
 import { fromNumeric } from "../../../../infrastructure/database/prisma/numeric.js";
 import { INGREDIENT_UNITS, type IngredientUnit } from "../../domain/ingredient.domain.js";
-import type { IngredientRecord } from "../../service/interfaces/ingredients.repository.js";
+import type { IngredientRecord, IngredientStockChangeRecord } from "../../service/interfaces/ingredients.repository.js";
 
 export interface IngredientRow {
     readonly id: string;
@@ -12,6 +12,15 @@ export interface IngredientRow {
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
     readonly ingredientAllergy: readonly { readonly allergyId: string }[];
+}
+
+export interface IngredientStockHistoryRow {
+    readonly id: string;
+    readonly ingredientId: string;
+    readonly changedById: string;
+    readonly previousStock: string;
+    readonly newStock: string;
+    readonly changedAt: Temporal.PlainDateTime;
 }
 
 function isIngredientUnit(value: string): value is IngredientUnit {
@@ -33,5 +42,16 @@ export function toIngredientRecord(row: IngredientRow): IngredientRecord {
         allergyIds: row.ingredientAllergy.map(link => link.allergyId),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+    };
+}
+
+export function toIngredientStockChangeRecord(row: IngredientStockHistoryRow): IngredientStockChangeRecord {
+    return {
+        id: row.id,
+        ingredientId: row.ingredientId,
+        previousStock: fromNumeric(row.previousStock),
+        newStock: fromNumeric(row.newStock),
+        changedById: row.changedById,
+        changedAt: row.changedAt,
     };
 }

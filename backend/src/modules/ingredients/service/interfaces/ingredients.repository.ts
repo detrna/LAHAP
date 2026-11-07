@@ -49,12 +49,41 @@ export interface IngredientListRecord {
     readonly total: number;
 }
 
+export interface IngredientStockChangeRecord {
+    readonly id: string;
+    readonly ingredientId: string;
+    readonly previousStock: number;
+    readonly newStock: number;
+    readonly changedById: string;
+    readonly changedAt: Temporal.PlainDateTime;
+}
+
+export interface IngredientStockHistoryQuery {
+    readonly ingredientId: string;
+    readonly skip: number;
+    readonly take: number;
+}
+
+export interface IngredientStockHistoryListRecord {
+    readonly items: readonly IngredientStockChangeRecord[];
+    readonly total: number;
+}
+
+export interface StockChangeAudit {
+    readonly changedById: string;
+    readonly changedAt: Temporal.PlainDateTime;
+}
+
 export interface IngredientsRepository {
     list(query: IngredientListQuery): Promise<IngredientListRecord>;
+    listStockHistory(query: IngredientStockHistoryQuery): Promise<IngredientStockHistoryListRecord>;
     findById(id: string): Promise<IngredientRecord | null>;
     findByIds(ids: readonly string[]): Promise<readonly IngredientRecord[]>;
     findMissingIds(ids: readonly string[]): Promise<readonly string[]>;
-    createMany(records: readonly NewIngredientRecord[]): Promise<readonly IngredientRecord[]>;
-    updateMany(updates: readonly IngredientUpdateRecord[]): Promise<readonly IngredientRecord[]>;
+    createMany(records: readonly NewIngredientRecord[], audit: StockChangeAudit): Promise<readonly IngredientRecord[]>;
+    updateMany(
+        updates: readonly IngredientUpdateRecord[],
+        audit: StockChangeAudit,
+    ): Promise<readonly IngredientRecord[]>;
     deleteMany(ids: readonly string[]): Promise<number>;
 }

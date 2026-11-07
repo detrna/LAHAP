@@ -7,6 +7,7 @@ import type { IngredientsRepository } from "../../service/interfaces/ingredients
 import type { MenuLookup } from "../../service/interfaces/menu-lookup.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
 import type { PortionCounts } from "../../service/interfaces/portion-counts.js";
+import type { UserDirectory } from "../../service/interfaces/user-directory.js";
 
 export type Mocked<T> = { [K in keyof T]: T[K] & ReturnType<typeof vi.fn> };
 
@@ -16,6 +17,7 @@ export type MockedIngredientsService = Mocked<
     Pick<
         IngredientsService,
         | "listIngredients"
+        | "listStockHistory"
         | "getIngredient"
         | "createIngredients"
         | "updateIngredients"
@@ -30,6 +32,7 @@ export type MockedIngredientsService = Mocked<
 export function createMockIngredientsRepository(): Mocked<IngredientsRepository> {
     return {
         list: vi.fn(async () => ({ items: [], total: 0 })),
+        listStockHistory: vi.fn(async () => ({ items: [], total: 0 })),
         findById: vi.fn(async () => null),
         findByIds: vi.fn(async () => []),
         findMissingIds: vi.fn(async () => []),
@@ -74,9 +77,16 @@ export function createMockStockLevelEstimator(): Mocked<StockLevelEstimator> {
     } as Mocked<StockLevelEstimator>;
 }
 
+export function createMockUserDirectory(): Mocked<UserDirectory> {
+    return {
+        getSummaries: vi.fn(async () => []),
+    } as Mocked<UserDirectory>;
+}
+
 export function createMockIngredientsService(): MockedIngredientsService {
     return {
         listIngredients: vi.fn(),
+        listStockHistory: vi.fn(),
         getIngredient: vi.fn(),
         createIngredients: vi.fn(),
         updateIngredients: vi.fn(),

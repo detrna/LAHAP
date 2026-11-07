@@ -1,4 +1,5 @@
 import type { Allergy } from "../../catalog/domain/allergy.domain.js";
+import type { UserSummary } from "../../users/domain/user.domain.js";
 
 export const INGREDIENT_UNITS = ["kg", "gram", "liter", "ml", "butir", "ikat"] as const;
 export type IngredientUnit = (typeof INGREDIENT_UNITS)[number];
@@ -15,6 +16,17 @@ export interface Ingredient {
     readonly createdAt: string;
     readonly updatedAt: string;
     readonly allergies?: readonly Allergy[] | undefined;
+}
+
+export interface IngredientStockChange {
+    readonly id: string;
+    readonly ingredientId: string;
+    readonly previousStock: number;
+    readonly newStock: number;
+    readonly delta: number;
+    readonly changedById: string;
+    readonly changedBy?: UserSummary | null | undefined;
+    readonly changedAt: string;
 }
 
 export interface ShoppingListItem {

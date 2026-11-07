@@ -8,6 +8,7 @@ import type { IngredientsRepository } from "../../service/interfaces/ingredients
 import type { MenuLookup } from "../../service/interfaces/menu-lookup.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
 import type { PortionCounts } from "../../service/interfaces/portion-counts.js";
+import type { UserDirectory } from "../../service/interfaces/user-directory.js";
 import {
     createMockAllergyLookup,
     createMockIngredientsRepository,
@@ -17,6 +18,7 @@ import {
     createMockPhotoKeys,
     createMockPortionCounts,
     createMockStockLevelEstimator,
+    createMockUserDirectory,
     type Mocked,
     type MockedIngredientsService,
     type MockedObjectStorage,
@@ -31,6 +33,7 @@ export interface IngredientsServiceSetup {
     readonly menus: Mocked<MenuLookup>;
     readonly portions: Mocked<PortionCounts>;
     readonly stockLevelEstimator: Mocked<StockLevelEstimator>;
+    readonly users: Mocked<UserDirectory>;
     readonly service: IngredientsService;
 }
 
@@ -48,6 +51,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
     const menus = createMockMenuLookup();
     const portions = createMockPortionCounts();
     const stockLevelEstimator = createMockStockLevelEstimator();
+    const users = createMockUserDirectory();
     return {
         repository,
         objectStorage,
@@ -57,6 +61,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
         menus,
         portions,
         stockLevelEstimator,
+        users,
         service: new IngredientsService(repository, {
             objectStorage: objectStorage as unknown as ObjectStorage,
             photoKeys,
@@ -65,6 +70,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
             menus,
             portions,
             stockLevelEstimator,
+            users,
         }),
     };
 }
