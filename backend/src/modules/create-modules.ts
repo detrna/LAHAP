@@ -7,7 +7,6 @@ import { KitchenContainer } from "./kitchen/container/kitchen.container.js";
 import type { ModuleDeps } from "./module-deps.js";
 import { NotificationsContainer } from "./notifications/container/notifications.container.js";
 import { OrdersContainer } from "./orders/container/orders.container.js";
-import { noSlotObstacles } from "./orders/service/interfaces/slot-obstacles.js";
 import { PromoCodesContainer } from "./promo-codes/container/promo-codes.container.js";
 import { RealtimeContainer } from "./realtime/container/realtime.container.js";
 import { RetentionContainer } from "./retention/container/retention.container.js";
@@ -102,7 +101,7 @@ export function createModules(deps: ModuleDeps): Modules {
         promoChecker: promoCodes.service,
         notifier: notifications.service,
         realtime: realtime.service,
-        obstacles: noSlotObstacles,
+        obstacles: { findObstaclesByOrderIds: ids => delivery.service.findObstaclesByOrderIds(ids) },
         shoppingList: ingredients.service,
         unreadCount: notifications.service,
         customers: {
@@ -125,7 +124,15 @@ export function createModules(deps: ModuleDeps): Modules {
         slots: orders.service,
         customers: users.service,
     });
-    const delivery: DeliveryContainer = new DeliveryContainer(deps);
+    const delivery: DeliveryContainer = new DeliveryContainer({
+        ...deps,
+        catalog: catalog.service,
+        slots: orders.service,
+        users: users.service,
+        notifier: notifications.service,
+        realtime: realtime.service,
+        photoKeys: files.service,
+    });
     const retention: RetentionContainer = new RetentionContainer(deps);
 
     return {
