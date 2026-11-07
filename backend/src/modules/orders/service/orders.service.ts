@@ -56,8 +56,10 @@ import {
     findSchedulesWithOrders,
     findSubscriptionPeriods,
 } from "./provided/order-activity.js";
+import { findChurnedCustomers } from "./provided/find-churned-customers.js";
 import { findLastSuccessEndDates } from "./provided/find-last-success-end-dates.js";
 import { findUserIdsWithLastSuccessEndBefore } from "./provided/find-user-ids-with-last-success-end-before.js";
+import { getLastSuccessSummary } from "./provided/get-last-success-summary.js";
 import { countPaidServiceDays, sumTierDiscounts } from "./provided/order-stats.js";
 import { listCourierSlots } from "./provided/courier-slots.js";
 import { listKitchenSlots } from "./provided/kitchen-slots.js";
@@ -171,6 +173,8 @@ export class OrdersService {
     countPortionsBySchedule = countPortionsBySchedule;
     findLastSuccessEndDates = findLastSuccessEndDates;
     findUserIdsWithLastSuccessEndBefore = findUserIdsWithLastSuccessEndBefore;
+    findChurnedCustomers = findChurnedCustomers;
+    getLastSuccessSummary = getLastSuccessSummary;
     countActiveSubscribers = countActiveSubscribers;
     findSchedulesWithOrders = findSchedulesWithOrders;
     findSchedulesUsingAlternative = findSchedulesUsingAlternative;

@@ -31,6 +31,7 @@ import {
     findSubscriptionPeriods,
 } from "./provided/order-activity.js";
 import { findLastSuccessEndDates } from "./provided/find-last-success-end-dates.js";
+import { findLastSuccessSummaries } from "./provided/find-last-success-summaries.js";
 import { findUserIdsWithLastSuccessEndBefore } from "./provided/find-user-ids-with-last-success-end-before.js";
 import { countPaidServiceDays, sumTierDiscounts } from "./provided/order-stats.js";
 import { countPortions } from "./reports/count-portions.js";
@@ -69,6 +70,7 @@ export class PrismaOrdersRepository implements OrdersRepository {
     sumTierDiscounts = sumTierDiscounts;
     findLastSuccessEndDates = findLastSuccessEndDates;
     findUserIdsWithLastSuccessEndBefore = findUserIdsWithLastSuccessEndBefore;
+    findLastSuccessSummaries = findLastSuccessSummaries;
     countActiveSubscribers = countActiveSubscribers;
     findScheduleIdsWithSlots = findScheduleIdsWithSlots;
     findScheduleIdsUsingAlternative = findScheduleIdsUsingAlternative;

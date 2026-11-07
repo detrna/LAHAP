@@ -278,6 +278,13 @@ export interface SubscriptionPeriodRecord {
     readonly endDate: Temporal.PlainDate;
 }
 
+export interface LastSuccessSummaryRecord {
+    readonly userId: string;
+    readonly lastEndDate: Temporal.PlainDate;
+    readonly lastPackageId: string;
+    readonly totalSubscriptions: number;
+}
+
 export interface PackageAudienceQuery {
     readonly packageId: string;
     readonly subscriptionStatuses: readonly SubscriptionStatus[];
@@ -340,6 +347,7 @@ export interface OrdersRepository {
     ): Promise<ReadonlyMap<string, number>>;
     findLastSuccessEndDates(userIds: readonly string[]): Promise<ReadonlyMap<string, Temporal.PlainDate>>;
     findUserIdsWithLastSuccessEndBefore(date: Temporal.PlainDate): Promise<readonly string[]>;
+    findLastSuccessSummaries(userIds: readonly string[]): Promise<readonly LastSuccessSummaryRecord[]>;
     countActiveSubscribers(query: ActiveSubscriberQuery): Promise<ReadonlyMap<string, number>>;
     findScheduleIdsWithSlots(
         scheduleIds: readonly string[],

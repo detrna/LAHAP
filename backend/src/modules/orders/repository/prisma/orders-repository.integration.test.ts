@@ -14,6 +14,9 @@ describe("PrismaOrdersRepository (integration)", () => {
     let churned: string;
     let recent: string;
     let pendingOnly: string;
+    let tied: string;
+    let packageA: string;
+    let packageB: string;
 
     beforeAll(async () => {
         db = await loadDatabase(loadConfig().DATABASE);
@@ -36,6 +39,37 @@ describe("PrismaOrdersRepository (integration)", () => {
         await subscription(churned, "1990-12-01", "Pending");
         await subscription(recent, "2999-11-06");
         await subscription(pendingOnly, "1990-10-01", "Pending");
+
+        packageA = packageId;
+        packageB = await createTestPackage(db, rows);
+        tied = await createTestUser(db, rows);
+        const older = await createTestSubscription(db, rows, {
+            userId: tied,
+            packageId: packageA,
+            status: "Success",
+            startDate: Temporal.PlainDate.from("2026-09-01"),
+            endDate: Temporal.PlainDate.from("2026-09-10"),
+        });
+        const newer = await createTestSubscription(db, rows, {
+            userId: tied,
+            packageId: packageB,
+            status: "Success",
+            startDate: Temporal.PlainDate.from("2026-09-05"),
+            endDate: Temporal.PlainDate.from("2026-09-10"),
+        });
+        await createTestSubscription(db, rows, {
+            userId: tied,
+            packageId: packageA,
+            status: "Expire",
+            startDate: Temporal.PlainDate.from("2026-09-20"),
+            endDate: Temporal.PlainDate.from("2026-09-25"),
+        });
+        await db.orm.public.Subscription.where({ id: older }).update({
+            createdAt: Temporal.PlainDateTime.from("2026-08-01T00:00:00"),
+        });
+        await db.orm.public.Subscription.where({ id: newer }).update({
+            createdAt: Temporal.PlainDateTime.from("2026-08-02T00:00:00"),
+        });
     });
 
     afterAll(async () => {
@@ -61,5 +95,31 @@ describe("PrismaOrdersRepository (integration)", () => {
         expect(
             await repository.findUserIdsWithLastSuccessEndBefore(Temporal.PlainDate.from("2026-10-01")),
         ).not.toContain(churned);
+    });
+
+    it("summarizes each user's latest paid subscription and counts their paid subscriptions", async () => {
+        const summaries = await repository.findLastSuccessSummaries([churned, recent, pendingOnly, randomUUID()]);
+        const byUser = new Map(summaries.map(summary => [summary.userId, summary]));
+
+        expect(summaries).toHaveLength(2);
+        expect(byUser.get(churned)).toEqual({
+            userId: churned,
+            lastEndDate: Temporal.PlainDate.from("2026-10-01"),
+            lastPackageId: packageA,
+            totalSubscriptions: 2,
+        });
+        expect(byUser.get(recent)).toMatchObject({ totalSubscriptions: 1 });
+        expect(await repository.findLastSuccessSummaries([])).toEqual([]);
+    });
+
+    it("takes the most recently created subscription when two paid ones end on the same day", async () => {
+        expect(await repository.findLastSuccessSummaries([tied])).toEqual([
+            {
+                userId: tied,
+                lastEndDate: Temporal.PlainDate.from("2026-09-10"),
+                lastPackageId: packageB,
+                totalSubscriptions: 2,
+            },
+        ]);
     });
 });
