@@ -228,6 +228,16 @@ describe("PrismaCatalogRepository (integration)", () => {
                 expect(page.total).toBe(2);
             });
 
+            it("finds every package available at a moment, unpaged", async () => {
+                const ours = new Set(Object.values(ids));
+
+                const found = await repository.findAvailablePackages(now);
+
+                const foundIds = found.map(item => item.id).filter(id => ours.has(id));
+                expect(foundIds.sort()).toEqual([ids.running, ids.endsLater].sort());
+                expect(found.every(item => item.isActive)).toBe(true);
+            });
+
             it("pages the results", async () => {
                 const first = await listed({ skip: 0, take: 2 });
                 const last = await listed({ skip: 4, take: 2 });

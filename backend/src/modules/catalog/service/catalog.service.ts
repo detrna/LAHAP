@@ -9,6 +9,7 @@ import { getAllergy } from "./allergies/get-allergy.js";
 import { listAllergies } from "./allergies/list-allergies.js";
 import { listAllergyPage } from "./allergies/list-allergy-page.js";
 import { updateAllergy } from "./allergies/update-allergy.js";
+import type { AdminNotifier } from "./interfaces/admin-notifier.js";
 import type { CatalogRepository } from "./interfaces/catalog.repository.js";
 import type { IngredientLookup } from "./interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "./interfaces/order-activity.js";
@@ -44,6 +45,7 @@ import { createSchedules } from "./schedules/create-schedules.js";
 import { updateSchedule, updateSchedules } from "./schedules/update-schedules.js";
 import { deleteSchedules } from "./schedules/delete-schedules.js";
 import { publishSchedules } from "./schedules/publish-schedules.js";
+import { remindEmptySchedules } from "./schedules/remind-empty-schedules.js";
 
 export class CatalogService {
     constructor(
@@ -54,6 +56,7 @@ export class CatalogService {
         readonly ingredients: IngredientLookup,
         readonly orderActivity: OrderActivity,
         readonly announcer: ScheduleAnnouncer,
+        readonly adminNotifier: AdminNotifier,
         readonly logger: Logger,
     ) {}
 
@@ -102,4 +105,5 @@ export class CatalogService {
     updateSchedule = updateSchedule;
     deleteSchedules = deleteSchedules;
     publishSchedules = publishSchedules;
+    remindEmptySchedules = remindEmptySchedules;
 }

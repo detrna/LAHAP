@@ -4,6 +4,7 @@ import { CatalogController } from "../controller/catalog.controller.js";
 import { PrismaCatalogRepository } from "../repository/prisma/catalog-repository.js";
 import { createCatalogRouter } from "../routes/catalog.routes.js";
 import { CatalogService } from "../service/catalog.service.js";
+import type { AdminNotifier } from "../service/interfaces/admin-notifier.js";
 import type { IngredientLookup } from "../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../service/interfaces/order-activity.js";
 import type { ScheduleAnnouncer } from "../service/interfaces/schedule-announcer.js";
@@ -14,13 +15,22 @@ export interface CatalogContainerDeps extends ModuleDeps {
     readonly ingredients: IngredientLookup;
     readonly orderActivity: OrderActivity;
     readonly announcer: ScheduleAnnouncer;
+    readonly adminNotifier: AdminNotifier;
 }
 
 export class CatalogContainer {
     readonly service: CatalogService;
     readonly router: Router;
 
-    constructor({ db, adapters, photoKeys, ingredients, orderActivity, announcer }: CatalogContainerDeps) {
+    constructor({
+        db,
+        adapters,
+        photoKeys,
+        ingredients,
+        orderActivity,
+        announcer,
+        adminNotifier,
+    }: CatalogContainerDeps) {
         const repository = new PrismaCatalogRepository(db);
         this.service = new CatalogService(
             repository,
@@ -30,6 +40,7 @@ export class CatalogContainer {
             ingredients,
             orderActivity,
             announcer,
+            adminNotifier,
             adapters.logger,
         );
         const controller = new CatalogController(this.service);

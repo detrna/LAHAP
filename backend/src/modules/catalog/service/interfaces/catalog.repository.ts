@@ -237,6 +237,7 @@ export interface CatalogRepository {
     listPackages(query: PackageListQuery): Promise<PackageListRecord>;
     findPackageById(id: string): Promise<PackageRecord | null>;
     findPackagesByIds(ids: readonly string[]): Promise<readonly PackageRecord[]>;
+    findAvailablePackages(at: Temporal.PlainDateTime): Promise<readonly PackageRecord[]>;
     findMissingPackageIds(ids: readonly string[]): Promise<readonly string[]>;
     createPackage(record: NewPackageRecord): Promise<PackageRecord>;
     updatePackage(id: string, changes: PackageChanges, options?: UpdatePackageOptions): Promise<PackageRecord | null>;

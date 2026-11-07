@@ -3,12 +3,14 @@ import { createFixedClock, type FixedClock } from "../../../../../tests/utils/fa
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
 import { CatalogController } from "../../controller/catalog.controller.js";
 import { CatalogService } from "../../service/catalog.service.js";
+import type { AdminNotifier } from "../../service/interfaces/admin-notifier.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
 import type { ScheduleAnnouncer } from "../../service/interfaces/schedule-announcer.js";
 import {
+    createMockAdminNotifier,
     createMockCatalogRepository,
     createMockCatalogService,
     createMockIngredientLookup,
@@ -29,6 +31,7 @@ export interface CatalogServiceSetup {
     readonly ingredients: Mocked<IngredientLookup>;
     readonly orderActivity: Mocked<OrderActivity>;
     readonly announcer: Mocked<ScheduleAnnouncer>;
+    readonly adminNotifier: Mocked<AdminNotifier>;
     readonly logger: MockLogger;
     readonly service: CatalogService;
 }
@@ -46,6 +49,7 @@ export function setupCatalogService(): CatalogServiceSetup {
     const ingredients = createMockIngredientLookup();
     const orderActivity = createMockOrderActivity();
     const announcer = createMockScheduleAnnouncer();
+    const adminNotifier = createMockAdminNotifier();
     const logger = createMockLogger();
     return {
         repository,
@@ -55,6 +59,7 @@ export function setupCatalogService(): CatalogServiceSetup {
         ingredients,
         orderActivity,
         announcer,
+        adminNotifier,
         logger,
         service: new CatalogService(
             repository,
@@ -64,6 +69,7 @@ export function setupCatalogService(): CatalogServiceSetup {
             ingredients,
             orderActivity,
             announcer,
+            adminNotifier,
             logger,
         ),
     };

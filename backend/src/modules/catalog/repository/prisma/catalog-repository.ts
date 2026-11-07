@@ -12,6 +12,7 @@ import { createPackage } from "./packages/create-package.js";
 import { deletePackage } from "./packages/delete-package.js";
 import { findMissingPackageIds } from "./packages/find-missing-package-ids.js";
 import { findPackageById } from "./packages/find-package-by-id.js";
+import { findAvailablePackages } from "./packages/find-available-packages.js";
 import { findPackagesByIds } from "./packages/find-packages-by-ids.js";
 import { findScheduleIdsAtTimes } from "./packages/find-schedule-ids-at-times.js";
 import { listPackages } from "./packages/list-packages.js";
@@ -50,6 +51,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
     listPackages = listPackages;
     findPackageById = findPackageById;
     findPackagesByIds = findPackagesByIds;
+    findAvailablePackages = findAvailablePackages;
     findMissingPackageIds = findMissingPackageIds;
     createPackage = createPackage;
     updatePackage = updatePackage;

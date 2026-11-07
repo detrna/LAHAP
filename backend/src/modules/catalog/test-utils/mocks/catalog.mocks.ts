@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
 import type { CatalogService } from "../../service/catalog.service.js";
+import type { AdminNotifier } from "../../service/interfaces/admin-notifier.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
@@ -56,6 +57,7 @@ export function createMockCatalogRepository(): Mocked<CatalogRepository> {
         listPackages: vi.fn(async () => ({ items: [], total: 0 })),
         findPackageById: vi.fn(async () => null),
         findPackagesByIds: vi.fn(async () => []),
+        findAvailablePackages: vi.fn(async () => []),
         findMissingPackageIds: vi.fn(async () => []),
         createPackage: vi.fn(),
         updatePackage: vi.fn(async () => null),
@@ -104,6 +106,10 @@ export function createMockOrderActivity(): Mocked<OrderActivity> {
 
 export function createMockScheduleAnnouncer(): Mocked<ScheduleAnnouncer> {
     return { announce: vi.fn(async () => undefined) } as Mocked<ScheduleAnnouncer>;
+}
+
+export function createMockAdminNotifier(): Mocked<AdminNotifier> {
+    return { notifyAdmins: vi.fn(async () => []) } as Mocked<AdminNotifier>;
 }
 
 export function createMockIngredientLookup(): Mocked<IngredientLookup> {

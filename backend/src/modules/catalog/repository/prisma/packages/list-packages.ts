@@ -6,7 +6,7 @@ import { CatalogRepositoryFailureError } from "../../../service/interfaces/catal
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
 import { toPackageRecord } from "./to-package-record.js";
 
-function matchingPackages(orm: Db["orm"], query: PackageListQuery) {
+export function matchingPackages(orm: Db["orm"], query: Omit<PackageListQuery, "skip" | "take">) {
     let packages = orm.public.Package;
 
     if (query.search !== undefined) {
