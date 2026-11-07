@@ -1,6 +1,6 @@
 import { InvalidStateError } from "../../../shared/errors/invalid-state-error.js";
 import { ValidationError } from "../../../shared/errors/validation-error.js";
-import { UserNotFoundError } from "./interfaces/users.repository.js";
+import { UserNotFoundError } from "../../../shared/errors/user-not-found-error.js";
 import type { UsersService } from "./users.service.js";
 
 export interface ChangePasswordInput {

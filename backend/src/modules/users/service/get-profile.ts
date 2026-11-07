@@ -1,5 +1,5 @@
 import type { User } from "../domain/user.domain.js";
-import { UserNotFoundError } from "./interfaces/users.repository.js";
+import { UserNotFoundError } from "../../../shared/errors/user-not-found-error.js";
 import type { UsersService } from "./users.service.js";
 
 export async function getProfile(this: UsersService, userId: string): Promise<User> {

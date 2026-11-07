@@ -3,7 +3,7 @@ import { InvalidStateError } from "../../../shared/errors/invalid-state-error.js
 import { ValidationError } from "../../../shared/errors/validation-error.js";
 import { buildUserCredentialsRecord, buildUserRecord } from "../test-utils/factory/users.factory.js";
 import { setupUsersService } from "../test-utils/setup/users.setup.js";
-import { UserNotFoundError } from "./interfaces/users.repository.js";
+import { UserNotFoundError } from "../../../shared/errors/user-not-found-error.js";
 
 const USER_ID = buildUserRecord().id;
 

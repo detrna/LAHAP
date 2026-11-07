@@ -1,7 +1,8 @@
 import type { Role } from "../../../shared/auth/roles.js";
 import { removesAdminAccess } from "../domain/admin-access.js";
 import type { UserChanges, UserRecord } from "./interfaces/users.repository.js";
-import { UserAlreadyExistsError, UserNotFoundError } from "./interfaces/users.repository.js";
+import { UserAlreadyExistsError } from "./interfaces/users.repository.js";
+import { UserNotFoundError } from "../../../shared/errors/user-not-found-error.js";
 import { ensureKnownAllergies } from "./known-allergies.js";
 import { blankToNull, normalizeEmail } from "./normalize.js";
 import type { UsersService } from "./users.service.js";
