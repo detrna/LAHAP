@@ -2625,7 +2625,7 @@
           "Courier"
         ],
         "summary": "Get my delivery list",
-        "description": "**Roles:** `COURIER`.\n\nYour assigned delivery slots (UC-30). Pick-up and skipped slots never appear.",
+        "description": "**Roles:** `COURIER`.\n\nYour assigned delivery slots of one day (UC-30). Pick-up, skipped and unpaid slots never appear; finished (`Selesai`) slots stay so the courier sees the day's progress, and clients can filter them. Each slot shows the menu being served (the alternative one when the kitchen switched it) and its obstacle notes, oldest first.",
         "x-roles": [
           "COURIER"
         ],
@@ -2659,7 +2659,7 @@
                           "items": {
                             "$ref": "#/components/schemas/CourierDelivery"
                           },
-                          "description": "Sorted by meal time."
+                          "description": "Sorted by meal time, then by recipient name."
                         }
                       }
                     }
@@ -2763,7 +2763,7 @@
           "Courier"
         ],
         "summary": "Write an obstacle note",
-        "description": "**Roles:** `COURIER`, `ADMIN`.\n\nSaved with its time, sent to the customer as a notification and shown on their status page (UC-30, UC-12). The status does not change. Couriers: own slots in `Diantar` only.",
+        "description": "**Roles:** `COURIER`, `ADMIN`.\n\nSaved with its time, sent to the customer as a notification and shown on their status page (UC-30, UC-12). The status does not change. Couriers: own slots in `Diantar` only (404 for another courier's, pick-up or unpaid slot, 422 for any other status). Admins: any delivery slot of a paid order that isn't `Selesai` or `Dilewati` (422 otherwise). The customer notification and the `slot.obstacle` event are best-effort: if either fails the note is still saved and the response is 201.",
         "x-roles": [
           "COURIER",
           "ADMIN"
@@ -11414,7 +11414,8 @@
           "note": {
             "type": "string",
             "description": "What happened.",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 1000
           },
           "photoKey": {
             "type": "string",
