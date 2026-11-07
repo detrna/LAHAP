@@ -4,6 +4,14 @@ const DELIVERY_PATH: readonly OrderStatus[] = ["Terjadwal", "Disiapkan", "Dianta
 const PICKUP_PATH: readonly OrderStatus[] = ["Terjadwal", "Disiapkan", "Siap Diambil", "Selesai"];
 const SKIPPABLE: readonly OrderStatus[] = ["Terjadwal", "Disiapkan"];
 
+export const COOKED_SLOT_STATUSES: readonly OrderStatus[] = [
+    "Terjadwal",
+    "Disiapkan",
+    "Diantar",
+    "Siap Diambil",
+    "Selesai",
+];
+
 export function slotPath(isDelivery: boolean): readonly OrderStatus[] {
     return isDelivery ? DELIVERY_PATH : PICKUP_PATH;
 }
