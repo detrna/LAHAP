@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Langganan Saya · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body>
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
+<nav class="nav" aria-label="Menu utama"><a href="index.html">Paket</a><a href="langganan.html" aria-current="page">Langganan Saya</a><a href="kurir.html">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
+
+<main class="container">
+<div class="row-between" style="margin-bottom:24px">
+ <div><h1 class="t-h1">Langganan Saya</h1><p class="t-muted">Pantau pesanan, jadwal makan, dan pembayaranmu di sini.</p></div>
+ <a class="btn btn-primary" href="index.html">Pesan Paket Baru</a>
+</div>
+
+<div class="dash">
+<div class="stack-lg"><!-- kolom utama -->
+
+ <!-- Pesanan aktif: GET pesanan milik pelanggan (UC-11) -->
+ <section class="card stack">
+  <div class="row-between"><div><p class="label">Pesanan #LHP-0142</p><h2 class="t-h2">Paket Hemat · Mingguan</h2></div><span class="badge badge--success">Aktif</span></div>
+  <dl class="meta">
+   <div><dt>Periode</dt><dd>9 – 15 Nov 2026</dd></div>
+   <div><dt>Waktu makan</dt><dd>Siang · 12:00</dd></div>
+   <div><dt>Penerimaan</dt><dd>Diantar</dd></div>
+   <div><dt>Total dibayar</dt><dd>Rp175.000</dd></div>
+  </dl>
+  <div class="price-row t-small t-muted"><span>7 slot × Rp15.000 + ongkir 7 × Rp10.000 − diskon tier Rp5.250</span><span></span></div>
+ </section>
+
+ <!-- Status hari ini: diperbarui lewat SSE (UC-12) -->
+ <section class="card live stack" aria-live="polite">
+  <div class="row-between"><div><p class="label">Hari ini · Rabu, 11 Nov 2026</p><h2 class="t-h2">Siang · 12:00</h2></div><span class="badge badge--delivering">Diantar</span></div>
+  <ol class="steps"><li class="step is-done">Disiapkan</li><li class="step is-current" aria-current="step">Diantar</li><li class="step">Selesai</li></ol>
+  <div class="alert alert--warning"><span class="alert-title">Catatan kurir · 14:32</span>Ban bocor, estimasi delay 20 menit.</div>
+  <div><p class="t-h3">Ayam goreng + sayur asem</p><p class="t-small t-muted">Kurir: Ahmad Fauzi · Tidak ada alergen terdaftar</p></div>
+ </section>
+
+ <!-- Jadwal slot: skip tanpa refund (UC-44) -->
+ <section class="card">
+  <div class="section-head"><h2 class="t-h2">Jadwal makan</h2><span class="t-small t-muted">Skip tidak mengembalikan dana</span></div>
+  <div class="slot"><div><p class="t-h3">Kamis, 12 Nov · Siang</p><p class="t-small t-muted">Nasi ayam bakar + lalapan</p></div><div class="row"><span class="badge badge--prepared">Terjadwal</span><button class="btn btn-secondary btn-sm skip">Skip</button></div></div>
+  <div class="slot"><div><p class="t-h3">Jumat, 13 Nov · Siang</p><p class="t-small t-muted">Nasi uduk + telur balado · Mengandung telur</p></div><div class="row"><span class="badge badge--prepared">Terjadwal</span><button class="btn btn-secondary btn-sm skip">Skip</button></div></div>
+  <div class="slot"><div><p class="t-h3">Senin, 9 Nov · Siang</p><p class="t-small t-muted">Soto ayam + nasi</p></div><span class="badge badge--success">Selesai</span></div>
+ </section>
+
+ <!-- Riwayat pembayaran (UC-10) -->
+ <section class="card">
+  <div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2><span class="t-small t-muted">Lewat Midtrans</span></div>
+  <div class="invoice"><div><p class="t-h3">Paket Hemat · Mingguan</p><p class="t-small t-muted">8 Nov 2026 · QRIS</p></div><div class="row"><span class="t-h3">Rp175.000</span><span class="badge badge--success">Success</span></div></div>
+  <div class="invoice"><div><p class="t-h3">Paket Reguler · Harian</p><p class="t-small t-muted">1 Nov 2026 · Virtual account</p></div><div class="row"><span class="t-h3">Rp60.000</span><span class="badge badge--expire">Expire</span></div></div>
+ </section>
+</div>
+
+<aside class="stack-lg"><!-- kolom samping -->
+ <!-- Profil dan tier (UC-41, UC-51) -->
+ <section class="card stack">
+  <div class="row"><div class="avatar" aria-hidden="true">BS</div><div><h2 class="t-h3">Budi Santoso</h2><p class="t-small t-muted">0812-3456-7890 · Malang</p></div></div>
+  <div><div class="row-between"><span class="t-h3">Tier Silver</span><span class="badge badge--ready">Diskon 5%</span></div>
+   <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="60" aria-valuenow="28" style="margin:8px 0"><span style="width:47%"></span></div>
+   <p class="t-small t-muted">28 dari 60 hari menuju Gold (diskon 10%). Tier berlaku sampai 23 Des 2026.</p></div>
+  <div><p class="label">Alergi</p><p>Telur</p></div>
+  <a class="btn btn-secondary btn-block" href="#">Ubah Profil</a>
+ </section>
+
+ <!-- Notifikasi (UC-42) -->
+ <section class="stack">
+  <h2 class="t-h2">Notifikasi</h2>
+  <div class="alert alert--info"><span class="alert-title">Menu Jumat diganti</span>Nasi uduk + telur balado diganti karena stok bahan. Cek jadwalmu.</div>
+  <div class="alert alert--warning"><span class="alert-title">Peringatan alergi</span>Menu Jumat mengandung telur.</div>
+ </section>
+</aside>
+</div>
+
+<footer class="footer t-small"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM. Butuh bantuan pesanan? Hubungi admin lewat WhatsApp.</p></footer>
+</main>
+
+<script>
+// Skip slot: sementara hanya ubah tampilan. Sambungkan ke API milik backend.
+document.querySelectorAll('.skip').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    if(!confirm('Skip slot ini? Tagihan tidak berkurang dan tidak ada pengembalian dana.')) return;
+    var badge=btn.parentElement.querySelector('.badge');
+    badge.className='badge badge--expire';badge.textContent='Dilewati';btn.remove();
+  });
+});
+</script>
+</body></html>
