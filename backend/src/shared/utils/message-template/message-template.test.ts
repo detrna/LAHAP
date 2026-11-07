@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateMessage, MESSAGE_PLACEHOLDERS } from "./message-template.js";
+import { findUnknownPlaceholders, generateMessage, MESSAGE_PLACEHOLDERS } from "./message-template.js";
 
 describe("MESSAGE_PLACEHOLDERS", () => {
     it("has unique tokens", () => {
@@ -38,5 +38,23 @@ describe("generateMessage", () => {
 
     it("does not expand placeholders that appear inside values", () => {
         expect(generateMessage("Halo {nama}", { name: "{kode_promo}" })).toBe("Halo {kode_promo}");
+    });
+});
+
+describe("findUnknownPlaceholders", () => {
+    it("finds nothing in a body that uses only known placeholders", () => {
+        expect(
+            findUnknownPlaceholders(
+                "Halo {nama}, {paket_terakhir} {tanggal_berakhir} {lama_tidak_memesan} {kode_promo}",
+            ),
+        ).toEqual([]);
+    });
+
+    it("lists each unknown lowercase placeholder once, in order", () => {
+        expect(findUnknownPlaceholders("Halo {nma}, {alamat} dan {nma} lagi, {nama}")).toEqual(["{nma}", "{alamat}"]);
+    });
+
+    it("ignores braces that are not lowercase placeholders, as generateMessage does", () => {
+        expect(findUnknownPlaceholders("{Nama} {} { nama } {nama1} {NAMA} {{nama}}")).toEqual([]);
     });
 });

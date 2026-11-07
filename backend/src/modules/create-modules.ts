@@ -134,7 +134,13 @@ export function createModules(deps: ModuleDeps): Modules {
         realtime: realtime.service,
         photoKeys: files.service,
     });
-    const retention: RetentionContainer = new RetentionContainer(deps);
+    const retention: RetentionContainer = new RetentionContainer({
+        ...deps,
+        churn: orders.service,
+        customers: users.service,
+        packages: catalog.service,
+        promos: promoCodes.service,
+    });
 
     return {
         settings,
