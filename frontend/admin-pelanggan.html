@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pelanggan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div><h1 class="t-h1">Pelanggan</h1><p class="t-muted">Direktori pelanggan dan tindak lanjut yang berhenti berlangganan.</p></div>
+<div class="field"><label for="cari">Cari nama atau nomor HP</label><input class="input" id="cari" type="search"></div>
+<section class="card" id="daftar">
+<div class="invoice" data-cari="budi santoso 082222"><div><p class="t-h3">Budi Santoso</p><p class="t-small t-muted">082222 · 3 pesanan</p></div><div class="row"><span class="badge badge--ready">Silver</span><span class="badge badge--success">Aktif</span></div></div>
+<div class="invoice" data-cari="dewi lestari 085555"><div><p class="t-h3">Dewi Lestari</p><p class="t-small t-muted">085555 · 5 pesanan</p></div><div class="row"><span class="badge badge--ready">Gold</span><span class="badge badge--success">Aktif</span></div></div>
+<div class="invoice" data-cari="rani putri 081234500001"><div><p class="t-h3">Rani Putri</p><p class="t-small t-muted">081234500001 · 1 pesanan</p></div><div class="row"><span class="badge badge--expire">Biasa</span><span class="badge badge--cancel">Berhenti</span></div></div>
+</section>
+<section class="card stack">
+<div><h2 class="t-h2">Tindak lanjut pelanggan berhenti</h2><p class="t-small t-muted">Tidak memesan lebih dari 14 hari setelah periode terakhir berakhir.</p></div>
+<div class="field"><label for="tpl">Template pesan</label><textarea class="textarea" id="tpl">Halo {nama}, paket {paket_terakhir} kamu berakhir {tanggal_berakhir}. Pakai kode {kode_promo} untuk pesan lagi.</textarea><p class="hint">Isian: {nama}, {paket_terakhir}, {tanggal_berakhir}, {lama_tidak_memesan}, {kode_promo}.</p></div>
+<div class="field"><label for="kode">Kode promo (jika template memakainya)</label><input class="input" id="kode" value="MERDEKA"></div>
+<div class="alert alert--error row-between"><div><span class="alert-title">Rani Putri</span>Paket Hemat · berakhir 18 Oktober 2026 · 21 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" target="_blank" rel="noopener" data-hp="6281234500001" data-nama="Rani Putri" data-paket="Paket Hemat" data-tgl="18 Oktober 2026" data-hari="21 hari">Hubungi WhatsApp</a></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+const isi = () => {
+    document.querySelectorAll(".wa").forEach(a => {
+        const pesan = document.getElementById("tpl").value
+            .replace("{nama}", a.dataset.nama).replace("{paket_terakhir}", a.dataset.paket)
+            .replace("{tanggal_berakhir}", a.dataset.tgl).replace("{lama_tidak_memesan}", a.dataset.hari)
+            .replace("{kode_promo}", document.getElementById("kode").value);
+        a.href = `https://wa.me/${a.dataset.hp}?text=${encodeURIComponent(pesan)}`;
+    });
+};
+document.getElementById("tpl").addEventListener("input", isi);
+document.getElementById("kode").addEventListener("input", isi);
+document.getElementById("cari").addEventListener("input", event => {
+    const kata = event.target.value.trim().toLowerCase();
+    document.querySelectorAll("#daftar .invoice").forEach(row => {
+        row.hidden = !row.dataset.cari.includes(kata);
+    });
+});
+isi();
+</script></body></html>
