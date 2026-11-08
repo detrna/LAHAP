@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard admin · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+ <div><h1 class="t-h1">Dashboard admin</h1><p class="t-muted">Ringkasan usaha hari ini.</p></div>
+ <div class="alert alert--warning"><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan menu supaya pelanggan bisa memesan.</div>
+
+ <section class="grid grid-4" aria-label="Ringkasan">
+  <div class="card"><p class="t-small t-muted">Pemasukan hari ini</p><p class="price-big">Rp1.250.000</p></div>
+  <div class="card"><p class="t-small t-muted">Pesanan aktif</p><p class="price-big">38</p></div>
+  <div class="card"><p class="t-small t-muted">Pelanggan berhenti</p><p class="price-big">2</p></div>
+  <div class="card"><p class="t-small t-muted">Bahan hampir habis</p><p class="price-big">3</p></div>
+ </section>
+
+ <section class="card">
+  <div class="section-head"><h2 class="t-h2">Pembayaran</h2><span class="t-small t-muted">Tunai Offline perlu diverifikasi</span></div>
+  <div class="invoice"><div><p class="t-h3">Dewi Lestari · Paket Reguler · Bulanan</p><p class="t-small t-muted">Offline · Tunai · Rp560.000</p></div><div class="row"><span class="badge badge--pending">Pending</span><button class="btn btn-primary btn-sm verif">Verifikasi</button></div></div>
+  <div class="invoice"><div><p class="t-h3">Budi Santoso · Paket Hemat · Mingguan</p><p class="t-small t-muted">Online · QRIS · Rp175.000</p></div><span class="badge badge--success">Success</span></div>
+  <div class="invoice"><div><p class="t-h3">Rani Putri · Paket Hemat · Harian</p><p class="t-small t-muted">Online · Virtual account · Rp45.000</p></div><span class="badge badge--expire">Expire</span></div>
+ </section>
+
+ <section class="card stack">
+  <div><h2 class="t-h2">Pelanggan berhenti berlangganan</h2><p class="t-small t-muted">Tidak memesan lebih dari 2 minggu setelah periode terakhir. Hubungi lewat WhatsApp.</p></div>
+  <div class="field"><label for="tpl">Template pesan</label><textarea class="textarea" id="tpl">Halo {nama}, kami kangen! Pesan lagi paket LAHAP dan dapatkan promo spesial.</textarea><p class="hint">Tulis {nama} untuk menyisipkan nama pelanggan.</p></div>
+  <div class="alert alert--error row-between"><div><span class="alert-title">Rani Putri</span>Paket Hemat · berakhir 18 Okt · 20 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" data-nama="Rani" data-hp="6281234500001" target="_blank" rel="noopener">Hubungi WhatsApp</a></div>
+  <div class="alert alert--error row-between"><div><span class="alert-title">Andi Pratama</span>Paket Reguler · berakhir 22 Okt · 16 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" data-nama="Andi" data-hp="6281234500002" target="_blank" rel="noopener">Hubungi WhatsApp</a></div>
+ </section>
+
+ <section class="stack">
+  <h2 class="t-h2">Menu untuk disiapkan · Rabu, 11 Nov</h2>
+  <div class="grid grid-2">
+   <div class="card"><p class="label">Siang · 12:00 · Paket Hemat</p><div class="row-between"><p class="t-h3">Ayam goreng + sayur asem</p><p class="t-h3">24 porsi</p></div><p class="t-small t-muted">Ayam 4,8 kg · sayur asem 3,6 kg · beras 2,4 kg</p></div>
+   <div class="card"><p class="label">Siang · 12:00 · Paket Reguler</p><div class="row-between"><p class="t-h3">Nasi ayam bakar + lalapan</p><p class="t-h3">14 porsi</p></div><p class="t-small t-muted">1 pelanggan beralergi: perlu menu alternatif</p></div>
+  </div>
+ </section>
+</main>
+<script src="js/auth.js"></script>
+<script>
+document.querySelectorAll('.verif').forEach(function (b) {
+  b.onclick = function () { // ganti dengan API verifikasi pembayaran
+    var badge = b.parentElement.querySelector('.badge');
+    badge.className = 'badge badge--success'; badge.textContent = 'Success'; b.remove();
+  };
+});
+function isiWa() { // tautan wa.me dengan pesan terisi dan di-encode
+  document.querySelectorAll('.wa').forEach(function (a) {
+    var pesan = document.getElementById('tpl').value.replace('{nama}', a.dataset.nama);
+    a.href = 'https://wa.me/' + a.dataset.hp + '?text=' + encodeURIComponent(pesan);
+  });
+}
+document.getElementById('tpl').addEventListener('input', isiWa); isiWa();
+</script></body></html>
