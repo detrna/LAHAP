@@ -1,5 +1,6 @@
 import { createFixedClock, type FixedClock } from "../../../../../tests/utils/factory/clock/clock.js";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { ReceiptExtractor } from "../../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import type { StockLevelEstimator } from "../../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import { IngredientsController } from "../../controller/ingredients.controller.js";
 import { IngredientsService } from "../../service/ingredients.service.js";
@@ -17,6 +18,7 @@ import {
     createMockObjectStorage,
     createMockPhotoKeys,
     createMockPortionCounts,
+    createMockReceiptExtractor,
     createMockStockLevelEstimator,
     createMockUserDirectory,
     type Mocked,
@@ -33,6 +35,7 @@ export interface IngredientsServiceSetup {
     readonly menus: Mocked<MenuLookup>;
     readonly portions: Mocked<PortionCounts>;
     readonly stockLevelEstimator: Mocked<StockLevelEstimator>;
+    readonly receiptExtractor: Mocked<ReceiptExtractor>;
     readonly users: Mocked<UserDirectory>;
     readonly service: IngredientsService;
 }
@@ -51,6 +54,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
     const menus = createMockMenuLookup();
     const portions = createMockPortionCounts();
     const stockLevelEstimator = createMockStockLevelEstimator();
+    const receiptExtractor = createMockReceiptExtractor();
     const users = createMockUserDirectory();
     return {
         repository,
@@ -61,6 +65,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
         menus,
         portions,
         stockLevelEstimator,
+        receiptExtractor,
         users,
         service: new IngredientsService(repository, {
             objectStorage: objectStorage as unknown as ObjectStorage,
@@ -70,6 +75,7 @@ export function setupIngredientsService(): IngredientsServiceSetup {
             menus,
             portions,
             stockLevelEstimator,
+            receiptExtractor,
             users,
         }),
     };

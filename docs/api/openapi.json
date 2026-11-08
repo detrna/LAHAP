@@ -4660,6 +4660,184 @@
         "x-apidog-folder": "Admin/Ingredients"
       }
     },
+    "/admin/ingredients/extract": {
+      "post": {
+        "operationId": "extractIngredientsFromReceipt",
+        "tags": [
+          "Admin · Ingredients"
+        ],
+        "summary": "Extract ingredient updates from a receipt photo",
+        "description": "**Roles:** `ADMIN`.\n\nReads a market shopping receipt photo with `ReceiptExtractor`, matches purchased items against existing ingredients, and returns `{ items: [{ id, name, unit, stock }] }` where `stock` is `currentStock + extractedQuantity` (ready to submit directly to `PATCH /admin/ingredients`). Nothing is saved.",
+        "x-roles": [
+          "ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "Receipt photo.",
+                "required": [
+                  "image"
+                ],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Photo of the receipt. JPEG, PNG or WebP (detected from the file's bytes), at most `UPLOAD_MAX_BYTES`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "items"
+                          ],
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/IngredientBatchUpdateItem"
+                              },
+                              "description": "Matched ingredient updates ready for `PATCH /admin/ingredients`.",
+                              "minItems": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request or the receipt photo was refused. `VALIDATION_ERROR` for a missing `image`; `INVALID_RECEIPT_IMAGE`, `LOW_CONFIDENCE_RECEIPT` or `NO_RECEIPT_ITEMS_FOUND` from the extractor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "summary": "VALIDATION_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "request validation failed",
+                        "issues": [
+                          {
+                            "target": "body",
+                            "path": "image",
+                            "message": "image is required",
+                            "code": "required"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "INVALID_RECEIPT_IMAGE": {
+                    "summary": "INVALID_RECEIPT_IMAGE",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_RECEIPT_IMAGE",
+                        "message": "image is empty"
+                      }
+                    }
+                  },
+                  "LOW_CONFIDENCE_RECEIPT": {
+                    "summary": "LOW_CONFIDENCE_RECEIPT",
+                    "value": {
+                      "error": {
+                        "code": "LOW_CONFIDENCE_RECEIPT",
+                        "message": "low confidence extraction (40/100): image may be blurry or unreadable"
+                      }
+                    }
+                  },
+                  "NO_RECEIPT_ITEMS_FOUND": {
+                    "summary": "NO_RECEIPT_ITEMS_FOUND",
+                    "value": {
+                      "error": {
+                        "code": "NO_RECEIPT_ITEMS_FOUND",
+                        "message": "no matching receipt items found"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "description": "The AI provider failed (`RECEIPT_EXTRACTOR_PROVIDER_ERROR`) or returned output that couldn't be read even after one retry (`RECEIPT_EXTRACTION_FAILED`). Nothing was saved; try again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseBody"
+                },
+                "examples": {
+                  "RECEIPT_EXTRACTOR_PROVIDER_ERROR": {
+                    "summary": "RECEIPT_EXTRACTOR_PROVIDER_ERROR",
+                    "value": {
+                      "error": {
+                        "code": "RECEIPT_EXTRACTOR_PROVIDER_ERROR",
+                        "message": "receipt extractor provider request failed"
+                      }
+                    }
+                  },
+                  "RECEIPT_EXTRACTION_FAILED": {
+                    "summary": "RECEIPT_EXTRACTION_FAILED",
+                    "value": {
+                      "error": {
+                        "code": "RECEIPT_EXTRACTION_FAILED",
+                        "message": "receipt extractor output was not valid receipt data"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-apidog-folder": "Admin/Ingredients"
+      }
+    },
     "/admin/ingredients/shopping-list": {
       "get": {
         "operationId": "getShoppingList",

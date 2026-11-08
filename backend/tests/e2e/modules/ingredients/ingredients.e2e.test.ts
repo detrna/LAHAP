@@ -10,6 +10,14 @@ import { FilesService } from "../../../../src/modules/files/service/files.servic
 import type { Role } from "../../../../src/shared/auth/roles.js";
 import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/object-storage.js";
 import {
+    LowConfidenceReceiptError,
+    NoReceiptItemsFoundError,
+    ReceiptExtractorProviderError,
+    type ReceiptData,
+    type ReceiptExtractInput,
+    type ReceiptExtractor,
+} from "../../../../src/shared/ports/receipt-extractor/receipt-extractor.js";
+import {
     LowConfidenceError,
     StockLevelEstimatorProviderError,
     type StockLevelEstimateInput,
@@ -38,6 +46,18 @@ const stockLevelEstimator: StockLevelEstimator = {
     estimate: async input => {
         estimateCalls.push(input);
         return estimateResult();
+    },
+};
+
+const defaultExtract = async (input: ReceiptExtractInput): Promise<ReceiptData> => ({
+    items: input.ingredients.slice(0, 1).map(item => ({ ...item, quantity: 5 })),
+});
+let extractResult: (input: ReceiptExtractInput) => Promise<ReceiptData> = defaultExtract;
+const extractCalls: ReceiptExtractInput[] = [];
+const receiptExtractor: ReceiptExtractor = {
+    extract: async input => {
+        extractCalls.push(input);
+        return extractResult(input);
     },
 };
 
@@ -103,7 +123,7 @@ describe("ingredients routes (e2e)", () => {
         kitchenId = await createTestUser(db, rows, { role: "KITCHEN", name: "Dapur Satu" });
         testApp = await createTestApp({
             db,
-            adapters: { objectStorage, stockLevelEstimator },
+            adapters: { objectStorage, stockLevelEstimator, receiptExtractor },
             http: { UPLOAD_MAX_BYTES },
             mount: deps => {
                 const catalog = createCatalogContainer(deps);
@@ -828,6 +848,108 @@ describe("ingredients routes (e2e)", () => {
             expect(missing.body.error.code).toBe("INGREDIENT_NOT_FOUND");
             expect(badId.status).toBe(400);
             expect(badQuery.status).toBe(400);
+        });
+    });
+
+    describe("receipt extract", () => {
+        const extract = (headers: Record<string, string>, file: Buffer | null, name = "receipt.png") => {
+            const call = request(app).post("/api/admin/ingredients/extract").set(headers);
+            return file === null ? call : call.attach("image", file, name);
+        };
+
+        afterEach(() => {
+            extractResult = defaultExtract;
+            extractCalls.length = 0;
+        });
+
+        it("extracts matched ingredients with new total stock ready for PATCH /api/admin/ingredients and saves nothing", async () => {
+            const ayam = await createIngredient("Dada Ayam Extract", { unit: "kg", stock: 4.5 });
+            const minyak = await createIngredient("Minyak Extract", { unit: "liter", stock: 2 });
+            extractResult = async () => ({
+                items: [
+                    { id: ayam.id, name: ayam.name, quantity: 10, unit: "kg" },
+                    { id: minyak.id, name: minyak.name, quantity: 3.5, unit: "liter" },
+                ],
+            });
+
+            const extracted = await extract(admin(), PNG);
+
+            expect(extracted.status).toBe(200);
+            expect(extracted.body).toEqual({
+                data: {
+                    items: [
+                        { id: ayam.id, name: ayam.name, unit: "kg", stock: 14.5 },
+                        { id: minyak.id, name: minyak.name, unit: "liter", stock: 5.5 },
+                    ],
+                },
+            });
+            expect(extractCalls[0]?.mimeType).toBe("image/png");
+            expect(extractCalls[0]?.image.equals(PNG)).toBe(true);
+            expect(extractCalls[0]?.ingredients).toEqual(
+                expect.arrayContaining([
+                    { id: ayam.id, name: ayam.name, unit: "kg" },
+                    { id: minyak.id, name: minyak.name, unit: "liter" },
+                ]),
+            );
+
+            const beforePatch = await request(app).get(`/api/admin/ingredients/${ayam.id}`).set(admin());
+            expect(beforePatch.body.data.stock).toBe(4.5);
+
+            const patched = await request(app).patch("/api/admin/ingredients").set(admin()).send(extracted.body.data);
+            expect(patched.status).toBe(200);
+            expect(patched.body.data).toMatchObject([
+                { id: ayam.id, stock: 14.5 },
+                { id: minyak.id, stock: 5.5 },
+            ]);
+        });
+
+        it("forbids kitchen and customer roles and requires authentication", async () => {
+            const unauth = await request(app).post("/api/admin/ingredients/extract").attach("image", PNG, "r.png");
+            const byKitchen = await extract(kitchen(), PNG);
+            const byCustomer = await extract(asRole("CUSTOMER"), PNG);
+
+            expect(unauth.status).toBe(401);
+            expect(byKitchen.status).toBe(403);
+            expect(byCustomer.status).toBe(403);
+            expect(extractCalls).toHaveLength(0);
+        });
+
+        it("answers 400 without an image, 415 for non-images, and 413 above the upload limit", async () => {
+            const missing = await extract(admin(), null);
+            const text = await extract(admin(), Buffer.from("just text"), "receipt.png");
+            const large = await extract(admin(), Buffer.concat([PNG, Buffer.alloc(UPLOAD_MAX_BYTES)]), "receipt.png");
+
+            expect(missing.status).toBe(400);
+            expect(missing.body.error.code).toBe("VALIDATION_ERROR");
+            expect(text.status).toBe(415);
+            expect(text.body.error.code).toBe("UNSUPPORTED_MEDIA_TYPE");
+            expect(large.status).toBe(413);
+            expect(large.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+            expect(extractCalls).toHaveLength(0);
+        });
+
+        it("passes the receipt extractor's errors through", async () => {
+            extractResult = async () => {
+                throw new LowConfidenceReceiptError("low confidence receipt");
+            };
+            const lowConfidence = await extract(admin(), PNG);
+
+            extractResult = async () => {
+                throw new NoReceiptItemsFoundError("no matching receipt items found");
+            };
+            const noItems = await extract(admin(), PNG);
+
+            extractResult = async () => {
+                throw new ReceiptExtractorProviderError("receipt extractor provider request failed");
+            };
+            const providerDown = await extract(admin(), PNG);
+
+            expect(lowConfidence.status).toBe(400);
+            expect(lowConfidence.body.error.code).toBe("LOW_CONFIDENCE_RECEIPT");
+            expect(noItems.status).toBe(400);
+            expect(noItems.body.error.code).toBe("NO_RECEIPT_ITEMS_FOUND");
+            expect(providerDown.status).toBe(502);
+            expect(providerDown.body.error.code).toBe("RECEIPT_EXTRACTOR_PROVIDER_ERROR");
         });
     });
 });

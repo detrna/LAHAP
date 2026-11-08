@@ -3,16 +3,24 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../../config/index.js";
-import { ReceiptExtractionError } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
+import {
+    ReceiptExtractionError,
+    type ReceiptIngredientInput,
+} from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import { QwenReceiptExtractor } from "./qwen.js";
 
 const config = loadConfig();
 
-// Integration tests call the real (paid) OCR API.
-// Run with: npm run test:integration
 const FIXTURES_DIR = join(import.meta.dirname, "fixtures");
-const UNITS = ["PCS", "KG", "G", "L", "ML", "PACK", "BUNGKUS", "LUSIN", "BOX", "BUAH"] as const;
-const units: [string, ...string[]] = [...UNITS];
+const INGREDIENTS: readonly ReceiptIngredientInput[] = [
+    { id: "00000000-0000-4000-8000-000000000001", name: "Dada Ayam Fillet", unit: "kg" },
+    { id: "00000000-0000-4000-8000-000000000002", name: "Beras Basmati", unit: "kg" },
+    { id: "00000000-0000-4000-8000-000000000003", name: "Minyak Zaitun Extra Virgin", unit: "liter" },
+    { id: "00000000-0000-4000-8000-000000000004", name: "Tomat Segar", unit: "kg" },
+    { id: "00000000-0000-4000-8000-000000000005", name: "Bawang Bombai", unit: "kg" },
+    { id: "00000000-0000-4000-8000-000000000006", name: "Gula Pasir", unit: "kg" },
+];
+const INGREDIENT_IDS = new Set(INGREDIENTS.map(ingredient => ingredient.id));
 
 const TIMEOUT_MS = 30_000;
 
@@ -27,44 +35,44 @@ async function loadFixture(name: string) {
 }
 
 describe.skipIf(!config.RECEIPT_EXTRACTOR.API_KEY)("QwenReceiptExtractor (integration)", () => {
-    // Happy path — clear readable receipts
     it.each(["receipt.jpg", "clean_receipt.png"])(
-        "extracts valid items from %s",
+        "extracts valid matched items from %s",
         async name => {
             const { image, mimeType } = await loadFixture(name);
 
-            const result = await makeExtractor().extract(image, mimeType, units);
+            const result = await makeExtractor().extract({ image, mimeType, ingredients: INGREDIENTS });
 
             expect(result.items.length).toBeGreaterThan(0);
             for (const item of result.items) {
+                expect(INGREDIENT_IDS.has(item.id)).toBe(true);
                 expect(item.name.length).toBeGreaterThan(0);
                 expect(Number.isFinite(item.quantity)).toBe(true);
                 expect(item.quantity).toBeGreaterThan(0);
-                expect(UNITS).toContain(item.unit);
             }
-            // console.log(`[${name}]`, JSON.stringify(result, null, 2));
         },
         TIMEOUT_MS,
     );
 
-    // Failure path — blurry image should be rejected by the confidence gate
     it(
         "throws ReceiptExtractionError for blurry_receipt.jpg (low confidence)",
         async () => {
             const { image, mimeType } = await loadFixture("blurry_receipt.jpg");
 
-            await expect(makeExtractor().extract(image, mimeType, units)).rejects.toThrow(ReceiptExtractionError);
+            await expect(makeExtractor().extract({ image, mimeType, ingredients: INGREDIENTS })).rejects.toThrow(
+                ReceiptExtractionError,
+            );
         },
         TIMEOUT_MS,
     );
 
-    // Failure path — non-receipt image should be rejected by the confidence gate
     it(
         "throws ReceiptExtractionError for not_a_receipt.jpg (low confidence)",
         async () => {
             const { image, mimeType } = await loadFixture("not_a_receipt.jpg");
 
-            await expect(makeExtractor().extract(image, mimeType, units)).rejects.toThrow(ReceiptExtractionError);
+            await expect(makeExtractor().extract({ image, mimeType, ingredients: INGREDIENTS })).rejects.toThrow(
+                ReceiptExtractionError,
+            );
         },
         TIMEOUT_MS,
     );

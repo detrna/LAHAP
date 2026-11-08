@@ -32,6 +32,7 @@ export class IngredientsContainer {
             menus,
             portions,
             stockLevelEstimator: adapters.stockLevelEstimator,
+            receiptExtractor: adapters.receiptExtractor,
             users,
         });
         const controller = new IngredientsController(this.service);

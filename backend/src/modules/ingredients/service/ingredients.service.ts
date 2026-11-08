@@ -1,9 +1,11 @@
 import type { Clock } from "../../../shared/ports/clock/clock.js";
 import type { ObjectStorage } from "../../../shared/ports/object-storage/object-storage.js";
+import type { ReceiptExtractor } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import type { StockLevelEstimator } from "../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import { createIngredients } from "./create-ingredients.js";
 import { deleteIngredients } from "./delete-ingredients.js";
 import { estimateStock } from "./estimate-stock.js";
+import { extractReceipt } from "./extract-receipt.js";
 import { findMissingIngredientIds } from "./find-missing-ingredient-ids.js";
 import { getIngredient } from "./get-ingredient.js";
 import { getIngredientsByIds } from "./get-ingredients-by-ids.js";
@@ -29,6 +31,7 @@ export interface IngredientsServiceDeps {
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
     readonly stockLevelEstimator: StockLevelEstimator;
+    readonly receiptExtractor: ReceiptExtractor;
     readonly users: UserDirectory;
 }
 
@@ -40,6 +43,7 @@ export class IngredientsService {
     readonly menus: MenuLookup;
     readonly portions: PortionCounts;
     readonly stockLevelEstimator: StockLevelEstimator;
+    readonly receiptExtractor: ReceiptExtractor;
     readonly users: UserDirectory;
 
     constructor(
@@ -53,6 +57,7 @@ export class IngredientsService {
         this.menus = deps.menus;
         this.portions = deps.portions;
         this.stockLevelEstimator = deps.stockLevelEstimator;
+        this.receiptExtractor = deps.receiptExtractor;
         this.users = deps.users;
     }
 
@@ -70,4 +75,5 @@ export class IngredientsService {
     findMissingIngredientIds = findMissingIngredientIds;
     getShoppingList = getShoppingList;
     estimateStock = estimateStock;
+    extractReceipt = extractReceipt;
 }

@@ -2,13 +2,7 @@ import { AppError } from "../../errors/app-error.js";
 
 export class ReceiptExtractionError extends AppError {
     readonly code: string = "RECEIPT_EXTRACTION_FAILED";
-    readonly statusCode: number = 400;
-
-    constructor(message: string, options?: { cause?: unknown; code?: string; statusCode?: number }) {
-        super(message, { cause: options?.cause });
-        if (options?.code) this.code = options.code;
-        if (options?.statusCode) this.statusCode = options.statusCode;
-    }
+    readonly statusCode: number = 502;
 }
 
 export class InvalidReceiptImageError extends ReceiptExtractionError {
@@ -30,6 +24,3 @@ export class ReceiptExtractorProviderError extends ReceiptExtractionError {
     override readonly code = "RECEIPT_EXTRACTOR_PROVIDER_ERROR";
     override readonly statusCode = 502;
 }
-
-// Aliases matching domain terminology
-export { LowConfidenceReceiptError as ErrorLowConfidence, NoReceiptItemsFoundError as ErrorNotReceipt };

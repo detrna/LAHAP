@@ -57,6 +57,13 @@ export function createIngredientsRouter({ controller, tokenProvider, maxBytes }:
         validateBody(ingredientBatchUpdateSchema),
         controller.updateIngredients,
     );
+    router.post(
+        "/admin/ingredients/extract",
+        signedIn,
+        admin,
+        uploadImage({ field: "image", maxBytes }),
+        controller.extractReceipt,
+    );
     router.get(
         "/admin/ingredients/shopping-list",
         signedIn,

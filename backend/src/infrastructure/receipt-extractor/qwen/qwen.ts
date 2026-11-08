@@ -1,20 +1,22 @@
 import type OpenAI from "openai";
 import { z } from "zod";
 import type { ReceiptExtractorConfig } from "../../../config/receipt-extractor.js";
-import { createQwenClient, parseAndValidateJson } from "../../qwen/index.js";
-import { CONFIDENCE_THRESHOLD, MAX_IMAGE_BYTES, SUPPORTED_MIME_TYPES } from "./const.js";
 import {
     InvalidReceiptImageError,
     LowConfidenceReceiptError,
     NoReceiptItemsFoundError,
     ReceiptExtractionError,
     ReceiptExtractorProviderError,
-} from "../../../shared/ports/receipt-extractor/errors.js";
-import type { ReceiptData, ReceiptExtractor } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
+    type ReceiptData,
+    type ReceiptExtractedItem,
+    type ReceiptExtractInput,
+    type ReceiptExtractor,
+    type ReceiptIngredientInput,
+} from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
+import { roundHalfUp } from "../../../shared/utils/decimal/decimal.js";
+import { createQwenClient, executeWithParseRetry } from "../../qwen/index.js";
+import { CONFIDENCE_THRESHOLD, MAX_IMAGE_BYTES, SUPPORTED_MIME_TYPES } from "./const.js";
 
-type NonEmptyArray<T> = [T, ...T[]];
-
-// Lines that appear on receipts but are not purchasable items
 const STOP_WORDS = new Set([
     "total",
     "subtotal",
@@ -37,7 +39,7 @@ const STOP_WORDS = new Set([
 
 const isStopWord = (name: string) => STOP_WORDS.has(name.toLowerCase().trim());
 
-const quantity = z.preprocess(v => {
+const quantitySchema = z.preprocess(v => {
     if (typeof v === "number") return v;
     if (typeof v === "string") {
         const m = v.match(/\d+(?:[.,]\d+)?/);
@@ -46,55 +48,56 @@ const quantity = z.preprocess(v => {
     return undefined;
 }, z.number().positive());
 
-function buildReceiptSchema(units: NonEmptyArray<string>) {
-    return z.object({
-        confidence: z.number().min(0).max(100),
-        items: z.array(
-            z.object({
-                name: z.string(),
-                quantity: quantity,
-                unit: z.enum(units).catch("BUAH"),
-            }),
-        ),
-    });
-}
+const receiptOutputSchema = z.object({
+    confidence: z.number().min(0).max(100),
+    items: z.array(
+        z.object({
+            id: z.string(),
+            name: z.string(),
+            quantity: quantitySchema,
+            unit: z.string(),
+        }),
+    ),
+});
 
-function buildPrompt(units: NonEmptyArray<string>): string {
-    // JSON.stringify escapes quotes so a unit code can't break out of the prompt
-    const allowed = units.map(u => JSON.stringify(u)).join(", ");
+type ReceiptParsedOutput = z.infer<typeof receiptOutputSchema>;
+
+export function buildPrompt(ingredients: readonly ReceiptIngredientInput[]): string {
+    const knownList = ingredients.map(item => ({
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+    }));
+    const first = ingredients[0] ?? {
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Dada Ayam Fillet",
+        unit: "kg",
+    };
 
     const example = {
         confidence: 90,
-        items: [
-            { name: "Indomie Goreng", quantity: 2, unit: units[0] },
-            { name: "Tepung Terigu", quantity: 1, unit: units[0] },
-        ],
+        items: [{ id: first.id, name: first.name, quantity: 2, unit: first.unit }],
     };
 
     return `
-Extract every purchasable line item from the receipt image. For each item return its name, quantity, and unit.
-Only include actual products or goods — skip totals, subtotals, taxes, discounts, and payment lines entirely.
+Extract purchasable line items from the receipt image that match the following known catalog ingredients:
+${JSON.stringify(knownList, null, 2)}
+
+For each matched line item on the receipt, return its matched catalog "id", "name", purchased "quantity", and "unit".
+Skip any receipt line item that does not match one of the known catalog ingredients above.
+Skip totals, subtotals, taxes, discounts, and payment lines entirely.
 Do not include prices, price columns, or any monetary values in the output.
-Do not omit or fabricate items. Replace any single blurry or obscured character with a question mark (?).
-If the quantity is not shown, use 1.
-unit must be exactly one of: ${allowed}. If the unit is not shown, infer the most appropriate one from the list.
-quantity must be a JSON number only (no unit, no text). Put the unit in "unit".
+If the quantity is not shown on a matched line, use 1.
+quantity must be a JSON number only (no unit, no text).
 Also include a confidence field (0–100) reflecting how clearly the receipt items could be read.
 Return only valid JSON, with no explanation, in exactly this shape:
 ${JSON.stringify(example, null, 2)}
 `;
 }
 
-// The model may wrap JSON in code fences, so strip them before parsing
-function parseReceiptData(text: string, units: NonEmptyArray<string>): { confidence: number; data: ReceiptData } {
-    const parsed = parseAndValidateJson(text, buildReceiptSchema(units));
-    return { confidence: parsed.confidence, data: { items: parsed.items } };
-}
-
 type ImageUrl = OpenAI.Chat.Completions.ChatCompletionContentPartImage["image_url"];
 
 export interface QwenReceiptExtractorOptions {
-    /** Called with real token counts after each request, useful for cost checking */
     onUsage?: (usage: OpenAI.Completions.CompletionUsage | undefined) => void;
 }
 
@@ -114,77 +117,106 @@ export class QwenReceiptExtractor implements ReceiptExtractor {
         this.onUsage = options.onUsage;
     }
 
-    async extract(image: Buffer, mimeType: string, units: [string, ...string[]]): Promise<ReceiptData> {
+    async extract(input: ReceiptExtractInput): Promise<ReceiptData> {
+        const { image, mimeType, ingredients } = input;
+
         if (!SUPPORTED_MIME_TYPES.has(mimeType)) {
-            throw new InvalidReceiptImageError(`Unsupported image type: ${mimeType}`);
+            throw new InvalidReceiptImageError(`unsupported image type: ${mimeType}`);
         }
         if (image.length === 0) {
-            throw new InvalidReceiptImageError("Image is empty");
+            throw new InvalidReceiptImageError("image is empty");
         }
         if (image.length > MAX_IMAGE_BYTES) {
-            throw new InvalidReceiptImageError("Image is too large");
+            throw new InvalidReceiptImageError("image is too large");
+        }
+        if (ingredients.length === 0) {
+            throw new NoReceiptItemsFoundError("no items found: no ingredients configured");
         }
 
-        // Send the bytes as a Base64 data URL so no public URL is needed
         const dataUrl = `data:${mimeType};base64,${image.toString("base64")}`;
+        const promptText = buildPrompt(ingredients);
 
-        let completion: OpenAI.Chat.Completions.ChatCompletion;
+        const callModel = async (): Promise<string> => {
+            let completion: OpenAI.Chat.Completions.ChatCompletion;
+            try {
+                completion = await this.client.chat.completions.create({
+                    model: this.model,
+                    max_tokens: 4096,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: dataUrl,
+                                        min_pixels: 32 * 32 * 3,
+                                        max_pixels: 32 * 32 * 8192,
+                                    } as ImageUrl,
+                                },
+                                { type: "text", text: promptText },
+                            ],
+                        },
+                    ],
+                });
+            } catch (cause) {
+                throw new ReceiptExtractorProviderError("receipt extractor provider request failed", { cause });
+            }
+
+            this.onUsage?.(completion.usage);
+
+            const content = completion.choices[0]?.message.content;
+            if (!content) {
+                throw new ReceiptExtractorProviderError("receipt extractor provider returned no content");
+            }
+
+            return content;
+        };
+
+        let result: { data: ReceiptParsedOutput; rawText: string };
         try {
-            completion = await this.client.chat.completions.create({
-                model: this.model,
-                max_tokens: 4096,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    url: dataUrl,
-                                    // Non-standard fields, so the SDK types need a cast
-                                    min_pixels: 32 * 32 * 3,
-                                    max_pixels: 32 * 32 * 8192,
-                                } as ImageUrl,
-                            },
-                            { type: "text", text: buildPrompt(units) },
-                        ],
-                    },
-                ],
-            });
+            result = await executeWithParseRetry(callModel, receiptOutputSchema);
         } catch (cause) {
-            throw new ReceiptExtractorProviderError("Receipt extractor provider request failed", { cause });
+            if (cause instanceof ReceiptExtractorProviderError || cause instanceof InvalidReceiptImageError) {
+                throw cause;
+            }
+            throw new ReceiptExtractionError("receipt extractor output was not valid receipt data", { cause });
         }
 
-        this.onUsage?.(completion.usage);
+        const { data } = result;
 
-        const content = completion.choices[0]?.message.content;
-        if (!content) {
-            throw new ReceiptExtractorProviderError("Receipt extractor provider returned no content");
-        }
-
-        let confidence: number;
-        let data: ReceiptData;
-        try {
-            ({ confidence, data } = parseReceiptData(content, units));
-        } catch (cause) {
-            throw new ReceiptExtractionError("Receipt extractor output was not valid receipt data", { cause });
-        }
-
-        // Confidence < threshold means the image was too blurry or unreadable
-        if (confidence < CONFIDENCE_THRESHOLD) {
+        if (data.confidence < CONFIDENCE_THRESHOLD) {
             throw new LowConfidenceReceiptError(
-                `Low confidence extraction (${confidence}/100): image may be blurry or unreadable`,
+                `low confidence extraction (${data.confidence}/100): image may be blurry or unreadable`,
             );
         }
 
-        // Strip total/tax/discount lines — not purchasable items
-        const filtered = { items: data.items.filter(item => !isStopWord(item.name)) };
+        const knownById = new Map(ingredients.map(ingredient => [ingredient.id, ingredient]));
+        const quantityById = new Map<string, number>();
 
-        // A successful parse with no items means the image isn't a receipt
-        if (filtered.items.length === 0) {
-            throw new NoReceiptItemsFoundError("No items found: image may not be a receipt");
+        for (const item of data.items) {
+            if (isStopWord(item.name)) continue;
+            const known = knownById.get(item.id);
+            if (known === undefined) continue;
+            quantityById.set(known.id, roundHalfUp((quantityById.get(known.id) ?? 0) + item.quantity, 2));
         }
 
-        return filtered;
+        const items: ReceiptExtractedItem[] = [];
+        for (const [id, quantity] of quantityById) {
+            const known = knownById.get(id);
+            if (known === undefined) continue;
+            items.push({
+                id: known.id,
+                name: known.name,
+                quantity,
+                unit: known.unit,
+            });
+        }
+
+        if (items.length === 0) {
+            throw new NoReceiptItemsFoundError("no matching receipt items found");
+        }
+
+        return { items };
     }
 }

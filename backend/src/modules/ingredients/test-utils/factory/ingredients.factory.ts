@@ -2,6 +2,7 @@ import type {
     Ingredient,
     IngredientStockChange,
     PhotoEstimate,
+    ReceiptExtractResult,
     ShoppingListItem,
 } from "../../domain/ingredient.domain.js";
 import type { IngredientRecord, IngredientStockChangeRecord } from "../../service/interfaces/ingredients.repository.js";
@@ -51,6 +52,13 @@ export function buildShoppingListItem(overrides: Partial<ShoppingListItem> = {})
 
 export function buildPhotoEstimate(overrides: Partial<PhotoEstimate> = {}): PhotoEstimate {
     return { ingredientId: "00000000-0000-4000-8000-000000000001", estimatedQuantity: 0, unit: "kg", ...overrides };
+}
+
+export function buildReceiptExtractResult(overrides: Partial<ReceiptExtractResult> = {}): ReceiptExtractResult {
+    return {
+        items: [{ id: "00000000-0000-4000-8000-000000000001", name: "Dada Ayam", unit: "kg", stock: 10 }],
+        ...overrides,
+    };
 }
 
 export function buildIngredientStockChange(overrides: Partial<IngredientStockChange> = {}): IngredientStockChange {

@@ -44,3 +44,14 @@ export interface PhotoEstimate {
     readonly unit: IngredientUnit;
     readonly confidence?: number | undefined;
 }
+
+export interface ExtractedIngredientUpdateItem {
+    readonly id: string;
+    readonly name: string;
+    readonly unit: IngredientUnit;
+    readonly stock: number;
+}
+
+export interface ReceiptExtractResult {
+    readonly items: readonly ExtractedIngredientUpdateItem[];
+}

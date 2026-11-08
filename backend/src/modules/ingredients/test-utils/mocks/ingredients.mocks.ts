@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { ObjectStorage } from "../../../../shared/ports/object-storage/object-storage.js";
+import type { ReceiptExtractor } from "../../../../shared/ports/receipt-extractor/receipt-extractor.js";
 import type { StockLevelEstimator } from "../../../../shared/ports/stock-level-estimator/stock-level-estimator.js";
 import type { IngredientsService } from "../../service/ingredients.service.js";
 import type { AllergyLookup } from "../../service/interfaces/allergy-lookup.js";
@@ -26,6 +27,7 @@ export type MockedIngredientsService = Mocked<
         | "deleteIngredients"
         | "getShoppingList"
         | "estimateStock"
+        | "extractReceipt"
     >
 >;
 
@@ -33,6 +35,7 @@ export function createMockIngredientsRepository(): Mocked<IngredientsRepository>
     return {
         list: vi.fn(async () => ({ items: [], total: 0 })),
         listStockHistory: vi.fn(async () => ({ items: [], total: 0 })),
+        findAll: vi.fn(async () => []),
         findById: vi.fn(async () => null),
         findByIds: vi.fn(async () => []),
         findMissingIds: vi.fn(async () => []),
@@ -77,6 +80,12 @@ export function createMockStockLevelEstimator(): Mocked<StockLevelEstimator> {
     } as Mocked<StockLevelEstimator>;
 }
 
+export function createMockReceiptExtractor(): Mocked<ReceiptExtractor> {
+    return {
+        extract: vi.fn(async () => ({ items: [] })),
+    } as Mocked<ReceiptExtractor>;
+}
+
 export function createMockUserDirectory(): Mocked<UserDirectory> {
     return {
         getSummaries: vi.fn(async () => []),
@@ -95,5 +104,6 @@ export function createMockIngredientsService(): MockedIngredientsService {
         deleteIngredients: vi.fn(),
         getShoppingList: vi.fn(),
         estimateStock: vi.fn(),
+        extractReceipt: vi.fn(),
     } as MockedIngredientsService;
 }

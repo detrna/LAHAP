@@ -132,6 +132,16 @@ describe("PrismaIngredientsRepository (integration)", () => {
             expect(await repository.findMissingIds([created.id, unknown])).toEqual([unknown]);
             expect(await repository.findMissingIds([])).toEqual([]);
         });
+
+        it("finds all ingredients sorted by name", async () => {
+            const second = await createIngredient("All B");
+            const first = await createIngredient("All A");
+
+            const all = await repository.findAll();
+            const matching = all.filter(record => [first.id, second.id].includes(record.id));
+
+            expect(matching.map(record => record.id)).toEqual([first.id, second.id]);
+        });
     });
 
     describe("list", () => {

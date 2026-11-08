@@ -77,6 +77,7 @@ export interface StockChangeAudit {
 export interface IngredientsRepository {
     list(query: IngredientListQuery): Promise<IngredientListRecord>;
     listStockHistory(query: IngredientStockHistoryQuery): Promise<IngredientStockHistoryListRecord>;
+    findAll(): Promise<readonly IngredientRecord[]>;
     findById(id: string): Promise<IngredientRecord | null>;
     findByIds(ids: readonly string[]): Promise<readonly IngredientRecord[]>;
     findMissingIds(ids: readonly string[]): Promise<readonly string[]>;
