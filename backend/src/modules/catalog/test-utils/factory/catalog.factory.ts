@@ -1,5 +1,5 @@
 import type { Allergy } from "../../domain/allergy.domain.js";
-import type { MenuIngredient, Menu, MenuIngredientUsage, RecipeLine } from "../../domain/menu.domain.js";
+import type { MenuComponent, MenuIngredient, Menu, MenuIngredientUsage, RecipeLine } from "../../domain/menu.domain.js";
 import type { Package } from "../../domain/package.domain.js";
 import type {
     ScheduleMenu,
@@ -9,6 +9,7 @@ import type {
 } from "../../domain/schedule.domain.js";
 import type {
     AllergyRecord,
+    MenuComponentRecord,
     MenuRecord,
     PackageRecord,
     ScheduleRecord,
@@ -38,6 +39,14 @@ export function buildMenuIngredient(overrides: Partial<MenuIngredient> = {}): Me
     return { ingredientId: "00000000-0000-4000-8000-000000000001", quantityPerPortion: 0, ...overrides };
 }
 
+export function buildMenuComponent(overrides: Partial<MenuComponent> = {}): MenuComponent {
+    return { id: "00000000-0000-4000-8000-000000000001", name: "Nasi Putih", cookId: null, cook: null, ...overrides };
+}
+
+export function buildMenuComponentRecord(overrides: Partial<MenuComponentRecord> = {}): MenuComponentRecord {
+    return { id: "00000000-0000-4000-8000-000000000001", name: "Nasi Putih", cookId: null, ...overrides };
+}
+
 export function buildMenu(overrides: Partial<Menu> = {}): Menu {
     return {
         id: "00000000-0000-4000-8000-000000000001",
@@ -49,6 +58,7 @@ export function buildMenu(overrides: Partial<Menu> = {}): Menu {
         photoUrl: "https://example.com/photoUrl",
         createdAt: "2026-11-03T00:00:00.000+07:00",
         updatedAt: "2026-11-03T00:00:00.000+07:00",
+        components: [],
         ...overrides,
     };
 }
@@ -162,6 +172,7 @@ export function buildMenuRecord(overrides: Partial<MenuRecord> = {}): MenuRecord
         createdAt: Temporal.PlainDateTime.from("2026-11-01T00:00:00"),
         updatedAt: Temporal.PlainDateTime.from("2026-11-01T00:00:00"),
         ingredients: [{ ingredientId: "00000000-0000-4000-8000-000000000002", quantityPerPortion: 0.25 }],
+        components: [],
         ...overrides,
     };
 }

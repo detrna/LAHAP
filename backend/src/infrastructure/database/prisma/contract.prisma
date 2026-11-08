@@ -63,6 +63,7 @@ model User {
   refreshTokens RefreshToken[]
   deliveryMethodChanges DeliveryMethodChange[]
   stockChanges  IngredientStockHistory[]
+  cookedComponents MenuComponent[] @relation("CookComponents")
 
   @@index([role])
   @@map("user")
@@ -259,10 +260,25 @@ model Menu {
 
   scheduleMenus   ScheduleMenu[]
   menuIngredients MenuIngredient[]
+  menuComponents  MenuComponent[]
 
   @@index([name])
   @@index([isAlternative])
   @@map("menu")
+}
+
+model MenuComponent {
+  id     VarChar(36)  @id @onCreate(uuid())
+  menuId VarChar(36)  @map("menu_id")
+  name   VarChar(100)
+  cookId VarChar(36)? @map("cook_id")
+
+  menu Menu  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  cook User? @relation("CookComponents", fields: [cookId], references: [id], onDelete: SetNull)
+
+  @@unique([menuId, name])
+  @@index([cookId])
+  @@map("menu_component")
 }
 
 model ScheduleMenu {

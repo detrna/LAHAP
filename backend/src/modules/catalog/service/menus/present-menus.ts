@@ -1,5 +1,7 @@
 import { toPhotoUrls } from "../../../../shared/media/photo.js";
 import type { Ingredient } from "../../../ingredients/domain/ingredient.domain.js";
+import type { UserSummary } from "../../../users/domain/user.domain.js";
+import { distinctCookIds } from "../../domain/menu-components.js";
 import { unionAllergies } from "../../domain/menu-allergies.js";
 import type { Menu } from "../../domain/menu.domain.js";
 import type { CatalogService } from "../catalog.service.js";
@@ -19,14 +21,17 @@ export async function presentMenus(
     if (records.length === 0) return [];
 
     const ingredientIds = [...new Set(records.flatMap(record => record.ingredients.map(line => line.ingredientId)))];
-    const [ingredients, photoUrls] = await Promise.all([
+    const cookIds = distinctCookIds(records.flatMap(record => record.components));
+    const [ingredients, cooks, photoUrls] = await Promise.all([
         ingredientIds.length > 0 ? this.ingredients.getIngredientsByIds(ingredientIds) : [],
+        cookIds.length > 0 ? this.cooks.getSummaries(cookIds) : [],
         toPhotoUrls(
             this.objectStorage,
             records.map(record => record.photoKey),
         ),
     ]);
     const ingredientById = new Map<string, Ingredient>(ingredients.map(ingredient => [ingredient.id, ingredient]));
+    const cookById = new Map<string, UserSummary>(cooks.map(cook => [cook.id, cook]));
 
     return records.map((record, index) => {
         const used = record.ingredients.flatMap(line => {
@@ -36,6 +41,12 @@ export async function presentMenus(
         return toMenu(record, {
             photoUrl: photoUrls[index] ?? "",
             allergies: unionAllergies(used),
+            components: record.components.map(component => ({
+                id: component.id,
+                name: component.name,
+                cookId: component.cookId,
+                cook: component.cookId === null ? null : (cookById.get(component.cookId) ?? null),
+            })),
             ...(withIngredients
                 ? {
                       ingredients: record.ingredients.map(line => ({

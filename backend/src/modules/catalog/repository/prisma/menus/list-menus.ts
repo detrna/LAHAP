@@ -3,10 +3,10 @@ import { toContainsPattern } from "../../../../../infrastructure/database/prisma
 import type { MenuListQuery, MenuListRecord } from "../../../service/interfaces/catalog.repository.js";
 import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
-import { menusWithIngredients } from "./queries.js";
+import { menusWithRelations } from "./queries.js";
 import { toMenuRecord } from "./to-menu-record.js";
 
-function matchingMenus<T extends ReturnType<typeof menusWithIngredients> | Db["orm"]["public"]["Menu"]>(
+function matchingMenus<T extends ReturnType<typeof menusWithRelations> | Db["orm"]["public"]["Menu"]>(
     menus: T,
     query: MenuListQuery,
 ): T {
@@ -24,7 +24,7 @@ function matchingMenus<T extends ReturnType<typeof menusWithIngredients> | Db["o
 export async function listMenus(this: PrismaCatalogRepository, query: MenuListQuery): Promise<MenuListRecord> {
     try {
         const [rows, totals] = await Promise.all([
-            matchingMenus(menusWithIngredients(this.db.orm), query)
+            matchingMenus(menusWithRelations(this.db.orm), query)
                 .orderBy([menu => menu.name.asc(), menu => menu.id.asc()])
                 .offset(query.skip)
                 .limit(query.take)

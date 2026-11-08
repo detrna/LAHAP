@@ -1,10 +1,23 @@
 import type { Ingredient } from "../../ingredients/domain/ingredient.domain.js";
+import type { UserSummary } from "../../users/domain/user.domain.js";
 import type { Allergy } from "./allergy.domain.js";
 
 export interface MenuIngredient {
     readonly ingredientId: string;
     readonly quantityPerPortion: number;
     readonly ingredient?: Ingredient | undefined;
+}
+
+export interface MenuComponent {
+    readonly id: string;
+    readonly name: string;
+    readonly cookId: string | null;
+    readonly cook: UserSummary | null;
+}
+
+export interface MenuComponentInput {
+    readonly name: string;
+    readonly cookId?: string | null | undefined;
 }
 
 export interface Menu {
@@ -18,6 +31,7 @@ export interface Menu {
     readonly createdAt: string;
     readonly updatedAt: string;
     readonly ingredients?: readonly MenuIngredient[] | undefined;
+    readonly components: readonly MenuComponent[];
     readonly allergies?: readonly Allergy[] | undefined;
 }
 

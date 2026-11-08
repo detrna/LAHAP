@@ -5,6 +5,7 @@ import { CatalogController } from "../../controller/catalog.controller.js";
 import { CatalogService } from "../../service/catalog.service.js";
 import type { AdminNotifier } from "../../service/interfaces/admin-notifier.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
+import type { CookDirectory } from "../../service/interfaces/cook-directory.js";
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
 import type { PhotoKeys } from "../../service/interfaces/photo-keys.js";
@@ -13,6 +14,7 @@ import {
     createMockAdminNotifier,
     createMockCatalogRepository,
     createMockCatalogService,
+    createMockCookDirectory,
     createMockIngredientLookup,
     createMockObjectStorage,
     createMockOrderActivity,
@@ -32,6 +34,7 @@ export interface CatalogServiceSetup {
     readonly orderActivity: Mocked<OrderActivity>;
     readonly announcer: Mocked<ScheduleAnnouncer>;
     readonly adminNotifier: Mocked<AdminNotifier>;
+    readonly cooks: Mocked<CookDirectory>;
     readonly logger: MockLogger;
     readonly service: CatalogService;
 }
@@ -50,6 +53,7 @@ export function setupCatalogService(): CatalogServiceSetup {
     const orderActivity = createMockOrderActivity();
     const announcer = createMockScheduleAnnouncer();
     const adminNotifier = createMockAdminNotifier();
+    const cooks = createMockCookDirectory();
     const logger = createMockLogger();
     return {
         repository,
@@ -60,18 +64,19 @@ export function setupCatalogService(): CatalogServiceSetup {
         orderActivity,
         announcer,
         adminNotifier,
+        cooks,
         logger,
-        service: new CatalogService(
-            repository,
-            objectStorage as unknown as ObjectStorage,
+        service: new CatalogService(repository, {
+            objectStorage: objectStorage as unknown as ObjectStorage,
             clock,
             photoKeys,
             ingredients,
             orderActivity,
             announcer,
             adminNotifier,
+            cooks,
             logger,
-        ),
+        }),
     };
 }
 

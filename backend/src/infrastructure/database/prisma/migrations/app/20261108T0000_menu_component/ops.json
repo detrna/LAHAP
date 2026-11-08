@@ -1,0 +1,299 @@
+[
+  {
+    "id": "table.menu_component",
+    "label": "Create table \"menu_component\"",
+    "summary": "Creates table \"menu_component\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"menu_component\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"menu_component\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"menu_component\"",
+        "sql": "CREATE TABLE \"public\".\"menu_component\" (\n  \"cook_id\" character varying(36),\n  \"id\" character varying(36) NOT NULL,\n  \"menu_id\" character varying(36) NOT NULL,\n  \"name\" character varying(100) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"menu_component\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"menu_component\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "unique.menu_component.menu_component_menu_id_name_key",
+    "label": "Add unique constraint on \"menu_component\" (menu_id, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "menu_component_menu_id_name_key",
+        "table": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"menu_component_menu_id_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "menu_component_menu_id_name_key",
+          "public",
+          "\"public\".\"menu_component\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"menu_component_menu_id_name_key\" on \"menu_component\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"menu_component_menu_id_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"menu_component\" ADD CONSTRAINT \"menu_component_menu_id_name_key\" UNIQUE (\"menu_id\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"menu_component_menu_id_name_key\" exists on (menu_id, name)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "menu_component_menu_id_name_key",
+          "public",
+          "\"public\".\"menu_component\"",
+          "u",
+          "[\"menu_id\",\"name\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.menu_component.menu_component_cook_id_idx_21278fc4",
+    "label": "Create index \"menu_component_cook_id_idx_21278fc4\" on \"menu_component\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "menu_component_cook_id_idx_21278fc4",
+        "table": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"menu_component_cook_id_idx_21278fc4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component_cook_id_idx_21278fc4\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"menu_component_cook_id_idx_21278fc4\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"menu_component_cook_id_idx_21278fc4\"",
+        "sql": "CREATE INDEX \"menu_component_cook_id_idx_21278fc4\" ON \"public\".\"menu_component\" (\"cook_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"menu_component_cook_id_idx_21278fc4\" exists on \"menu_component\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component_cook_id_idx_21278fc4\"",
+          "i",
+          "I",
+          "\"public\".\"menu_component\"",
+          "btree",
+          "[\"cook_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.menu_component.menu_component_menu_id_idx_acdcfcd6",
+    "label": "Create index \"menu_component_menu_id_idx_acdcfcd6\" on \"menu_component\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "menu_component_menu_id_idx_acdcfcd6",
+        "table": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"menu_component_menu_id_idx_acdcfcd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component_menu_id_idx_acdcfcd6\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"menu_component_menu_id_idx_acdcfcd6\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"menu_component_menu_id_idx_acdcfcd6\"",
+        "sql": "CREATE INDEX \"menu_component_menu_id_idx_acdcfcd6\" ON \"public\".\"menu_component\" (\"menu_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"menu_component_menu_id_idx_acdcfcd6\" exists on \"menu_component\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"menu_component_menu_id_idx_acdcfcd6\"",
+          "i",
+          "I",
+          "\"public\".\"menu_component\"",
+          "btree",
+          "[\"menu_id\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.menu_component.menu_component_menu_id_fkey",
+    "label": "Add foreign key \"menu_component_menu_id_fkey\" on \"menu_component\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "menu_component_menu_id_fkey",
+        "table": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"menu_component_menu_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "menu_component_menu_id_fkey",
+          "public",
+          "\"public\".\"menu_component\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"menu_component_menu_id_fkey\" on \"menu_component\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"menu_component_menu_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"menu_component\"\nADD CONSTRAINT \"menu_component_menu_id_fkey\"\nFOREIGN KEY (\"menu_id\")\nREFERENCES \"public\".\"menu\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"menu_component_menu_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "menu_component_menu_id_fkey",
+          "public",
+          "\"public\".\"menu_component\"",
+          "f",
+          "[\"menu_id\"]",
+          "\"public\".\"menu\"",
+          "[\"id\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.menu_component.menu_component_cook_id_fkey",
+    "label": "Add foreign key \"menu_component_cook_id_fkey\" on \"menu_component\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "menu_component_cook_id_fkey",
+        "table": "menu_component"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"menu_component_cook_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "menu_component_cook_id_fkey",
+          "public",
+          "\"public\".\"menu_component\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"menu_component_cook_id_fkey\" on \"menu_component\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"menu_component_cook_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"menu_component\"\nADD CONSTRAINT \"menu_component_cook_id_fkey\"\nFOREIGN KEY (\"cook_id\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"menu_component_cook_id_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "menu_component_cook_id_fkey",
+          "public",
+          "\"public\".\"menu_component\"",
+          "f",
+          "[\"cook_id\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "n",
+          "a"
+        ]
+      }
+    ]
+  }
+]

@@ -1,6 +1,8 @@
 import { CatalogContainer } from "../../../src/modules/catalog/container/catalog.container.js";
 import type { AdminNotifier } from "../../../src/modules/catalog/service/interfaces/admin-notifier.js";
 import { noAdminNotifier } from "../../../src/modules/catalog/service/interfaces/admin-notifier.js";
+import type { CookDirectory } from "../../../src/modules/catalog/service/interfaces/cook-directory.js";
+import { noCookDirectory } from "../../../src/modules/catalog/service/interfaces/cook-directory.js";
 import type { IngredientLookup } from "../../../src/modules/catalog/service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../../src/modules/catalog/service/interfaces/order-activity.js";
 import { noOrderActivity } from "../../../src/modules/catalog/service/interfaces/order-activity.js";
@@ -15,6 +17,7 @@ export interface CatalogContainerOverrides {
     readonly orderActivity?: OrderActivity | undefined;
     readonly announcer?: ScheduleAnnouncer | undefined;
     readonly adminNotifier?: AdminNotifier | undefined;
+    readonly cooks?: CookDirectory | undefined;
 }
 
 const acceptAnyPhoto: PhotoKeys = { assertPhotoKeyExists: async () => undefined };
@@ -31,5 +34,6 @@ export function createCatalogContainer(deps: ModuleDeps, overrides: CatalogConta
         orderActivity: overrides.orderActivity ?? noOrderActivity,
         announcer: overrides.announcer ?? noScheduleAnnouncer,
         adminNotifier: overrides.adminNotifier ?? noAdminNotifier,
+        cooks: overrides.cooks ?? noCookDirectory,
     });
 }

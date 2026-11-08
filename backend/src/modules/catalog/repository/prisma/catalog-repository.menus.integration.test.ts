@@ -2,10 +2,13 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestSchedule } from "../../../../../tests/utils/fixtures/schedules.js";
 import { createTestPackage } from "../../../../../tests/utils/fixtures/subscriptions.js";
+import { createTestUser } from "../../../../../tests/utils/fixtures/users.js";
 import { loadConfig } from "../../../../config/index.js";
 import { trackCreated, type CreatedRows } from "../../../../infrastructure/database/prisma/cleanup.js";
 import { loadDatabase, type Db } from "../../../../infrastructure/database/prisma/db.js";
+import { InvalidStateError } from "../../../../shared/errors/invalid-state-error.js";
 import {
+    CatalogRepositoryFailureError,
     MenuInUseError,
     UnknownIngredientError,
     type MenuRecord,
@@ -27,6 +30,7 @@ describe("PrismaCatalogRepository menus (integration)", () => {
         tags: ["Pedas"],
         photoKey: "menus/2026/11/integration.webp",
         ingredients: [{ ingredientId: ingredientIds[0] ?? "", quantityPerPortion: 0.25 }],
+        components: [],
         ...overrides,
     });
 
@@ -193,5 +197,165 @@ describe("PrismaCatalogRepository menus (integration)", () => {
         expect(usages).toContainEqual({ ingredientId: ingredientIds[1], menuId: created.id, menuName: created.name });
         expect(await repository.findRecipeLines([])).toEqual([]);
         expect(await repository.findMenusUsingIngredients([])).toEqual([]);
+    });
+
+    describe("components", () => {
+        let cookId: string;
+        let otherCookId: string;
+
+        beforeAll(async () => {
+            cookId = await createTestUser(db, rows, { role: "KITCHEN" });
+            otherCookId = await createTestUser(db, rows, { role: "KITCHEN" });
+        });
+
+        const names = (menu: MenuRecord | null | undefined) => menu?.components.map(component => component.name);
+
+        it("creates a menu with its components, with and without a cook, ordered by name", async () => {
+            const created = await createMenu("Components Create", {
+                components: [
+                    { name: "Sambal", cookId: null },
+                    { name: "Ayam Bakar", cookId },
+                    { name: "Nasi Putih", cookId: null },
+                ],
+            });
+
+            expect(created.components.map(({ name, cookId: cook }) => ({ name, cookId: cook }))).toEqual([
+                { name: "Ayam Bakar", cookId },
+                { name: "Nasi Putih", cookId: null },
+                { name: "Sambal", cookId: null },
+            ]);
+            expect(created.components.every(component => component.id.length > 0)).toBe(true);
+            expect(await repository.findMenuById(created.id)).toEqual(created);
+        });
+
+        it("creates a menu without components", async () => {
+            const created = await createMenu("Components None");
+
+            expect(created.components).toEqual([]);
+        });
+
+        it("maps an unknown cook to a 422 and writes no menu", async () => {
+            const name = `Zz Menu ${tag} Components Unknown Cook`;
+            const error = await repository
+                .createMenu(
+                    newMenu("Components Unknown Cook", { components: [{ name: "Ayam", cookId: randomUUID() }] }),
+                )
+                .catch((caught: unknown) => caught);
+
+            expect(error).toBeInstanceOf(InvalidStateError);
+            expect((error as InvalidStateError).message).toBe("cook is not an active kitchen staff");
+            expect(await db.orm.public.Menu.where({ name }).first()).toBeNull();
+        });
+
+        it("replaces the components when a list is sent, and clears them with an empty one", async () => {
+            const created = await createMenu("Components Replace", {
+                components: [{ name: "Nasi Putih", cookId: null }],
+            });
+
+            const replaced = await repository.updateMenu(created.id, {
+                components: [
+                    { name: "Tumis Buncis", cookId: otherCookId },
+                    { name: "Ayam Bakar", cookId },
+                ],
+            });
+            expect(names(replaced)).toEqual(["Ayam Bakar", "Tumis Buncis"]);
+            expect(replaced?.components.map(component => component.cookId)).toEqual([cookId, otherCookId]);
+
+            const cleared = await repository.updateMenu(created.id, { components: [] });
+            expect(cleared?.components).toEqual([]);
+            expect(await db.orm.public.MenuComponent.where({ menuId: created.id }).first()).toBeNull();
+        });
+
+        it("keeps the components when an update doesn't send them", async () => {
+            const created = await createMenu("Components Keep", {
+                components: [{ name: "Nasi Putih", cookId }],
+            });
+
+            const updated = await repository.updateMenu(created.id, { description: "changed" });
+
+            expect(updated?.description).toBe("changed");
+            expect(updated?.components).toEqual(created.components);
+        });
+
+        it("updates only the components of a menu, leaving its recipe alone", async () => {
+            const created = await createMenu("Components Only");
+
+            const updated = await repository.updateMenu(created.id, { components: [{ name: "Nasi", cookId: null }] });
+
+            expect(names(updated)).toEqual(["Nasi"]);
+            expect(updated?.ingredients).toEqual(created.ingredients);
+        });
+
+        it("rolls the whole update back when a cook is unknown", async () => {
+            const created = await createMenu("Components Rollback", {
+                components: [{ name: "Nasi Putih", cookId: null }],
+            });
+
+            const error = await repository
+                .updateMenu(created.id, {
+                    description: "should not stick",
+                    components: [{ name: "Ayam", cookId: randomUUID() }],
+                })
+                .catch((caught: unknown) => caught);
+
+            expect(error).toBeInstanceOf(InvalidStateError);
+            const after = await repository.findMenuById(created.id);
+            expect(after?.description).toBe("integration menu");
+            expect(names(after)).toEqual(["Nasi Putih"]);
+        });
+
+        it("reads components with menus found by id and in lists", async () => {
+            const created = await createMenu("Components List", {
+                components: [
+                    { name: "Nasi Putih", cookId: null },
+                    { name: "Ayam", cookId },
+                ],
+            });
+
+            const [byId] = await repository.findMenusByIds([created.id]);
+            const listed = await repository.listMenus({ search: `${tag} Components List`, skip: 0, take: 10 });
+
+            expect(names(byId)).toEqual(["Ayam", "Nasi Putih"]);
+            expect(names(listed.items[0])).toEqual(["Ayam", "Nasi Putih"]);
+        });
+
+        it("refuses two components with the same name on one menu", async () => {
+            const error = await repository
+                .createMenu(
+                    newMenu("Components Duplicate", {
+                        components: [
+                            { name: "Nasi", cookId: null },
+                            { name: "Nasi", cookId: null },
+                        ],
+                    }),
+                )
+                .catch((caught: unknown) => caught);
+
+            expect(error).toBeInstanceOf(CatalogRepositoryFailureError);
+            expect(await db.orm.public.Menu.where({ name: `Zz Menu ${tag} Components Duplicate` }).first()).toBeNull();
+        });
+
+        it("deletes the components with their menu", async () => {
+            const created = await repository.createMenu(
+                newMenu("Components Delete", { components: [{ name: "Nasi Putih", cookId }] }),
+            );
+
+            expect(await repository.deleteMenu(created.id)).toBe(true);
+            expect(await db.orm.public.MenuComponent.where({ menuId: created.id }).first()).toBeNull();
+        });
+
+        it("keeps a component but forgets its cook when the cook is deleted", async () => {
+            const leavingCookId = await createTestUser(db, rows, { role: "KITCHEN" });
+            const created = await createMenu("Components Cook Leaves", {
+                components: [{ name: "Ayam", cookId: leavingCookId }],
+            });
+
+            await db.orm.public.User.where({ id: leavingCookId }).deleteAndCount();
+
+            const after = await repository.findMenuById(created.id);
+            expect(after?.components.map(({ name, cookId: cook }) => ({ name, cookId: cook }))).toEqual([
+                { name: "Ayam", cookId: null },
+            ]);
+        });
     });
 });

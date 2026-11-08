@@ -160,4 +160,60 @@ describe("CatalogService.updateMenu (unit)", () => {
             expect(orderActivity.findSchedulesWithOrders).not.toHaveBeenCalled();
         });
     });
+
+    describe("components", () => {
+        it("replaces the list, mapping a missing cook to null", async () => {
+            const { repository, cooks, service } = setup();
+
+            await service.updateMenu("m-1", {
+                components: [{ name: "Nasi Putih" }, { name: "Ayam Bakar", cookId: "c-1" }],
+            });
+
+            expect(cooks.filterActiveUserIds).toHaveBeenCalledWith(["c-1"], "KITCHEN");
+            expect(repository.updateMenu).toHaveBeenCalledWith("m-1", {
+                components: [
+                    { name: "Nasi Putih", cookId: null },
+                    { name: "Ayam Bakar", cookId: "c-1" },
+                ],
+            });
+        });
+
+        it("clears the list when an empty one is sent", async () => {
+            const { repository, cooks, service } = setup();
+
+            await service.updateMenu("m-1", { components: [] });
+
+            expect(cooks.filterActiveUserIds).not.toHaveBeenCalled();
+            expect(repository.updateMenu).toHaveBeenCalledWith("m-1", { components: [] });
+        });
+
+        it("leaves components alone when none are sent", async () => {
+            const { repository, service } = setup();
+
+            await service.updateMenu("m-1", { name: "Baru" });
+
+            expect(repository.updateMenu).toHaveBeenCalledWith("m-1", { name: "Baru" });
+        });
+
+        it("gives 422 when a cook is not an active kitchen staff, writing nothing", async () => {
+            const { repository, cooks, service } = setup();
+            cooks.filterActiveUserIds.mockResolvedValue([]);
+
+            await expect(
+                service.updateMenu("m-1", { components: [{ name: "Ayam Bakar", cookId: "c-1" }] }),
+            ).rejects.toThrow(new InvalidStateError("cook is not an active kitchen staff"));
+            expect(repository.updateMenu).not.toHaveBeenCalled();
+        });
+
+        it("needs no change reason and announces nothing, even on a menu with paid orders", async () => {
+            const { repository, orderActivity, announcer, service } = setup();
+            repository.findScheduleIdsUsingMenu.mockResolvedValue(["s-1"]);
+            orderActivity.findSchedulesWithOrders.mockResolvedValue(["s-1"]);
+
+            await service.updateMenu("m-1", { components: [{ name: "Ayam Bakar", cookId: "c-1" }] });
+
+            expect(orderActivity.findSchedulesWithOrders).not.toHaveBeenCalled();
+            expect(announcer.announce).not.toHaveBeenCalled();
+        });
+    });
 });

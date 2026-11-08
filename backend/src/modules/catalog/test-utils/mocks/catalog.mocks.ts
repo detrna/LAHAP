@@ -3,6 +3,7 @@ import type { ObjectStorage } from "../../../../shared/ports/object-storage/obje
 import type { CatalogService } from "../../service/catalog.service.js";
 import type { AdminNotifier } from "../../service/interfaces/admin-notifier.js";
 import type { CatalogRepository } from "../../service/interfaces/catalog.repository.js";
+import type { CookDirectory } from "../../service/interfaces/cook-directory.js";
 import type { IngredientLookup } from "../../service/interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "../../service/interfaces/order-activity.js";
 import type { ScheduleAnnouncer } from "../../service/interfaces/schedule-announcer.js";
@@ -117,6 +118,13 @@ export function createMockIngredientLookup(): Mocked<IngredientLookup> {
         findMissingIngredientIds: vi.fn(async () => []),
         getIngredientsByIds: vi.fn(async () => []),
     } as Mocked<IngredientLookup>;
+}
+
+export function createMockCookDirectory(): Mocked<CookDirectory> {
+    return {
+        filterActiveUserIds: vi.fn(async (ids: readonly string[]) => [...ids]),
+        getSummaries: vi.fn(async () => []),
+    } as Mocked<CookDirectory>;
 }
 
 export function createMockCatalogService(): MockedCatalogService {
