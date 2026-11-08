@@ -28,6 +28,8 @@ const staff = (n: number, name: string, phone: string, email: string, role: Role
     allergies: [],
 });
 
+export const KITCHEN_COOK_ID = seedId("user", 2);
+
 export const USERS: readonly UserSeed[] = [
     staff(1, "Admin Lahap", "6281100000001", "admin@lahap.test", "ADMIN"),
     staff(2, "Dapur Lahap", "6281100000002", "dapur@lahap.test", "KITCHEN"),

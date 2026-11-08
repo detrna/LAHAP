@@ -11,6 +11,7 @@ import { listAllergyPage } from "./allergies/list-allergy-page.js";
 import { updateAllergy } from "./allergies/update-allergy.js";
 import type { AdminNotifier } from "./interfaces/admin-notifier.js";
 import type { CatalogRepository } from "./interfaces/catalog.repository.js";
+import type { CookDirectory } from "./interfaces/cook-directory.js";
 import type { IngredientLookup } from "./interfaces/ingredient-lookup.js";
 import type { OrderActivity } from "./interfaces/order-activity.js";
 import type { PhotoKeys } from "./interfaces/photo-keys.js";
@@ -47,18 +48,43 @@ import { deleteSchedules } from "./schedules/delete-schedules.js";
 import { publishSchedules } from "./schedules/publish-schedules.js";
 import { remindEmptySchedules } from "./schedules/remind-empty-schedules.js";
 
+export interface CatalogServiceDeps {
+    readonly objectStorage: ObjectStorage;
+    readonly clock: Clock;
+    readonly photoKeys: PhotoKeys;
+    readonly ingredients: IngredientLookup;
+    readonly orderActivity: OrderActivity;
+    readonly announcer: ScheduleAnnouncer;
+    readonly adminNotifier: AdminNotifier;
+    readonly cooks: CookDirectory;
+    readonly logger: Logger;
+}
+
 export class CatalogService {
+    readonly objectStorage: ObjectStorage;
+    readonly clock: Clock;
+    readonly photoKeys: PhotoKeys;
+    readonly ingredients: IngredientLookup;
+    readonly orderActivity: OrderActivity;
+    readonly announcer: ScheduleAnnouncer;
+    readonly adminNotifier: AdminNotifier;
+    readonly cooks: CookDirectory;
+    readonly logger: Logger;
+
     constructor(
         readonly catalogRepository: CatalogRepository,
-        readonly objectStorage: ObjectStorage,
-        readonly clock: Clock,
-        readonly photoKeys: PhotoKeys,
-        readonly ingredients: IngredientLookup,
-        readonly orderActivity: OrderActivity,
-        readonly announcer: ScheduleAnnouncer,
-        readonly adminNotifier: AdminNotifier,
-        readonly logger: Logger,
-    ) {}
+        deps: CatalogServiceDeps,
+    ) {
+        this.objectStorage = deps.objectStorage;
+        this.clock = deps.clock;
+        this.photoKeys = deps.photoKeys;
+        this.ingredients = deps.ingredients;
+        this.orderActivity = deps.orderActivity;
+        this.announcer = deps.announcer;
+        this.adminNotifier = deps.adminNotifier;
+        this.cooks = deps.cooks;
+        this.logger = deps.logger;
+    }
 
     findMissingAllergyIds = findMissingAllergyIds;
     getAllergiesByIds = getAllergiesByIds;

@@ -84,6 +84,7 @@ describe("PrismaCatalogRepository schedules (integration)", () => {
                 tags: [],
                 photoKey: "menus/2026/11/integration.webp",
                 ingredients: [{ ingredientId: ingredient.id, quantityPerPortion: 1 }],
+                components: [],
             });
             ids.push(rows.track("Menu", menu.id));
         }

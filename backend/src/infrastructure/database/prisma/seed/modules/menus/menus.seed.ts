@@ -5,7 +5,7 @@ import { MENUS, menuPhotoKey } from "./menus.data.js";
 export async function seedMenus({ tx, logger }: SeedContext): Promise<number> {
     const menus = Object.values(MENUS);
 
-    for (const { ingredients, ...menu } of menus) {
+    for (const { ingredients, components, ...menu } of menus) {
         const { id, ...fields } = menu;
         const row = { ...fields, tags: [...menu.tags], photoKey: menuPhotoKey(id) };
         await tx.orm.public.Menu.upsert({ create: { id, ...row }, update: row });
@@ -18,12 +18,18 @@ export async function seedMenus({ tx, logger }: SeedContext): Promise<number> {
                 quantityPerPortion,
             })),
         );
+
+        await tx.orm.public.MenuComponent.where({ menuId: id }).deleteAll();
+        await tx.orm.public.MenuComponent.createAll(
+            components.map(component => ({ menuId: id, name: component.name, cookId: component.cookId })),
+        );
         logger.info(
             {
                 id,
                 name: menu.name,
                 isAlternative: menu.isAlternative,
                 ingredientCount: Object.keys(ingredients).length,
+                componentCount: components.length,
             },
             "upserted menu",
         );

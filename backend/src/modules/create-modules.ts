@@ -62,6 +62,10 @@ export function createModules(deps: ModuleDeps): Modules {
         },
         announcer: notifications.service,
         adminNotifier: notifications.service,
+        cooks: {
+            filterActiveUserIds: (ids, role) => users.service.filterActiveUserIds(ids, role),
+            getSummaries: ids => users.service.getSummaries(ids),
+        },
         orderActivity: {
             countActiveSubscribers: (packageIds, today) => orders.service.countActiveSubscribers(packageIds, today),
             findSchedulesWithOrders: (scheduleIds, statuses) =>

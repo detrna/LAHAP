@@ -1,5 +1,6 @@
 import type { MealTimeView } from "../../../shared/utils/meal-time/meal-time.js";
 import type { Allergy } from "../../catalog/domain/allergy.domain.js";
+import type { MenuComponent } from "../../catalog/domain/menu.domain.js";
 import type { IngredientUnit } from "../../ingredients/domain/ingredient.domain.js";
 
 export interface ToCookMenu {
@@ -10,6 +11,7 @@ export interface ToCookMenu {
     readonly isAlternative: boolean;
     readonly deliveryTime: MealTimeView;
     readonly portions: number;
+    readonly components: readonly MenuComponent[];
 }
 
 export interface ToCookIngredient {

@@ -54,9 +54,74 @@ describe("CatalogService.presentMenus (unit)", () => {
     });
 
     it("does nothing for an empty list", async () => {
-        const { ingredients, service } = setup();
+        const { ingredients, cooks, service } = setup();
 
         expect(await service.presentMenus([], { withIngredients: true })).toEqual([]);
         expect(ingredients.getIngredientsByIds).not.toHaveBeenCalled();
+        expect(cooks.getSummaries).not.toHaveBeenCalled();
+    });
+
+    describe("components", () => {
+        const siti = { id: "c-1", name: "Siti", phone: "628120000001", role: "KITCHEN" } as const;
+        const budi = { id: "c-2", name: "Budi", phone: "628120000002", role: "KITCHEN" } as const;
+
+        it("hydrates every cook from one lookup across all menus, with null for no or an unknown cook", async () => {
+            const { cooks, service } = setup();
+            cooks.getSummaries.mockResolvedValue([siti, budi]);
+            const records = [
+                buildMenuRecord({
+                    id: "m-1",
+                    components: [
+                        { id: "k-1", name: "Ayam Bakar", cookId: "c-1" },
+                        { id: "k-2", name: "Nasi Putih", cookId: null },
+                    ],
+                }),
+                buildMenuRecord({
+                    id: "m-2",
+                    components: [
+                        { id: "k-3", name: "Sayur", cookId: "c-2" },
+                        { id: "k-4", name: "Sambal", cookId: "c-1" },
+                        { id: "k-5", name: "Kerupuk", cookId: "c-gone" },
+                    ],
+                }),
+            ];
+
+            const [first, second] = await service.presentMenus(records, { withIngredients: false });
+
+            expect(cooks.getSummaries).toHaveBeenCalledTimes(1);
+            expect(cooks.getSummaries).toHaveBeenCalledWith(["c-1", "c-2", "c-gone"]);
+            expect(first?.components).toEqual([
+                { id: "k-1", name: "Ayam Bakar", cookId: "c-1", cook: siti },
+                { id: "k-2", name: "Nasi Putih", cookId: null, cook: null },
+            ]);
+            expect(second?.components.map(component => component.cook)).toEqual([budi, siti, null]);
+        });
+
+        it("keeps the stored order and skips the cook lookup when no component has a cook", async () => {
+            const { cooks, service } = setup();
+
+            const [menu] = await service.presentMenus(
+                [
+                    buildMenuRecord({
+                        components: [
+                            { id: "k-1", name: "Ayam Bakar", cookId: null },
+                            { id: "k-2", name: "Nasi Putih", cookId: null },
+                        ],
+                    }),
+                ],
+                { withIngredients: true },
+            );
+
+            expect(cooks.getSummaries).not.toHaveBeenCalled();
+            expect(menu?.components.map(component => component.name)).toEqual(["Ayam Bakar", "Nasi Putih"]);
+        });
+
+        it("answers an empty list for a menu without components", async () => {
+            const { service } = setup();
+
+            const [menu] = await service.presentMenus([buildMenuRecord()], { withIngredients: false });
+
+            expect(menu?.components).toEqual([]);
+        });
     });
 });

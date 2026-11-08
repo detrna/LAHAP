@@ -220,6 +220,54 @@ describe("menu schemas", () => {
     it("reads the list filters", () => {
         expect(menuListQuerySchema.parse({ isAlternative: "false" }).isAlternative).toBe(false);
     });
+
+    describe("components", () => {
+        const COOK_ID = "00000000-0000-4000-8000-0000000000c1";
+
+        it("are optional on create and update", () => {
+            expect(menuCreateSchema.parse(validMenu).components).toBeUndefined();
+            expect(menuUpdateSchema.parse({ tags: [] })).toEqual({ tags: [] });
+        });
+
+        it("accept names with an optional or null cook, and trim the names", () => {
+            const parsed = menuCreateSchema.parse({
+                ...validMenu,
+                components: [
+                    { name: " Nasi Putih " },
+                    { name: "Ayam Bakar", cookId: COOK_ID },
+                    { name: "Sambal", cookId: null },
+                ],
+            });
+
+            expect(parsed.components).toEqual([
+                { name: "Nasi Putih" },
+                { name: "Ayam Bakar", cookId: COOK_ID },
+                { name: "Sambal", cookId: null },
+            ]);
+        });
+
+        it("accept an empty list, which clears the components on update", () => {
+            expect(menuCreateSchema.parse({ ...validMenu, components: [] }).components).toEqual([]);
+            expect(menuUpdateSchema.parse({ components: [] })).toEqual({ components: [] });
+        });
+
+        it("count as a change on update", () => {
+            expect(menuUpdateSchema.safeParse({ components: [{ name: "Nasi" }], changeReason: "x" }).success).toBe(
+                true,
+            );
+        });
+
+        it.each([
+            ["a blank name", [{ name: "   " }]],
+            ["a name over 100 characters", [{ name: "x".repeat(101) }]],
+            ["a cook that is not a uuid", [{ name: "Nasi", cookId: "not-a-uuid" }]],
+            ["the same name twice", [{ name: "Nasi" }, { name: "Nasi", cookId: COOK_ID }]],
+            ["the same name in another case", [{ name: "Nasi Putih" }, { name: " nasi putih " }]],
+        ])("reject %s", (_label, components) => {
+            expect(menuCreateSchema.safeParse({ ...validMenu, components }).success).toBe(false);
+            expect(menuUpdateSchema.safeParse({ components }).success).toBe(false);
+        });
+    });
 });
 
 describe("menu schedule schemas", () => {

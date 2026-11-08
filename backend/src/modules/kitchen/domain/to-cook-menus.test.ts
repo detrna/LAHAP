@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildMenu } from "../../catalog/test-utils/factory/catalog.factory.js";
+import { buildMenu, buildMenuComponent } from "../../catalog/test-utils/factory/catalog.factory.js";
 import { buildServedSlot } from "../test-utils/served-slot.js";
 import { buildToCookMenus } from "./to-cook-menus.js";
 
 const morning = { time: "07:00", range: "Pagi" } as const;
 const noon = { time: "12:00", range: "Siang" } as const;
 
+const cook = { id: "c-1", name: "Siti", phone: "628120000001", role: "KITCHEN" } as const;
+const grill = buildMenuComponent({ id: "k-1", name: "Ayam Bakar", cookId: "c-1", cook });
+const rice = buildMenuComponent({ id: "k-2", name: "Nasi Putih" });
+
 const menus = new Map([
-    ["m-1", buildMenu({ id: "m-1", name: "Ayam Bakar" })],
+    ["m-1", buildMenu({ id: "m-1", name: "Ayam Bakar", components: [grill, rice] })],
     ["m-2", buildMenu({ id: "m-2", name: "Tahu Bacem", isAlternative: true })],
     ["m-3", buildMenu({ id: "m-3", name: "Soto" })],
 ]);
@@ -51,8 +55,20 @@ describe("buildToCookMenus (unit)", () => {
                 isAlternative: false,
                 deliveryTime: morning,
                 portions: 3,
+                components: [grill, rice],
             },
         ]);
+    });
+
+    it("carries the served menu's components with their cooks, and none for a menu without any", () => {
+        const result = buildToCookMenus([serve("s-1", { alt: true }), serve("s-1")], { menus, packageNames });
+
+        expect(result.map(line => [line.menuId, line.components])).toEqual([
+            ["m-1", [grill, rice]],
+            ["m-2", []],
+        ]);
+        expect(result[0]?.components[0]?.cook).toEqual(cook);
+        expect(result[0]?.components[1]?.cook).toBeNull();
     });
 
     it("keeps primary and alternative portions on separate lines, primary first", () => {

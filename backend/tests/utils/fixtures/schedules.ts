@@ -7,11 +7,17 @@ export interface TestRecipeLine {
     readonly quantityPerPortion: number;
 }
 
+export interface TestMenuComponentLine {
+    readonly name: string;
+    readonly cookId?: string | null | undefined;
+}
+
 export interface TestMenuInput {
     readonly name?: string | undefined;
     readonly tags?: readonly string[] | undefined;
     readonly isAlternative?: boolean | undefined;
     readonly ingredients?: readonly TestRecipeLine[] | undefined;
+    readonly components?: readonly TestMenuComponentLine[] | undefined;
 }
 
 export async function createTestMenu(db: Db, rows: CreatedRows, input: TestMenuInput = {}): Promise<string> {
@@ -30,6 +36,14 @@ export async function createTestMenu(db: Db, rows: CreatedRows, input: TestMenuI
             quantityPerPortion: line.quantityPerPortion.toFixed(2),
         });
         rows.track("MenuIngredient", link.id);
+    }
+    for (const component of input.components ?? []) {
+        const created = await db.orm.public.MenuComponent.create({
+            menuId,
+            name: component.name,
+            cookId: component.cookId ?? null,
+        });
+        rows.track("MenuComponent", created.id);
     }
     return menuId;
 }

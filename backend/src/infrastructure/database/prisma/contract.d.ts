@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0a20c98b56378e59c979ccae2f886d55cbfc1052faf3d77a07597ead00714174'>;
+  StorageHashBase<'f5b6ce37bc096ab267ef9bca3934f4ffa7beed0da832c6c5eb3c0ec3ce26d1c8'>;
 export type ExecutionHash =
-  ExecutionHashBase<'e9e47c1ae9e00e08b6de151e8c8284e250c8ef49c0b0ef71fd6fc2d1833771df'>;
+  ExecutionHashBase<'8102695284524ef2179b9a349e5c5c57de0a64af30747bdd5dd739551fa9ae19'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -415,9 +415,19 @@ export namespace Models {
     photoKey: FieldOutputTypes['public']['Menu']['photoKey'];
     tags: FieldOutputTypes['public']['Menu']['tags'];
     updatedAt: FieldOutputTypes['public']['Menu']['updatedAt'];
+    menuComponents: public_MenuComponent[];
     menuIngredients: public_MenuIngredient[];
     scheduleMenus: public_ScheduleMenu[];
-    readonly [RelationKeys]?: 'menuIngredients' | 'scheduleMenus';
+    readonly [RelationKeys]?: 'menuComponents' | 'menuIngredients' | 'scheduleMenus';
+  };
+  export type public_MenuComponent = {
+    cookId: FieldOutputTypes['public']['MenuComponent']['cookId'];
+    id: FieldOutputTypes['public']['MenuComponent']['id'];
+    menuId: FieldOutputTypes['public']['MenuComponent']['menuId'];
+    name: FieldOutputTypes['public']['MenuComponent']['name'];
+    cook: public_User | null;
+    menu: public_Menu;
+    readonly [RelationKeys]?: 'cook' | 'menu';
   };
   export type public_MenuIngredient = {
     id: FieldOutputTypes['public']['MenuIngredient']['id'];
@@ -639,6 +649,7 @@ export namespace Models {
     role: FieldOutputTypes['public']['User']['role'];
     updatedAt: FieldOutputTypes['public']['User']['updatedAt'];
     allergies: public_UserAllergy[];
+    cookedComponents: public_MenuComponent[];
     deliveries: public_Order[];
     deliveryMethodChanges: public_DeliveryMethodChange[];
     membership: public_Membership | null;
@@ -651,6 +662,7 @@ export namespace Models {
     subscriptions: public_Subscription[];
     readonly [RelationKeys]?:
       | 'allergies'
+      | 'cookedComponents'
       | 'deliveries'
       | 'deliveryMethodChanges'
       | 'membership'
@@ -687,6 +699,7 @@ export declare const models: {
     JobRun: Models.public_JobRun;
     Membership: Models.public_Membership;
     Menu: Models.public_Menu;
+    MenuComponent: Models.public_MenuComponent;
     MenuIngredient: Models.public_MenuIngredient;
     MessageTemplate: Models.public_MessageTemplate;
     Notification: Models.public_Notification;
@@ -1789,6 +1802,80 @@ type ContractBase = Omit<
                 },
               ];
               foreignKeys: readonly [];
+            };
+            readonly menu_component: {
+              columns: {
+                readonly cook_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly menu_id: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                  readonly many: false;
+                };
+                readonly name: {
+                  readonly dataType: 'pg/varchar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 100 };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['menu_id', 'name'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'menu_component_cook_id_idx_21278fc4';
+                  readonly prefix: 'menu_component_cook_id_idx';
+                  readonly columns: readonly ['cook_id'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'menu_component_menu_id_idx_acdcfcd6';
+                  readonly prefix: 'menu_component_menu_id_idx';
+                  readonly columns: readonly ['menu_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'menu_component';
+                    readonly columns: readonly ['menu_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'menu';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'menu_component';
+                    readonly columns: readonly ['cook_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
             };
             readonly menu_ingredient: {
               columns: {
@@ -3466,6 +3553,10 @@ type ContractBase = Omit<
       readonly model: 'Membership';
     };
     readonly menu: { readonly namespace: 'public' & NamespaceId; readonly model: 'Menu' };
+    readonly menu_component: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'MenuComponent';
+    };
     readonly menu_ingredient: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'MenuIngredient';
@@ -4580,6 +4671,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly menuComponents: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'MenuComponent';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['menuId'];
+                };
+              };
               readonly menuIngredients: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -4615,6 +4717,72 @@ type ContractBase = Omit<
                 readonly photoKey: { readonly column: 'photo_key' };
                 readonly tags: { readonly column: 'tags' };
                 readonly updatedAt: { readonly column: 'updated_at' };
+              };
+            };
+          };
+          readonly MenuComponent: {
+            readonly fields: {
+              readonly cookId: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly menuId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 100 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly cook: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['cookId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly menu: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Menu' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['menuId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'menu_component';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly cookId: { readonly column: 'cook_id' };
+                readonly id: { readonly column: 'id' };
+                readonly menuId: { readonly column: 'menu_id' };
+                readonly name: { readonly column: 'name' };
               };
             };
           };
@@ -6222,6 +6390,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly cookedComponents: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'MenuComponent';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['cookId'];
+                };
+              };
               readonly deliveries: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6694,6 +6873,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly entry: 'menu';
             readonly field: 'updated_at';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'menu_component';
+            readonly field: 'id';
             readonly namespace: 'public';
           };
         },

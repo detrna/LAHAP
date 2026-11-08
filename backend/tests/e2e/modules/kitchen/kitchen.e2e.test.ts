@@ -26,6 +26,11 @@ interface MenuLine {
     readonly isAlternative: boolean;
     readonly deliveryTime: { readonly time: string };
     readonly portions: number;
+    readonly components: readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly cook: { readonly id: string; readonly name: string } | null;
+    }[];
 }
 
 interface IngredientLine {
@@ -66,6 +71,7 @@ describe("kitchen routes (e2e)", () => {
     let ayamId: string;
     let tahuId: string;
     let sotoId: string;
+    let cookId: string;
     let allergicSlotIds: readonly string[];
     let notedSlotIds: readonly string[];
 
@@ -100,11 +106,16 @@ describe("kitchen routes (e2e)", () => {
         riceId = rows.track("Ingredient", rice.id);
         await db.orm.public.IngredientAllergy.create({ ingredientId: chickenId, allergyId: peanutId });
 
+        cookId = await createTestUser(db, rows, { name: `Zz E2E ${tag} Cook`, role: "KITCHEN" });
         ayamId = await createTestMenu(db, rows, {
             name: `Zz E2E ${tag} Ayam Bakar`,
             ingredients: [
                 { ingredientId: chickenId, quantityPerPortion: 0.2 },
                 { ingredientId: riceId, quantityPerPortion: 0.1 },
+            ],
+            components: [
+                { name: "Ayam Bakar", cookId },
+                { name: "Sambal", cookId: null },
             ],
         });
         tahuId = await createTestMenu(db, rows, {
@@ -266,6 +277,17 @@ describe("kitchen routes (e2e)", () => {
                 [tahuId, true, 1, "07:00"],
                 [sotoId, false, 1, "12:00"],
             ]);
+            expect(first?.menus[0]?.components).toEqual([
+                expect.objectContaining({
+                    name: "Ayam Bakar",
+                    cook: expect.objectContaining({ id: cookId, name: `Zz E2E ${tag} Cook` }),
+                }),
+                expect.objectContaining({
+                    name: "Sambal",
+                    cook: null,
+                }),
+            ]);
+            expect(first?.menus[1]?.components).toEqual([]);
         });
 
         it("totals the ingredients of the served menus", async () => {

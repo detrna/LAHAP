@@ -11,6 +11,7 @@ export interface MenuRow {
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
     readonly menuIngredients: readonly { readonly ingredientId: string; readonly quantityPerPortion: string }[];
+    readonly menuComponents: readonly { readonly id: string; readonly name: string; readonly cookId: string | null }[];
 }
 
 export function toMenuRecord(row: MenuRow): MenuRecord {
@@ -26,6 +27,11 @@ export function toMenuRecord(row: MenuRow): MenuRecord {
         ingredients: row.menuIngredients.map(line => ({
             ingredientId: line.ingredientId,
             quantityPerPortion: fromNumeric(line.quantityPerPortion),
+        })),
+        components: row.menuComponents.map(component => ({
+            id: component.id,
+            name: component.name,
+            cookId: component.cookId,
         })),
     };
 }

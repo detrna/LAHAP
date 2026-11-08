@@ -3,7 +3,8 @@ import type { MenuChanges, MenuRecord } from "../../../service/interfaces/catalo
 import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
 import { toUnknownIngredientError } from "./menu-ingredient-errors.js";
-import { menusWithIngredients } from "./queries.js";
+import { toUnknownCookError } from "./menu-component-errors.js";
+import { menusWithRelations } from "./queries.js";
 import { toMenuRecord } from "./to-menu-record.js";
 
 function toMenuColumns(changes: MenuChanges) {
@@ -39,12 +40,26 @@ export async function updateMenu(
                 );
             }
 
-            const row = await menusWithIngredients(tx.orm).where({ id }).first();
+            if (changes.components !== undefined) {
+                await tx.orm.public.MenuComponent.where({ menuId: id }).deleteAndCount();
+                if (changes.components.length > 0) {
+                    await tx.orm.public.MenuComponent.createAll(
+                        changes.components.map(component => ({
+                            menuId: id,
+                            name: component.name,
+                            cookId: component.cookId,
+                        })),
+                    );
+                }
+            }
+
+            const row = await menusWithRelations(tx.orm).where({ id }).first();
             return row === null ? null : toMenuRecord(row);
         });
     } catch (cause) {
         throw (
             toUnknownIngredientError(cause, changes.ingredients) ??
+            toUnknownCookError(cause, changes.components) ??
             new CatalogRepositoryFailureError("updateMenu", cause)
         );
     }

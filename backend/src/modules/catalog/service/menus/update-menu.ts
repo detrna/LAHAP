@@ -1,10 +1,12 @@
 import { InvalidStateError } from "../../../../shared/errors/invalid-state-error.js";
-import type { Menu } from "../../domain/menu.domain.js";
+import { toComponentRecords } from "../../domain/menu-components.js";
+import type { Menu, MenuComponentInput } from "../../domain/menu.domain.js";
 import { isSameRecipe, type RecipeLineInput } from "../../domain/recipe.js";
 import type { CatalogService } from "../catalog.service.js";
 import { assertChangeReason } from "../change-reason.js";
 import { MenuNotFoundError } from "../interfaces/catalog.repository.js";
 import { announceScheduleChanges } from "../schedules/announce-schedule-changes.js";
+import { ensureActiveCooks } from "./ensure-active-cooks.js";
 import { ensureKnownIngredients } from "./ensure-known-ingredients.js";
 
 export const MENU_IS_ALTERNATIVE_MESSAGE = "menu is the alternative of a schedule";
@@ -16,6 +18,7 @@ export interface UpdateMenuInput {
     readonly tags?: readonly string[] | undefined;
     readonly photoKey?: string | undefined;
     readonly ingredients?: readonly RecipeLineInput[] | undefined;
+    readonly components?: readonly MenuComponentInput[] | undefined;
     readonly changeReason?: string | undefined;
 }
 
@@ -24,6 +27,7 @@ export async function updateMenu(this: CatalogService, id: string, input: Update
     if (existing === null) throw new MenuNotFoundError(id);
 
     if (input.ingredients !== undefined) await ensureKnownIngredients(this.ingredients, input.ingredients);
+    if (input.components !== undefined) await ensureActiveCooks(this.cooks, input.components);
     if (input.photoKey !== undefined && input.photoKey !== existing.photoKey) {
         await this.photoKeys.assertPhotoKeyExists(input.photoKey);
     }
@@ -40,8 +44,11 @@ export async function updateMenu(this: CatalogService, id: string, input: Update
         if (paid.length > 0) assertChangeReason(input.changeReason, "changeReason");
     }
 
-    const { changeReason: _changeReason, ...changes } = input;
-    const record = await this.catalogRepository.updateMenu(id, changes);
+    const { changeReason: _changeReason, components, ...changes } = input;
+    const record = await this.catalogRepository.updateMenu(id, {
+        ...changes,
+        ...(components !== undefined ? { components: toComponentRecords(components) } : {}),
+    });
     if (record === null) throw new MenuNotFoundError(id);
     if (input.changeReason !== undefined) {
         await announceScheduleChanges(

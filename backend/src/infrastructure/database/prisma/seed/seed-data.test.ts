@@ -70,4 +70,37 @@ describe("seed data (unit)", () => {
         for (const tier of TIERS) expect(Number(tier.discountPercent)).toBeGreaterThanOrEqual(0);
         for (const tier of TIERS) expect(Number(tier.discountPercent)).toBeLessThanOrEqual(100);
     });
+
+    describe("menu components", () => {
+        const kitchenIds = USERS.filter(user => user.role === "KITCHEN").map(user => user.id);
+
+        it("gives every menu at least one component with a unique, valid name", () => {
+            for (const menu of Object.values(MENUS)) {
+                expect(menu.components.length).toBeGreaterThan(0);
+                const names = menu.components.map(component => component.name.trim().toLowerCase());
+                expect(new Set(names).size).toBe(names.length);
+                for (const component of menu.components) {
+                    expect(component.name.trim()).toBe(component.name);
+                    expect(component.name.length).toBeGreaterThan(0);
+                    expect(component.name.length).toBeLessThanOrEqual(100);
+                }
+            }
+        });
+
+        it("assigns cooks only to seeded kitchen staff", () => {
+            const cooks = Object.values(MENUS)
+                .flatMap(menu => menu.components)
+                .flatMap(component => (component.cookId === null ? [] : [component.cookId]));
+
+            expect(kitchenIds.length).toBeGreaterThan(0);
+            for (const cookId of cooks) expect(kitchenIds).toContain(cookId);
+        });
+
+        it("assigns a cook to some components and leaves others open", () => {
+            const components = Object.values(MENUS).flatMap(menu => menu.components);
+
+            expect(components.some(component => component.cookId !== null)).toBe(true);
+            expect(components.some(component => component.cookId === null)).toBe(true);
+        });
+    });
 });

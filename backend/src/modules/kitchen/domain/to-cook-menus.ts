@@ -21,6 +21,7 @@ export function buildToCookMenus(
             isAlternative: slot.usesAlternativeMenu,
             deliveryTime: schedule.deliveryTime,
             portions: (current?.portions ?? 0) + 1,
+            components: menu.components,
         });
     }
     return [...lines.values()].sort(

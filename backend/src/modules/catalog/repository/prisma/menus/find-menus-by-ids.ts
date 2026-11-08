@@ -2,7 +2,7 @@ import type { Varchar } from "@prisma/orm-postgres/contract-builder";
 import type { MenuRecord } from "../../../service/interfaces/catalog.repository.js";
 import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
-import { menusWithIngredients } from "./queries.js";
+import { menusWithRelations } from "./queries.js";
 import { toMenuRecord } from "./to-menu-record.js";
 
 export async function findMenusByIds(
@@ -12,7 +12,7 @@ export async function findMenusByIds(
     if (ids.length === 0) return [];
 
     try {
-        const rows = await menusWithIngredients(this.db.orm)
+        const rows = await menusWithRelations(this.db.orm)
             .where(menu => menu.id.in(ids as Varchar<36>[]))
             .orderBy([menu => menu.name.asc(), menu => menu.id.asc()])
             .all();

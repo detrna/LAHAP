@@ -10,6 +10,7 @@ export function buildToCookMenu(overrides: Partial<ToCookMenu> = {}): ToCookMenu
         isAlternative: false,
         deliveryTime: { time: "07:00", range: "Pagi" },
         portions: 0,
+        components: [],
         ...overrides,
     };
 }

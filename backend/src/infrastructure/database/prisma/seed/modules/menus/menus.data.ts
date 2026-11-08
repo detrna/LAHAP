@@ -1,5 +1,11 @@
 import type { IngredientKey } from "../ingredients/ingredients.data.js";
+import { KITCHEN_COOK_ID } from "../users/users.data.js";
 import { seedId } from "../../shared/seed-id.js";
+
+export interface MenuComponentSeed {
+    readonly name: string;
+    readonly cookId: string | null;
+}
 
 export interface MenuSeed {
     readonly id: string;
@@ -8,7 +14,11 @@ export interface MenuSeed {
     readonly isAlternative: boolean;
     readonly tags: readonly string[];
     readonly ingredients: Readonly<Partial<Record<IngredientKey, string>>>;
+    readonly components: readonly MenuComponentSeed[];
 }
+
+const open = (name: string): MenuComponentSeed => ({ name, cookId: null });
+const cooked = (name: string): MenuComponentSeed => ({ name, cookId: KITCHEN_COOK_ID });
 
 export const MENUS = {
     ayamGoreng: {
@@ -25,6 +35,7 @@ export const MENUS = {
             bawangPutih: "5.00",
             minyak: "0.03",
         },
+        components: [open("Nasi Putih"), cooked("Ayam Goreng Tepung"), open("Sayur Bening Bayam")],
     },
     tempeOrek: {
         id: seedId("menu", 2),
@@ -41,6 +52,7 @@ export const MENUS = {
             cabai: "5.00",
             minyak: "0.02",
         },
+        components: [open("Nasi Putih"), cooked("Tempe Orek Kecap"), open("Tumis Kangkung")],
     },
     pecel: {
         id: seedId("menu", 3),
@@ -56,6 +68,7 @@ export const MENUS = {
             bayam: "0.20",
             cabai: "5.00",
         },
+        components: [open("Nasi Putih"), open("Sayur Rebus"), cooked("Sambal Kacang")],
     },
     telurBalado: {
         id: seedId("menu", 4),
@@ -71,6 +84,7 @@ export const MENUS = {
             kol: "50.00",
             wortel: "30.00",
         },
+        components: [open("Nasi Putih"), cooked("Telur Balado"), open("Sayur Sop")],
     },
     ayamBakar: {
         id: seedId("menu", 5),
@@ -87,6 +101,7 @@ export const MENUS = {
             kol: "30.00",
             cabai: "5.00",
         },
+        components: [open("Nasi Putih"), cooked("Ayam Bakar Kecap"), open("Lalapan"), open("Sambal")],
     },
     udangPadang: {
         id: seedId("menu", 6),
@@ -103,6 +118,7 @@ export const MENUS = {
             cabai: "10.00",
             minyak: "0.02",
         },
+        components: [open("Nasi Putih"), cooked("Udang Saus Padang"), open("Capcay")],
     },
     sotoAyam: {
         id: seedId("menu", 7),
@@ -118,6 +134,7 @@ export const MENUS = {
             tauge: "20.00",
             bawangPutih: "5.00",
         },
+        components: [open("Nasi Putih"), cooked("Soto Ayam Kuah Kuning"), open("Telur Rebus")],
     },
     macaroniSchotel: {
         id: seedId("menu", 8),
@@ -126,6 +143,7 @@ export const MENUS = {
         isAlternative: false,
         tags: ["ayam", "panggang"],
         ingredients: { tepung: "80.00", ayam: "0.08", telur: "1.00", keju: "30.00", wortel: "20.00" },
+        components: [cooked("Makaroni Schotel")],
     },
     ayamJahe: {
         id: seedId("menu", 9),
@@ -134,6 +152,7 @@ export const MENUS = {
         isAlternative: true,
         tags: ["ayam", "bebas-alergen"],
         ingredients: { beras: "0.10", ayam: "0.10", bayam: "0.25", bawangPutih: "5.00" },
+        components: [open("Nasi Putih"), cooked("Ayam Rebus Jahe"), open("Sayur Bening Bayam")],
     },
     ayamSuwir: {
         id: seedId("menu", 10),
@@ -149,6 +168,7 @@ export const MENUS = {
             bawangPutih: "5.00",
             minyak: "0.02",
         },
+        components: [open("Nasi Putih"), cooked("Ayam Suwir"), open("Tumis Kol Wortel")],
     },
 } as const satisfies Record<string, MenuSeed>;
 

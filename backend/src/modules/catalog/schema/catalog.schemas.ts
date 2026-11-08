@@ -128,6 +128,11 @@ const menuIngredientInputSchema = z.object({
     quantityPerPortion: decimalSchema({ scale: 2, min: 0, exclusiveMin: true, max: 99999999.99 }),
 });
 
+const menuComponentInputSchema = z.object({
+    name: z.string().trim().min(1).max(100),
+    cookId: z.uuid().nullable().optional(),
+});
+
 const menuShape = {
     name: z.string().trim().min(1).max(100),
     description: z.string().trim(),
@@ -135,6 +140,7 @@ const menuShape = {
     tags: z.array(z.string().trim().min(1)),
     photoKey: photoKeyIn("menus"),
     ingredients: uniqueArray(menuIngredientInputSchema, { by: line => line.ingredientId }).min(1),
+    components: uniqueArray(menuComponentInputSchema, { by: component => component.name.toLowerCase() }),
 };
 
 export const menuCreateSchema = z.object({
@@ -144,6 +150,7 @@ export const menuCreateSchema = z.object({
     tags: menuShape.tags.optional(),
     photoKey: menuShape.photoKey,
     ingredients: menuShape.ingredients,
+    components: menuShape.components.optional(),
 });
 
 export const menuUpdateSchema = z
@@ -154,6 +161,7 @@ export const menuUpdateSchema = z
         tags: menuShape.tags.optional(),
         photoKey: menuShape.photoKey.optional(),
         ingredients: menuShape.ingredients.optional(),
+        components: menuShape.components.optional(),
         changeReason: changeReasonSchema.optional(),
     })
     .refine(({ changeReason: _changeReason, ...changes }) => hasChanges(changes), {

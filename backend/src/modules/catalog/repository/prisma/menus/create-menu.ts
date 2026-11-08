@@ -3,7 +3,8 @@ import type { MenuRecord, NewMenuRecord } from "../../../service/interfaces/cata
 import { CatalogRepositoryFailureError } from "../../../service/interfaces/catalog.repository.js";
 import type { PrismaCatalogRepository } from "../catalog-repository.js";
 import { toUnknownIngredientError } from "./menu-ingredient-errors.js";
-import { menusWithIngredients } from "./queries.js";
+import { toUnknownCookError } from "./menu-component-errors.js";
+import { menusWithRelations } from "./queries.js";
 import { toMenuRecord } from "./to-menu-record.js";
 
 export async function createMenu(this: PrismaCatalogRepository, record: NewMenuRecord): Promise<MenuRecord> {
@@ -23,13 +24,23 @@ export async function createMenu(this: PrismaCatalogRepository, record: NewMenuR
                     quantityPerPortion: toNumeric(line.quantityPerPortion, 2),
                 })),
             );
-            const row = await menusWithIngredients(tx.orm).where({ id: created.id }).first();
+            if (record.components.length > 0) {
+                await tx.orm.public.MenuComponent.createAll(
+                    record.components.map(component => ({
+                        menuId: created.id,
+                        name: component.name,
+                        cookId: component.cookId,
+                    })),
+                );
+            }
+            const row = await menusWithRelations(tx.orm).where({ id: created.id }).first();
             if (row === null) throw new Error(`menu ${created.id} vanished inside its own transaction`);
             return toMenuRecord(row);
         });
     } catch (cause) {
         throw (
             toUnknownIngredientError(cause, record.ingredients) ??
+            toUnknownCookError(cause, record.components) ??
             new CatalogRepositoryFailureError("createMenu", cause)
         );
     }

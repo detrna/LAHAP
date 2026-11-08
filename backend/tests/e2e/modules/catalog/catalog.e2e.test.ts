@@ -13,6 +13,7 @@ import type { ObjectStorage } from "../../../../src/shared/ports/object-storage/
 import { createTestApp, type TestApp } from "../../../utils/app/create-test-app.js";
 import { createCatalogContainer } from "../../../utils/app/catalog-container.js";
 import { createIngredientsContainer } from "../../../utils/app/ingredients-container.js";
+import { createUsersContainer } from "../../../utils/app/users-container.js";
 import { createAuthHeaders } from "../../../utils/factory/jwt/jwt.js";
 import { createTestSchedule } from "../../../utils/fixtures/schedules.js";
 import { createTestPackage, createTestSubscription } from "../../../utils/fixtures/subscriptions.js";
@@ -92,6 +93,7 @@ describe("catalog routes (e2e)", () => {
             adapters: { objectStorage },
             mount: deps => {
                 const photoKeys = new FilesService(objectStorage, deps.adapters.clock);
+                const users = createUsersContainer(deps);
                 const catalog = createCatalogContainer(deps, {
                     photoKeys,
                     ingredients: {
@@ -99,6 +101,10 @@ describe("catalog routes (e2e)", () => {
                         getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
                     },
                     orderActivity: activity,
+                    cooks: {
+                        filterActiveUserIds: (ids, role) => users.service.filterActiveUserIds(ids, role),
+                        getSummaries: ids => users.service.getSummaries(ids),
+                    },
                 });
                 const ingredients = createIngredientsContainer(deps, {
                     photoKeys,
@@ -590,6 +596,59 @@ describe("catalog routes (e2e)", () => {
 
             expect((await request(app).delete(`/api/admin/menus/${id}`).set(admin())).status).toBe(204);
             expect((await request(app).get(`/api/admin/menus/${id}`).set(admin())).status).toBe(404);
+        });
+
+        it("creates, updates, clears, and validates menu components and cook assignments", async () => {
+            const cookId = await createTestUser(db, rows, { name: `Zz E2E ${tag} Cook`, role: "KITCHEN" });
+            const customerId = await createTestUser(db, rows, { name: `Zz E2E ${tag} Customer`, role: "CUSTOMER" });
+
+            const created = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send(
+                    validMenu("Paket Komplit", {
+                        components: [{ name: "Nasi Merah", cookId }, { name: "Sambal Matah" }],
+                    }),
+                );
+
+            expect(created.status).toBe(201);
+            const id = rows.track("Menu", created.body.data.id);
+            expect(created.body.data.components).toEqual([
+                expect.objectContaining({
+                    name: "Nasi Merah",
+                    cook: expect.objectContaining({ id: cookId, name: `Zz E2E ${tag} Cook` }),
+                }),
+                expect.objectContaining({
+                    name: "Sambal Matah",
+                    cook: null,
+                }),
+            ]);
+
+            const replaced = await request(app)
+                .patch(`/api/admin/menus/${id}`)
+                .set(admin())
+                .send({ components: [{ name: "Lalab", cookId }] });
+            expect(replaced.status).toBe(200);
+            expect(replaced.body.data.components).toEqual([
+                expect.objectContaining({
+                    name: "Lalab",
+                    cook: expect.objectContaining({ id: cookId }),
+                }),
+            ]);
+
+            const cleared = await request(app).patch(`/api/admin/menus/${id}`).set(admin()).send({ components: [] });
+            expect(cleared.status).toBe(200);
+            expect(cleared.body.data.components).toEqual([]);
+
+            const nonKitchen = await request(app)
+                .patch(`/api/admin/menus/${id}`)
+                .set(admin())
+                .send({ components: [{ name: "Nasi Merah", cookId: customerId }] });
+            expect(nonKitchen.status).toBe(422);
+            expect(nonKitchen.body.error).toMatchObject({
+                code: "INVALID_STATE",
+                message: "cook is not an active kitchen staff",
+            });
         });
     });
 

@@ -106,6 +106,17 @@ export interface MenuIngredientRecord {
     readonly quantityPerPortion: number;
 }
 
+export interface MenuComponentRecord {
+    readonly id: string;
+    readonly name: string;
+    readonly cookId: string | null;
+}
+
+export interface NewMenuComponentRecord {
+    readonly name: string;
+    readonly cookId: string | null;
+}
+
 export interface MenuRecord {
     readonly id: string;
     readonly name: string;
@@ -116,6 +127,7 @@ export interface MenuRecord {
     readonly createdAt: Temporal.PlainDateTime;
     readonly updatedAt: Temporal.PlainDateTime;
     readonly ingredients: readonly MenuIngredientRecord[];
+    readonly components: readonly MenuComponentRecord[];
 }
 
 export interface NewMenuRecord {
@@ -125,6 +137,7 @@ export interface NewMenuRecord {
     readonly tags: readonly string[];
     readonly photoKey: string;
     readonly ingredients: readonly MenuIngredientRecord[];
+    readonly components: readonly NewMenuComponentRecord[];
 }
 
 export interface MenuChanges {
@@ -134,6 +147,7 @@ export interface MenuChanges {
     readonly tags?: readonly string[] | undefined;
     readonly photoKey?: string | undefined;
     readonly ingredients?: readonly MenuIngredientRecord[] | undefined;
+    readonly components?: readonly NewMenuComponentRecord[] | undefined;
 }
 
 export interface MenuListQuery {

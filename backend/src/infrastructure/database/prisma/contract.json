@@ -52,6 +52,10 @@
       "model": "Menu",
       "namespace": "public"
     },
+    "menu_component": {
+      "model": "MenuComponent",
+      "namespace": "public"
+    },
     "menu_ingredient": {
       "model": "MenuIngredient",
       "namespace": "public"
@@ -1621,6 +1625,21 @@
               }
             },
             "relations": {
+              "menuComponents": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "menuId"
+                  ]
+                },
+                "to": {
+                  "model": "MenuComponent",
+                  "namespace": "public"
+                }
+              },
               "menuIngredients": {
                 "cardinality": "1:N",
                 "on": {
@@ -1681,6 +1700,102 @@
               },
               "namespaceId": "public",
               "table": "menu"
+            }
+          },
+          "MenuComponent": {
+            "fields": {
+              "cookId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "menuId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/varchar@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 100
+                  }
+                }
+              }
+            },
+            "relations": {
+              "cook": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "cookId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "menu": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "menuId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Menu",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "cookId": {
+                  "column": "cook_id"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "menuId": {
+                  "column": "menu_id"
+                },
+                "name": {
+                  "column": "name"
+                }
+              },
+              "namespaceId": "public",
+              "table": "menu_component"
             }
           },
           "MenuIngredient": {
@@ -3979,6 +4094,21 @@
                   "namespace": "public"
                 }
               },
+              "cookedComponents": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "cookId"
+                  ]
+                },
+                "to": {
+                  "model": "MenuComponent",
+                  "namespace": "public"
+                }
+              },
               "deliveries": {
                 "cardinality": "1:N",
                 "on": {
@@ -5688,6 +5818,115 @@
                 ]
               },
               "uniques": []
+            },
+            "menu_component": {
+              "columns": {
+                "cook_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": true,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "menu_id": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "name": {
+                  "codecId": "sql/varchar@1",
+                  "dataType": "pg/varchar",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 100
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "menu_component_menu_id_idx_acdcfcd6"
+                  },
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "menu_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "menu_component"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "menu"
+                  }
+                },
+                {
+                  "index": {
+                    "name": "menu_component_cook_id_idx_21278fc4"
+                  },
+                  "onDelete": "setNull",
+                  "source": {
+                    "columns": [
+                      "cook_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "menu_component"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "cook_id"
+                  ],
+                  "name": "menu_component_cook_id_idx_21278fc4",
+                  "prefix": "menu_component_cook_id_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "menu_id"
+                  ],
+                  "name": "menu_component_menu_id_idx_acdcfcd6",
+                  "prefix": "menu_component_menu_id_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "menu_id",
+                    "name"
+                  ]
+                }
+              ]
             },
             "menu_ingredient": {
               "columns": {
@@ -7809,10 +8048,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "0a20c98b56378e59c979ccae2f886d55cbfc1052faf3d77a07597ead00714174"
+    "storageHash": "f5b6ce37bc096ab267ef9bca3934f4ffa7beed0da832c6c5eb3c0ec3ce26d1c8"
   },
   "execution": {
-    "executionHash": "e9e47c1ae9e00e08b6de151e8c8284e250c8ef49c0b0ef71fd6fc2d1833771df",
+    "executionHash": "8102695284524ef2179b9a349e5c5c57de0a64af30747bdd5dd739551fa9ae19",
     "mutations": {
       "defaults": [
         {
@@ -8159,6 +8398,17 @@
           "ref": {
             "entry": "menu",
             "field": "updated_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "menu_component",
+            "field": "id",
             "namespace": "public"
           }
         },
