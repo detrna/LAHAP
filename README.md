@@ -19,21 +19,6 @@ All demo accounts share the default password: **`password123`**
 | **`CUSTOMER`** | Bagus Santoso | `6281200000004` | `bagus@lahap.test` | Customer portal: Batu address, customer history for churn / retention testing.                                                          |
 | **`CUSTOMER`** | Dewi Lestari  | `6281200000003` | _(phone only)_     | Customer portal: phone-only login account without email.                                                                                |
 
-### 🔑 Demo Accounts for Evaluation / Judges
-
-All demo accounts share the default password: **`password123`**
-
-| Role           | Name          | Phone (Login)   | Email (Login)      | Context & Test Scenarios                                                                                                                |
-| :------------- | :------------ | :-------------- | :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| **`ADMIN`**    | Admin Lahap   | `6281100000001` | `admin@lahap.test` | Full backoffice: manage packages, menus, ingredients, courier assignment, cash verification, churn retention, and income reports.       |
-| **`KITCHEN`**  | Dapur Lahap   | `6281100000002` | `dapur@lahap.test` | Kitchen mobile view: view daily _ToCook_ portions, manage allergen clashes & alternative menus, trigger "Food Ready", and update stock. |
-| **`COURIER`**  | Joko Kurir    | `6281100000003` | `joko@lahap.test`  | Courier mobile view: view daily delivery routes, navigate to customer pin locations, log delivery obstacle notes, mark slots completed. |
-| **`COURIER`**  | Eko Kurir     | `6281100000004` | `eko@lahap.test`   | Secondary courier for multi-courier assignment testing.                                                                                 |
-| **`CUSTOMER`** | Rina Putri    | `6281200000001` | `rina@lahap.test`  | Customer portal: active subscription, peanut allergy (`kacang`), Malang address with delivery coordinates.                              |
-| **`CUSTOMER`** | Andi Wijaya   | `6281200000002` | `andi@lahap.test`  | Customer portal: seafood allergy (`seafood`) + special taste note (_"Tidak bisa makan terong"_).                                        |
-| **`CUSTOMER`** | Bagus Santoso | `6281200000004` | `bagus@lahap.test` | Customer portal: Batu address, customer history for churn / retention testing.                                                          |
-| **`CUSTOMER`** | Dewi Lestari  | `6281200000003` | _(phone only)_     | Customer portal: phone-only login account without email.                                                                                |
-
 ---
 
 ## 1. Executive Summary & Product Overview
