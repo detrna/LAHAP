@@ -257,6 +257,11 @@ classDiagram
         - changedAt: Date
     }
 
+    class MenuComponent {
+        - id: String
+        - name: String
+    }
+
     %% Relationships
     Notification "0..*" --> "1" User : notifies
     User "1" --> "0..1" Membership : holds
@@ -295,12 +300,14 @@ classDiagram
     DeliveryMethodChangeSlot "0..*" --> "1" Order : switched in
     Ingredient "1" *-- "0..*" IngredientStockHistory : tracked by
     IngredientStockHistory "0..*" --> "1" User : changed by
+    Menu "1" *-- "0..*" MenuComponent : composed of
+    MenuComponent "0..*" --> "0..1" User : cooked by
     %% Business is a singleton settings entity with no associations (tenant scoping deferred)
 ```
 
 ---
 
-## 3. Entity Data Dictionary (23 Domain Entities)
+## 3. Entity Data Dictionary (24 Domain Entities)
 
 > Mutable entities also carry `createdAt` and `updatedAt` (auto-maintained), omitted from the tables below. Link tables and append-only logs (`OrderStatusHistory`, `DeliveryObstacle`, `IngredientStockHistory`) have no `updatedAt`.
 
@@ -656,11 +663,23 @@ classDiagram
   | _(ingredient)_ | `Ingredient` | No | The updated ingredient. |
   | _(changedBy)_ | `User` | No | Kitchen staff or admin who changed the stock. |
 
+### 3.24 `MenuComponent` (`c_menu_comp`)
+
+- **Stereotype:** `«entity»`
+- **Domain Role:** Sub-dish component of a `Menu` with an optional assigned kitchen cook (PRD UC-34). Owned by its parent `Menu`; updating a menu's `components` replaces the full list in one transaction without requiring `changeReason` or triggering a `SCHEDULE` announcement (BR-26).
+- **Attributes:**
+  | Attribute | Type | Nullable | Description & Invariants |
+  | :--- | :--- | :---: | :--- |
+  | `id` | `String` | No | Primary Key. |
+  | `name` | `String` | No | Sub-dish / component name (e.g., `Nasi Merah`, `Ayam Bakar`, `Sambal Matah`); unique per `Menu` (case-insensitive). |
+  | _(menu)_ | `Menu` | No | Parent menu. |
+  | _(cook)_ | `User` | Yes | Assigned active `KITCHEN` staff (`User.role == "KITCHEN"` and `isActive == true`); `null` when unassigned. |
+
 ---
 
-## 4. Relationship & Multiplicity Matrix (32 Edges)
+## 4. Relationship & Multiplicity Matrix (34 Edges)
 
-The following matrix documents all 32 edges connecting the 23 entities in the class model:
+The following matrix documents all 34 edges connecting the 24 entities in the class model:
 
 | Edge ID             | Source Node      |  Mult  | Relation Type | Target Node    |  Mult  | Label               | Foreign Key / Cascade Semantics                                                                                                                 |
 | :------------------ | :--------------- | :----: | :-----------: | :------------- | :----: | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -696,6 +715,8 @@ The following matrix documents all 32 edges connecting the 23 entities in the cl
 | `e_method_change_slot_order` | `DeliveryMethodChangeSlot` | `0..*` | `association` | `Order` | `1` | `switched in` | `DeliveryMethodChangeSlot.orderId -> Order.id` (ON DELETE CASCADE). References the switched daily slot. |
 | `e_ing_stock_hist` | `Ingredient` | `1` | `composition` | `IngredientStockHistory` | `0..*` | `tracked by` | `IngredientStockHistory.ingredientId -> Ingredient.id` (ON DELETE CASCADE). One row per stock quantity change (PRD UC-40). |
 | `e_ing_stock_hist_user` | `IngredientStockHistory` | `0..*` | `association` | `User` | `1` | `changed by` | `IngredientStockHistory.changedById -> User.id` (ON DELETE RESTRICT). Kitchen staff or admin actor who changed the stock. |
+| `e_menu_comp` | `Menu` | `1` | `composition` | `MenuComponent` | `0..*` | `composed of` | `MenuComponent.menuId -> Menu.id` (ON DELETE CASCADE). Optional sub-dish components owned by their parent Menu (PRD UC-34). |
+| `e_menu_comp_cook` | `MenuComponent` | `0..*` | `association` | `User` | `0..1` | `cooked by` | `MenuComponent.cookId -> User.id` (ON DELETE SET NULL). Optional active `KITCHEN` cook assigned to prepare the component (PRD UC-34). |
 
 ---
 

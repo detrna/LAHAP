@@ -5012,7 +5012,7 @@
           "Admin · Catalog"
         ],
         "summary": "Create a menu",
-        "description": "**Roles:** `ADMIN`.\n\nIngredients come from the master list; allergen tags are derived (UC-23, UC-45).",
+        "description": "**Roles:** `ADMIN`.\n\nIngredients come from the master list; allergen tags are derived (UC-23, UC-45). Optional `components` assign sub-dishes to active `KITCHEN` staff (UC-34); 422 when any `cookId` is not an active `KITCHEN` user.",
         "x-roles": [
           "ADMIN"
         ],
@@ -5105,6 +5105,9 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "422": {
+            "$ref": "#/components/responses/InvalidState"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -5185,7 +5188,7 @@
           "Admin · Catalog"
         ],
         "summary": "Update a menu",
-        "description": "**Roles:** `ADMIN`.\n\nName, description and photo can always change. Changing ingredients of a menu used by schedules with `Success` orders requires `changeReason` and notifies affected customers (UC-23). 422 when turning `isAlternative` off while the menu is some schedule's alternative.",
+        "description": "**Roles:** `ADMIN`.\n\nName, description, photo and `components` can always change. Changing ingredients of a menu used by schedules with `Success` orders requires `changeReason` and notifies affected customers (UC-23). 422 when turning `isAlternative` off while the menu is some schedule's alternative, or when any `components[].cookId` is not an active `KITCHEN` user (UC-34).",
         "x-roles": [
           "ADMIN"
         ],
@@ -10776,6 +10779,67 @@
         },
         "x-apidog-folder": "Catalog"
       },
+      "MenuComponent": {
+        "type": "object",
+        "description": "Sub-dish component of a menu with an optional assigned kitchen cook (UC-34).",
+        "required": [
+          "id",
+          "name",
+          "cook"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Primary key (UUID v4).",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Sub-dish / component name.",
+            "examples": [
+              "Nasi Merah"
+            ]
+          },
+          "cook": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Assigned `KITCHEN` cook, or `null` when unassigned.",
+            "readOnly": true
+          }
+        },
+        "x-apidog-folder": "Catalog"
+      },
+      "MenuComponentInput": {
+        "type": "object",
+        "description": "Sub-dish component line when creating or updating a menu (UC-34).",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Sub-dish / component name (unique per menu, case-insensitive).",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "cookId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Optional active `KITCHEN` staff ID assigned to cook this component."
+          }
+        },
+        "x-apidog-folder": "Catalog"
+      },
       "Menu": {
         "type": "object",
         "description": "Reusable dish. Allergens are the union of its ingredients' allergens.",
@@ -10788,7 +10852,8 @@
           "photoKey",
           "photoUrl",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "components"
         ],
         "properties": {
           "id": {
@@ -10866,6 +10931,14 @@
             },
             "description": "Derived: union of the ingredients' allergens.",
             "readOnly": true
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuComponent"
+            },
+            "description": "Sub-dish components and their assigned kitchen cooks (UC-34).",
+            "readOnly": true
           }
         },
         "x-apidog-folder": "Catalog"
@@ -10916,6 +10989,14 @@
             },
             "description": "Recipe lines; on update replaces the full list.",
             "minItems": 1
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuComponentInput"
+            },
+            "description": "Sub-dish components and optional cook assignments (UC-34); defaults to `[]`.",
+            "default": []
           }
         },
         "x-apidog-folder": "Catalog"
@@ -10959,6 +11040,13 @@
             },
             "description": "Recipe lines; on update replaces the full list.",
             "minItems": 1
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuComponentInput"
+            },
+            "description": "Sub-dish components and optional cook assignments (UC-34); replaces the full list (`[]` clears them)."
           },
           "changeReason": {
             "type": "string",
@@ -12842,7 +12930,8 @@
           "name",
           "isAlternative",
           "deliveryTime",
-          "portions"
+          "portions",
+          "components"
         ],
         "properties": {
           "packageId": {
@@ -12875,6 +12964,13 @@
             "format": "int32",
             "description": "`Success`, non-skipped slots.",
             "minimum": 0
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuComponent"
+            },
+            "description": "Sub-dish components and their assigned kitchen cooks (UC-34)."
           }
         },
         "x-apidog-folder": "Kitchen"
