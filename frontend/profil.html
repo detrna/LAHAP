@@ -1,32 +1,197 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Profil · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
-<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
-<main class="container stack-lg">
-<div><h1 class="t-h1">Profil</h1><p class="t-muted">Data dan alergi dipakai untuk peringatan menu.</p></div>
-<div class="alert alert--info" id="ok" hidden><span class="alert-title">Tersimpan</span>Perubahan profil sudah disimpan.</div>
-<form class="card stack" id="fProfil">
- <div class="field"><label for="nama">Nama</label><input class="input" id="nama" value="Budi Santoso"></div>
- <div class="field"><label for="hp">Nomor HP</label><input class="input" id="hp" value="081234567890"></div>
- <div class="field"><label for="email">Email (opsional)</label><input class="input" id="email" type="email"></div>
- <div class="field"><label for="alamat">Alamat</label><textarea class="textarea" id="alamat">Jl. Veteran 12, Malang</textarea></div>
- <div class="field"><span class="field-label">Alergi</span><div class="chip-group">
-  <label class="chip"><input type="checkbox" checked>Telur</label><label class="chip"><input type="checkbox">Kacang</label><label class="chip"><input type="checkbox">Susu</label><label class="chip"><input type="checkbox">Seafood</label><label class="chip"><input type="checkbox">Gluten</label></div></div>
- <div class="field"><label for="catAlergi">Catatan alergi lain</label><input class="input" id="catAlergi"></div>
- <button class="btn btn-primary" type="submit">Simpan Perubahan</button>
-</form>
-<form class="card stack" id="fPw">
- <h2 class="t-h3">Ganti password</h2>
- <div class="field"><label for="pl">Password lama</label><input class="input" id="pl" type="password"></div>
- <div class="field" id="fBaru"><label for="pb">Password baru</label><input class="input" id="pb" type="password"><p class="error-msg" hidden>Minimal 8 karakter dan harus sama dengan ulangi password.</p></div>
- <div class="field"><label for="pu">Ulangi password baru</label><input class="input" id="pu" type="password"></div>
- <button class="btn btn-secondary" type="submit">Ganti Password</button>
-</form>
-</main><script src="js/auth.js"></script>
-<script>
-// Ganti dengan API ubah profil dan ganti password.
-document.getElementById('fProfil').onsubmit=function(e){e.preventDefault();document.getElementById('ok').hidden=false;scrollTo(0,0)};
-document.getElementById('fPw').onsubmit=function(e){e.preventDefault();
- var ok=pb.value.length>=8&&pb.value===pu.value;fBaru.classList.toggle('is-error',!ok);fBaru.querySelector('.error-msg').hidden=ok;
- if(ok){alert('Password diganti.');this.reset()}};
-</script></body></html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Profil · LAHAP</title>
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+    <body data-roles="pelanggan">
+        <header class="app-header">
+            <div class="container">
+                <a class="brand" href="index.html">LAHAP</a>
+                <nav class="nav"></nav>
+            </div>
+        </header>
+        <main class="container stack-lg">
+            <div>
+                <h1 class="t-h1">Profil</h1>
+                <p class="t-muted">Data dan alergi dipakai untuk peringatan menu.</p>
+            </div>
+            <div class="alert alert--info" id="ok" hidden>
+                <span class="alert-title">Tersimpan</span><span class="msg">Perubahan profil sudah disimpan.</span>
+            </div>
+            <div class="alert alert--error" id="errProfil" hidden>
+                <span class="alert-title">Gagal menyimpan</span><span class="msg"></span>
+            </div>
+            <form class="card stack" id="fProfil">
+                <div class="field">
+                    <label for="nama">Nama</label>
+                    <input class="input" id="nama" maxlength="100" autocomplete="name" />
+                </div>
+                <div class="field" id="fHp">
+                    <label for="hp">Nomor HP</label>
+                    <input class="input" id="hp" inputmode="tel" autocomplete="tel" />
+                    <p class="error-msg" hidden>Nomor HP tidak valid. Contoh: 081234567890</p>
+                </div>
+                <div class="field">
+                    <label for="email">Email (opsional)</label>
+                    <input class="input" id="email" type="email" maxlength="100" autocomplete="email" />
+                </div>
+                <div class="field">
+                    <label for="alamat">Alamat</label>
+                    <textarea class="textarea" id="alamat"></textarea>
+                    <p class="hint">Dipakai untuk mengisi otomatis saat checkout.</p>
+                </div>
+                <div class="field">
+                    <span class="field-label">Alergi</span>
+                    <div class="chip-group" id="alergi"></div>
+                </div>
+                <div class="field">
+                    <label for="catAlergi">Catatan alergi lain</label>
+                    <input class="input" id="catAlergi" />
+                </div>
+                <button class="btn btn-primary" type="submit" id="simpanProfil" disabled>Simpan Perubahan</button>
+            </form>
+            <div class="alert alert--error" id="errPw" hidden>
+                <span class="alert-title">Gagal mengganti password</span><span class="msg"></span>
+            </div>
+            <form class="card stack" id="fPw">
+                <h2 class="t-h3">Ganti password</h2>
+                <div class="field">
+                    <label for="pl">Password lama</label>
+                    <input class="input" id="pl" type="password" autocomplete="current-password" />
+                </div>
+                <div class="field" id="fBaru">
+                    <label for="pb">Password baru</label>
+                    <input class="input" id="pb" type="password" autocomplete="new-password" />
+                    <p class="error-msg" hidden>8 sampai 72 karakter dan harus sama dengan ulangi password.</p>
+                </div>
+                <div class="field">
+                    <label for="pu">Ulangi password baru</label>
+                    <input class="input" id="pu" type="password" autocomplete="new-password" />
+                </div>
+                <p class="hint">Setelah password diganti, kamu akan diminta masuk lagi.</p>
+                <button class="btn btn-secondary" type="submit">Ganti Password</button>
+            </form>
+        </main>
+        <script src="js/auth.js"></script>
+        <script>
+            const $ = selector => document.querySelector(selector);
+
+            const tampilHp = phone => (phone.startsWith("62") ? "0" + phone.slice(2) : phone);
+
+            function tampilPesan(box, message) {
+                box.hidden = !message;
+                box.querySelector(".msg").textContent = message || "";
+            }
+
+            function isiForm(user, allergies) {
+                $("#nama").value = user.name;
+                $("#hp").value = tampilHp(user.phone);
+                $("#email").value = user.email || "";
+                $("#alamat").value = user.address || "";
+                $("#catAlergi").value = user.allergyNote || "";
+                const dipilih = new Set((user.allergies || []).map(item => item.id));
+                const grup = $("#alergi");
+                grup.replaceChildren();
+                allergies.forEach(item => {
+                    const label = document.createElement("label");
+                    label.className = "chip";
+                    const input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.value = item.id;
+                    input.checked = dipilih.has(item.id);
+                    label.append(input, item.name);
+                    grup.appendChild(label);
+                });
+            }
+
+            function simpanSesi(user) {
+                store.user = { ...store.user, name: user.name };
+            }
+
+            async function muat() {
+                try {
+                    const [me, allergies] = await Promise.all([api("/me"), api("/allergies", { auth: false })]);
+                    isiForm(me.data, allergies.data);
+                    $("#simpanProfil").disabled = false;
+                } catch (error) {
+                    tampilPesan($("#errProfil"), errorMessage(error));
+                    $("#errProfil .alert-title").textContent = "Gagal memuat profil";
+                }
+            }
+
+            $("#fProfil").addEventListener("submit", async event => {
+                event.preventDefault();
+                tampilPesan($("#ok"), "");
+                tampilPesan($("#errProfil"), "");
+                $("#errProfil .alert-title").textContent = "Gagal menyimpan";
+
+                const phone = $("#hp").value.trim();
+                const hpValid = /^\+?[0-9]{8,15}$/.test(phone);
+                $("#fHp").classList.toggle("is-error", !hpValid);
+                $("#fHp .error-msg").hidden = hpValid;
+                if (!hpValid) return;
+
+                const body = {
+                    phone,
+                    email: $("#email").value.trim() || null,
+                    address: $("#alamat").value.trim() || null,
+                    allergyNote: $("#catAlergi").value.trim() || null,
+                    allergyIds: [...document.querySelectorAll("#alergi input:checked")].map(input => input.value),
+                };
+                const nama = $("#nama").value.trim();
+                if (nama) body.name = nama;
+
+                const tombol = $("#simpanProfil");
+                tombol.disabled = true;
+                try {
+                    const { data } = await api("/me", { method: "PATCH", body });
+                    isiForm(
+                        data,
+                        [...document.querySelectorAll("#alergi label")].map(label => ({
+                            id: label.querySelector("input").value,
+                            name: label.textContent,
+                        })),
+                    );
+                    simpanSesi(data);
+                    tampilPesan($("#ok"), "Perubahan profil sudah disimpan.");
+                    scrollTo(0, 0);
+                } catch (error) {
+                    tampilPesan($("#errProfil"), errorMessage(error));
+                    scrollTo(0, 0);
+                } finally {
+                    tombol.disabled = false;
+                }
+            });
+
+            $("#fPw").addEventListener("submit", async event => {
+                event.preventDefault();
+                tampilPesan($("#errPw"), "");
+                const baru = $("#pb").value;
+                const valid = baru.length >= 8 && baru.length <= 72 && baru === $("#pu").value;
+                $("#fBaru").classList.toggle("is-error", !valid);
+                $("#fBaru .error-msg").hidden = valid;
+                if (!valid) return;
+
+                const tombol = event.target.querySelector("button[type=submit]");
+                tombol.disabled = true;
+                try {
+                    await api("/me/password", {
+                        method: "PUT",
+                        body: { currentPassword: $("#pl").value, newPassword: baru },
+                    });
+                    event.target.reset();
+                    alert("Password diganti. Silakan masuk lagi.");
+                    logout();
+                } catch (error) {
+                    tampilPesan($("#errPw"), errorMessage(error));
+                    tombol.disabled = false;
+                }
+            });
+
+            muat();
+        </script>
+    </body>
+</html>
