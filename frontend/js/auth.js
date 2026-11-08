@@ -1,50 +1,169 @@
-// LOGIN DEMO. Ganti isi fungsi login() dengan panggilan ke API backend (UC-13).
-// Backend yang memeriksa peran. Pengecekan di sini hanya untuk tampilan.
-var USERS = [
-  { hp: '081111', pw: 'demo123', nama: 'Admin LAHAP', role: 'admin' },
-  { hp: '082222', pw: 'demo123', nama: 'Budi Santoso', role: 'pelanggan' },
-  { hp: '083333', pw: 'demo123', nama: 'Siti (Dapur)', role: 'dapur' },
-  { hp: '084444', pw: 'demo123', nama: 'Ahmad (Kurir)', role: 'kurir' }
-];
-var HOME = { pelanggan: 'index.html', admin: 'admin.html', dapur: 'dapur.html', kurir: 'kurir.html' };
-var MENU = {
-  tamu: [['Paket', 'index.html']],
-  pelanggan: [['Paket', 'index.html'], ['Langganan Saya', 'langganan.html']],
-  admin: [['Dashboard', 'admin.html']],
-  dapur: [['To-do Dapur', 'dapur.html']],
-  kurir: [['To-do Kurir', 'kurir.html']]
+const API_BASE = "https://lahap.bccdev.id/api";
+
+const ROLE_KEY = { CUSTOMER: "pelanggan", ADMIN: "admin", KITCHEN: "dapur", COURIER: "kurir" };
+const HOME = { pelanggan: "index.html", admin: "admin.html", dapur: "dapur.html", kurir: "kurir.html" };
+const MENU = {
+    tamu: [["Paket", "index.html"]],
+    pelanggan: [
+        ["Paket", "index.html"],
+        ["Langganan Saya", "langganan.html"],
+        ["Notifikasi", "notifikasi.html"],
+        ["Profil", "profil.html"],
+    ],
+    admin: [
+        ["Dashboard", "admin.html"],
+        ["Pelanggan", "admin-pelanggan.html"],
+        ["Menu", "admin-menu.html"],
+        ["Paket", "admin-paket.html"],
+        ["Promo", "admin-promo.html"],
+        ["Pembayaran", "admin-pembayaran.html"],
+        ["Bahan", "admin-bahan.html"],
+        ["Pesanan", "admin-pesanan.html"],
+        ["Notifikasi", "admin-notifikasi.html"],
+        ["Pengguna", "admin-pengguna.html"],
+    ],
+    dapur: [
+        ["To-do Dapur", "dapur.html"],
+        ["Stok Bahan", "dapur-stok.html"],
+    ],
+    kurir: [["To-do Kurir", "kurir.html"]],
 };
 
-function currentUser() {
-  try { return JSON.parse(localStorage.getItem('lahap_user')); } catch (e) { return null; }
-}
-function login(id, pw) {
-  for (var i = 0; i < USERS.length; i++) {
-    if (USERS[i].hp === id && USERS[i].pw === pw) {
-      localStorage.setItem('lahap_user', JSON.stringify(USERS[i]));
-      return USERS[i];
+class ApiError extends Error {
+    constructor(status, body) {
+        const error = (body && body.error) || {};
+        super(error.message || "request failed");
+        this.status = status;
+        this.code = error.code || "UNKNOWN";
+        this.issues = error.issues || [];
     }
-  }
-  return null;
 }
-function logout() { localStorage.removeItem('lahap_user'); location.href = 'login.html'; }
+
+const store = {
+    get token() {
+        return sessionStorage.getItem("lahap_token");
+    },
+    set token(value) {
+        if (value) sessionStorage.setItem("lahap_token", value);
+        else sessionStorage.removeItem("lahap_token");
+    },
+    get user() {
+        try {
+            return JSON.parse(sessionStorage.getItem("lahap_user"));
+        } catch {
+            return null;
+        }
+    },
+    set user(value) {
+        if (value) sessionStorage.setItem("lahap_user", JSON.stringify(value));
+        else sessionStorage.removeItem("lahap_user");
+    },
+};
+
+async function rawFetch(path, { method = "GET", body, auth = true } = {}) {
+    const headers = {};
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (auth && store.token) headers.Authorization = `Bearer ${store.token}`;
+    const response = await fetch(API_BASE + path, {
+        method,
+        headers,
+        credentials: "include",
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const json = await response.json().catch(() => null);
+    return { response, json };
+}
+
+function saveSession(session) {
+    store.token = session.accessToken;
+    store.user = session.user;
+}
+
+async function refreshSession() {
+    const { response, json } = await rawFetch("/auth/refresh", { method: "POST", body: {}, auth: false });
+    if (!response.ok) return false;
+    saveSession(json.data);
+    return true;
+}
+
+async function api(path, options = {}) {
+    let { response, json } = await rawFetch(path, options);
+    if (response.status === 401 && options.auth !== false && (await refreshSession())) {
+        ({ response, json } = await rawFetch(path, options));
+    }
+    if (!response.ok) throw new ApiError(response.status, json);
+    return json;
+}
+
+async function login(identifier, password) {
+    const { data } = await api("/auth/login", { method: "POST", body: { identifier, password }, auth: false });
+    saveSession(data);
+    return data.user;
+}
+
+async function register(fields) {
+    const { data } = await api("/auth/register", { method: "POST", body: fields, auth: false });
+    saveSession(data);
+    return data.user;
+}
+
+async function logout() {
+    try {
+        await api("/auth/logout", { method: "POST", body: {}, auth: false });
+    } catch {
+        store.token = null;
+    }
+    store.token = null;
+    store.user = null;
+    location.href = "login.html";
+}
+
+function currentUser() {
+    return store.user;
+}
+
+function homeFor(user) {
+    return HOME[ROLE_KEY[user.role]];
+}
+
+function errorMessage(error) {
+    if (!(error instanceof ApiError)) return "Tidak bisa terhubung ke server. Periksa koneksi atau alamat API.";
+    const messages = {
+        INVALID_CREDENTIALS: "Nomor HP atau email, atau password salah.",
+        TOO_MANY_REQUESTS: "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+        CONFLICT: "Nomor HP atau email sudah terdaftar.",
+        INVALID_PHONE_NUMBER: "Nomor HP tidak valid.",
+    };
+    return messages[error.code] || error.message;
+}
 
 (function () {
-  var user = currentUser();
-  var roles = document.body.getAttribute('data-roles');
-  if (roles) {
-    if (!user) { location.href = 'login.html'; return; }
-    if (roles.split(',').indexOf(user.role) < 0) { location.href = HOME[user.role]; return; }
-  }
-  var nav = document.querySelector('.nav');
-  if (!nav) return;
-  var page = location.pathname.split('/').pop().toLowerCase();
-  var items = MENU[user ? user.role : 'tamu'];
-  var html = items.map(function (m) {
-    return '<a href="' + m[1] + '"' + (m[1] === page ? ' aria-current="page"' : '') + '>' + m[0] + '</a>';
-  }).join('');
-  html += user ? '<a href="#" id="keluar">Keluar</a>' : '<a href="login.html">Masuk</a>';
-  nav.innerHTML = html;
-  var k = document.getElementById('keluar');
-  if (k) k.addEventListener('click', function (e) { e.preventDefault(); logout(); });
+    const user = currentUser();
+    const key = user ? ROLE_KEY[user.role] : null;
+    const roles = document.body.getAttribute("data-roles");
+    if (roles) {
+        if (!user) {
+            location.href = "login.html";
+            return;
+        }
+        if (!roles.split(",").includes(key)) {
+            location.href = HOME[key];
+            return;
+        }
+    }
+    const nav = document.querySelector(".nav");
+    if (!nav) return;
+    const page = location.pathname.split("/").pop().toLowerCase();
+    const links = MENU[key || "tamu"].map(
+        ([label, href]) => `<a href="${href}"${href === page ? ' aria-current="page"' : ""}>${label}</a>`,
+    );
+    links.push(user ? '<a href="#" id="keluar">Keluar</a>' : '<a href="login.html">Masuk</a>');
+    nav.innerHTML = links.join("");
+    const keluar = document.getElementById("keluar");
+    if (keluar) {
+        keluar.addEventListener("click", event => {
+            event.preventDefault();
+            logout();
+        });
+    }
 })();

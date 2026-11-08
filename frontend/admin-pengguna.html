@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengguna · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div class="row-between"><h1 class="t-h1">Pengguna</h1><button class="btn btn-primary" id="tambah">Tambah Pengguna</button></div>
+<form class="card stack" id="form" hidden>
+ <div class="field"><label for="n">Nama</label><input class="input" id="n"></div>
+ <div class="field"><label for="hp">Nomor HP</label><input class="input" id="hp" inputmode="tel"></div>
+ <div class="field"><label for="r">Peran</label><select class="select input" id="r"><option>Admin</option><option>Dapur</option><option>Kurir</option></select></div>
+ <div class="field"><label for="p">Password awal</label><input class="input" id="p" type="password"><p class="hint">Minimal 6 karakter.</p></div>
+ <div class="row"><button class="btn btn-primary" type="submit">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
+</form>
+<section class="card">
+ <div class="invoice"><div><p class="t-h3">Siti</p><p class="t-small t-muted">083333 · Dapur</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
+ <div class="invoice"><div><p class="t-h3">Ahmad Fauzi</p><p class="t-small t-muted">084444 · Kurir</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
+ <div class="invoice"><div><p class="t-h3">Budi Santoso</p><p class="t-small t-muted">082222 · Pelanggan</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+// Ganti dengan API pengguna. Tidak ada hapus, hanya nonaktifkan lewat ubah status.
+tambah.onclick=function(){form.hidden=false};batal.onclick=function(){form.hidden=true};
+form.onsubmit=function(e){e.preventDefault();alert('Pengguna disimpan (demo).');form.hidden=true};
+document.querySelectorAll('.off').forEach(function(b){b.onclick=function(){
+ if(!confirm('Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.'))return;
+ var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--expire';bd.textContent='Nonaktif';b.remove()}});
+</script></body></html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pembayaran · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<h1 class="t-h1">Pembayaran</h1>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Transaksi</h2><div class="chip-group" id="filter"><label class="chip"><input type="radio" name="f" value="" checked>Semua</label><label class="chip"><input type="radio" name="f" value="Pending">Pending</label><label class="chip"><input type="radio" name="f" value="Success">Success</label></div></div>
+<div class="invoice" data-s="Pending"><div><p class="t-h3">Dewi Lestari · Paket Reguler · Bulanan</p><p class="t-small t-muted">Offline · Tunai · Rp560.000</p></div><div class="row"><span class="badge badge--pending">Pending</span><button class="btn btn-primary btn-sm verif">Verifikasi Tunai</button></div></div>
+<div class="invoice" data-s="Success"><div><p class="t-h3">Budi Santoso · Paket Hemat · Mingguan</p><p class="t-small t-muted">Online · QRIS · Rp175.000 · INV-0142</p></div><span class="badge badge--success">Success</span></div>
+<div class="invoice" data-s="Expire"><div><p class="t-h3">Rani Putri · Paket Hemat · Harian</p><p class="t-small t-muted">Online · Virtual account · Rp45.000</p></div><span class="badge badge--expire">Expire</span></div>
+</section>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Perlu refund</h2><span class="t-small t-muted">Refund dilakukan di luar aplikasi, lalu dikonfirmasi di sini</span></div>
+<div class="invoice"><div><p class="t-h3">Andi Pratama · pesanan dibatalkan</p><p class="t-small t-muted">Rp120.000 · dibatalkan 7 Nov 2026</p></div><div class="row"><span class="badge badge--cancel">Perlu refund</span><button class="btn btn-secondary btn-sm refund">Konfirmasi Refund</button></div></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+const ubah = (tombol, kelas, teks) => {
+    const badge = tombol.parentElement.querySelector(".badge");
+    badge.className = `badge ${kelas}`;
+    badge.textContent = teks;
+    tombol.remove();
+};
+document.querySelectorAll(".verif").forEach(b => {
+    b.onclick = () => {
+        if (confirm("Tandai pembayaran tunai ini sudah diterima?")) ubah(b, "badge--success", "Success");
+    };
+});
+document.querySelectorAll(".refund").forEach(b => {
+    b.onclick = () => {
+        if (confirm("Refund sudah dikirim ke pelanggan?")) ubah(b, "badge--success", "Refund selesai");
+    };
+});
+document.getElementById("filter").addEventListener("change", event => {
+    document.querySelectorAll("section:first-of-type .invoice").forEach(row => {
+        row.hidden = event.target.value !== "" && row.dataset.s !== event.target.value;
+    });
+});
+</script></body></html>

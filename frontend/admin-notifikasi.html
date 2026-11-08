@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifikasi · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<h1 class="t-h1">Notifikasi dan pengumuman</h1>
+<form class="card stack" id="kirim">
+<h2 class="t-h3">Kirim ke satu pelanggan</h2>
+<div class="field"><label for="hp">Nomor HP pelanggan</label><input class="input" id="hp" inputmode="tel"></div>
+<div class="field"><label for="j1">Judul</label><input class="input" id="j1" maxlength="150"></div>
+<div class="field"><label for="b1">Isi pesan</label><textarea class="textarea" id="b1" maxlength="2000"></textarea></div>
+<button class="btn btn-primary" type="submit">Kirim Notifikasi</button>
+</form>
+<form class="card stack" id="umum">
+<h2 class="t-h3">Pengumuman</h2>
+<div class="field"><label for="c">Cakupan</label><select class="select input" id="c"><option>Semua pelanggan</option><option>Pelanggan satu paket</option><option>Satu hari layanan</option></select></div>
+<div class="field"><label for="j2">Judul</label><input class="input" id="j2" maxlength="150"></div>
+<div class="field"><label for="b2">Isi pengumuman</label><textarea class="textarea" id="b2" maxlength="2000"></textarea></div>
+<button class="btn btn-secondary" type="submit">Kirim Pengumuman</button>
+</form>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Pengumuman terkirim</h2></div>
+<div class="invoice"><div><p class="t-h3">Libur 17 Agustus</p><p class="t-small t-muted">Semua pelanggan · 3 Nov 2026</p></div><button class="btn btn-danger btn-sm hapus">Hapus</button></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+["kirim", "umum"].forEach(id => {
+    document.getElementById(id).onsubmit = event => {
+        event.preventDefault();
+        alert("Terkirim (demo).");
+        event.target.reset();
+    };
+});
+document.querySelectorAll(".hapus").forEach(b => {
+    b.onclick = () => {
+        if (confirm("Hapus pengumuman ini?")) b.closest(".invoice").remove();
+    };
+});
+</script></body></html>

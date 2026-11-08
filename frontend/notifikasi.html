@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifikasi · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div class="row-between"><h1 class="t-h1">Notifikasi</h1><button class="btn btn-secondary" id="semua">Tandai Semua Dibaca</button></div>
+<section class="stack" id="daftar">
+ <div class="alert alert--warning" data-baru><span class="alert-title">Peringatan alergi · hari ini 14:32</span>Menu Jumat mengandung telur, sesuai alergimu.</div>
+ <div class="alert alert--info" data-baru><span class="alert-title">Menu diganti · hari ini 10:05</span>Nasi uduk diganti nasi kuning karena stok bahan.</div>
+ <div class="card"><span class="alert-title">Pesanan #LHP-0142 dibayar</span><span class="t-small t-muted">8 Nov · 09:12</span></div>
+ <div class="card"><span class="alert-title">Pengumuman: libur 17 Agustus</span><span class="t-small t-muted">3 Nov · 08:00</span></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+// Ganti dengan API daftar notifikasi dan tandai dibaca.
+document.getElementById('semua').onclick=function(){document.querySelectorAll('[data-baru]').forEach(function(el){el.className='card';el.removeAttribute('data-baru')})};
+</script></body></html>
