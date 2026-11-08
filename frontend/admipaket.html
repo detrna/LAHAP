@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paket · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div class="row-between"><h1 class="t-h1">Paket</h1><button class="btn btn-primary" id="tambah">Tambah Paket</button></div>
+<form class="card stack" id="form" hidden>
+ <div class="field"><label for="n">Nama paket</label><input class="input" id="n"></div>
+ <div class="field"><label for="d">Deskripsi</label><textarea class="textarea" id="d"></textarea></div>
+ <div class="field"><label for="h">Harga per porsi (Rp)</label><input class="input" id="h" type="number" min="0"></div>
+ <div class="grid grid-2"><div class="field"><label for="m">Berlaku mulai</label><input class="input" id="m" type="date"></div><div class="field"><label for="s">Berlaku sampai</label><input class="input" id="s" type="date"></div></div>
+ <div class="row"><button class="btn btn-primary" type="submit">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
+</form>
+<section class="card" id="list">
+ <div class="invoice"><div><p class="t-h3">Paket Hemat</p><p class="t-small t-muted">Rp15.000 · 1 Nov – 31 Des 2026</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
+ <div class="invoice"><div><p class="t-h3">Paket Reguler</p><p class="t-small t-muted">Rp20.000 · 1 Nov – 31 Des 2026</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+// Ganti dengan API paket. Paket yang sudah dipesan hanya bisa dinonaktifkan.
+tambah.onclick=function(){form.hidden=false};batal.onclick=function(){form.hidden=true};
+form.onsubmit=function(e){e.preventDefault();alert('Paket disimpan (demo).');form.hidden=true};
+document.querySelectorAll('.off').forEach(function(b){b.onclick=function(){
+ if(!confirm('Nonaktifkan paket ini? Pesanan yang sudah ada tidak terpengaruh.'))return;
+ var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--expire';bd.textContent='Nonaktif';b.remove()}});
+</script></body></html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pesanan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<h1 class="t-h1">Pesanan dan pengantaran</h1>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Rekap produksi · Rabu, 11 Nov</h2></div>
+<div class="invoice"><div><p class="label">Siang · 12:00 · Paket Hemat</p><p class="t-h3">Ayam goreng + sayur asem</p></div><p class="t-h3">24 porsi</p></div>
+<div class="invoice"><div><p class="label">Siang · 12:00 · Paket Reguler</p><p class="t-h3">Nasi ayam bakar + lalapan</p><p class="t-small t-muted">1 pelanggan beralergi atau punya catatan</p></div><p class="t-h3">14 porsi</p></div>
+</section>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Papan pengantaran</h2></div>
+<div class="slot"><div><p class="t-h3">Budi Santoso · Siang · Diantar</p><p class="t-small t-muted">Jl. Veteran 12, Malang</p></div><div class="row"><span class="badge badge--delivering">Diantar</span><select class="select input" style="width:auto" aria-label="Kurir untuk Budi"><option>Ahmad Fauzi</option><option>Tanpa kurir</option></select></div></div>
+<div class="slot"><div><p class="t-h3">Sari Wulandari · Malam · Diantar</p><p class="t-small t-muted">Jl. Soekarno Hatta 8, Malang</p></div><div class="row"><span class="badge badge--prepared">Disiapkan</span><select class="select input" style="width:auto" aria-label="Kurir untuk Sari"><option>Tanpa kurir</option><option>Ahmad Fauzi</option></select></div></div>
+<button class="btn btn-secondary" id="simpan">Simpan Penugasan</button>
+</section>
+<form class="card stack" id="koreksi">
+<h2 class="t-h3">Koreksi status slot</h2>
+<div class="grid grid-2">
+<div class="field"><label for="slot">Slot</label><select class="select input" id="slot"><option>Budi Santoso · Siang</option><option>Sari Wulandari · Malam</option></select></div>
+<div class="field"><label for="st">Status baru</label><select class="select input" id="st"><option>Disiapkan</option><option>Diantar</option><option>Siap Diambil</option><option>Selesai</option><option>Dilewati</option></select></div>
+</div>
+<div class="field" id="fAlasan"><label for="alasan">Alasan koreksi</label><textarea class="textarea" id="alasan"></textarea><p class="error-msg" hidden>Alasan wajib diisi.</p></div>
+<button class="btn btn-primary" type="submit">Simpan Koreksi</button>
+</form>
+</main><script src="js/auth.js"></script>
+<script>
+document.getElementById("simpan").onclick = event => {
+    event.target.textContent = "Tersimpan";
+};
+document.getElementById("koreksi").onsubmit = event => {
+    event.preventDefault();
+    const ok = document.getElementById("alasan").value.trim() !== "";
+    document.getElementById("fAlasan").classList.toggle("is-error", !ok);
+    document.querySelector("#fAlasan .error-msg").hidden = ok;
+    if (ok) alert("Status dikoreksi (demo).");
+};
+</script></body></html>

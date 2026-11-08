@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stok bahan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="dapur,admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div><h1 class="t-h1">Stok bahan</h1><p class="t-muted">Perbarui stok manual atau perkirakan dari foto.</p></div>
+<section class="card">
+<div class="invoice"><div><p class="t-h3">Ayam</p><p class="t-small t-muted">Stok 3,2 kg</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input" style="width:96px" type="number" step="0.1" value="3.2" aria-label="Stok ayam (kg)"><button class="btn btn-secondary btn-sm simpan">Simpan</button><button class="btn btn-ghost btn-sm riwayat">Riwayat</button></div></div>
+<div class="invoice"><div><p class="t-h3">Minyak goreng</p><p class="t-small t-muted">Stok 6 liter</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input" style="width:96px" type="number" step="0.1" value="6" aria-label="Stok minyak (liter)"><button class="btn btn-secondary btn-sm simpan">Simpan</button><button class="btn btn-ghost btn-sm riwayat">Riwayat</button></div></div>
+</section>
+<section class="card stack" id="riwayat" hidden>
+<h2 class="t-h3">Riwayat perubahan stok</h2>
+<div class="slot"><div><p class="t-h3">Ayam: 5,0 kg menjadi 3,2 kg</p><p class="t-small t-muted">Selisih −1,8 kg · Siti · 11 Nov 2026 07:10</p></div></div>
+</section>
+<section class="card stack">
+<h2 class="t-h3">Perkiraan dari foto</h2>
+<div class="field"><label for="foto">Foto wadah bahan</label><input class="input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">JPEG, PNG, atau WebP.</p></div>
+<div class="alert alert--info" id="hasil" hidden><span class="alert-title">Perkiraan sisa</span>2 jerigen. Cek lalu simpan manual jika sesuai.</div>
+<button class="btn btn-secondary" id="estimasi" type="button">Perkirakan Stok</button>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+document.querySelectorAll(".simpan").forEach(b => {
+    b.onclick = () => {
+        b.textContent = "Tersimpan";
+    };
+});
+document.querySelectorAll(".riwayat").forEach(b => {
+    b.onclick = () => {
+        document.getElementById("riwayat").hidden = false;
+    };
+});
+document.getElementById("estimasi").onclick = () => {
+    if (!document.getElementById("foto").files.length) return alert("Pilih foto dulu.");
+    document.getElementById("hasil").hidden = false;
+};
+</script></body></html>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bahan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<h1 class="t-h1">Bahan, stok, dan alergen</h1>
+<section class="card">
+ <div class="section-head"><h2 class="t-h2">Stok bahan</h2><span class="t-small t-muted">Isi stok terbaru lalu simpan</span></div>
+ <div class="invoice"><div><p class="t-h3">Ayam</p><p class="t-small t-muted">Stok 3,2 kg · butuh 4,8 kg hari ini</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input" style="width:96px" type="number" aria-label="Stok ayam (kg)" value="3.2"><button class="btn btn-secondary btn-sm simpan">Simpan</button></div></div>
+ <div class="invoice"><div><p class="t-h3">Beras</p><p class="t-small t-muted">Stok 20 kg · butuh 2,4 kg hari ini</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input" style="width:96px" type="number" aria-label="Stok beras (kg)" value="20"><button class="btn btn-secondary btn-sm simpan">Simpan</button></div></div>
+</section>
+<section class="card stack">
+ <h2 class="t-h2">Alergen</h2>
+ <div class="chip-group"><span class="chip">Telur</span><span class="chip">Kacang</span><span class="chip">Susu</span><span class="chip">Seafood</span><span class="chip">Gluten</span></div>
+ <div class="row"><input class="input" style="flex:1" id="baru" placeholder="Nama alergen baru" aria-label="Nama alergen baru"><button class="btn btn-secondary" id="addAl">Tambah</button></div>
+</section>
+<section class="card stack"><h2 class="t-h2">Daftar belanja minggu depan</h2><p class="t-muted">Ayam 33,6 kg · Beras 16,8 kg · Telur 40 butir · Sayur asem 25,2 kg</p><p class="t-small t-muted">Dihitung dari menu yang sudah terbit dan jumlah pesanan.</p></section>
+</main><script src="js/auth.js"></script>
+<script>
+// Ganti dengan API bahan, stok, dan alergen.
+document.querySelectorAll('.simpan').forEach(function(b){b.onclick=function(){b.textContent='Tersimpan'}});
+addAl.onclick=function(){var v=baru.value.trim();if(!v)return;var s=document.createElement('span');s.className='chip';s.textContent=v;document.querySelector('.chip-group').appendChild(s);baru.value=''};
+</script></body></html>

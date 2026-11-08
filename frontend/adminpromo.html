@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Promo dan tier · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<h1 class="t-h1">Tier dan promo</h1>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Tier loyalitas</h2><span class="t-small t-muted">Diskon dari subtotal makanan, bukan ongkir</span></div>
+<div class="invoice"><div><p class="t-h3">Biasa</p><p class="t-small t-muted">0 hari · diskon 0% · berlaku 30 hari</p></div><button class="btn btn-secondary btn-sm">Ubah</button></div>
+<div class="invoice"><div><p class="t-h3">Silver</p><p class="t-small t-muted">30 hari · diskon 5% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm hapus">Hapus</button></div></div>
+<div class="invoice"><div><p class="t-h3">Gold</p><p class="t-small t-muted">60 hari · diskon 10% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm hapus">Hapus</button></div></div>
+</section>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Kode promo</h2><span class="t-small t-muted">Satu pelanggan hanya bisa pakai sekali</span></div>
+<div class="invoice"><div><p class="t-h3">MERDEKA</p><p class="t-small t-muted">10% · kuota 100 · sampai 31 Des 2026 · min. belanja Rp50.000</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button></div></div>
+</section>
+<form class="card stack" id="form">
+<h2 class="t-h3">Tambah kode promo</h2>
+<div class="grid grid-2">
+<div class="field"><label for="k">Kode</label><input class="input" id="k" maxlength="50" placeholder="HEMAT10"></div>
+<div class="field"><label for="j">Jenis diskon</label><select class="select input" id="j"><option>Persen</option><option>Nominal</option></select></div>
+<div class="field"><label for="v">Nilai diskon</label><input class="input" id="v" type="number" min="0"></div>
+<div class="field"><label for="q">Kuota</label><input class="input" id="q" type="number" min="0"></div>
+<div class="field"><label for="m">Minimal belanja (Rp)</label><input class="input" id="m" type="number" min="0"></div>
+<div class="field"><label for="u">Berlaku sampai</label><input class="input" id="u" type="date"></div>
+</div>
+<div class="chip-group"><label class="chip"><input type="checkbox" checked>Boleh digabung dengan diskon tier</label></div>
+<button class="btn btn-primary" type="submit">Simpan Kode</button>
+</form>
+</main><script src="js/auth.js"></script>
+<script>
+document.querySelectorAll(".hapus").forEach(b => {
+    b.onclick = () => {
+        if (!confirm("Hapus tier ini? Anggotanya dipindah ke tier di bawahnya.")) return;
+        b.closest(".invoice").remove();
+    };
+});
+document.getElementById("form").onsubmit = event => {
+    event.preventDefault();
+    alert("Kode promo disimpan (demo).");
+};
+</script></body></html>
