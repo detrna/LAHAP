@@ -83,6 +83,8 @@ erDiagram
     order ||--o{ delivery_method_change_slot : "switched_in (r33)"
     ingredient ||--o{ ingredient_stock_history : "tracked_by (r34)"
     user ||--o{ ingredient_stock_history : "changed_by (r35)"
+    menu ||--o{ menu_component : "composed_of (r36)"
+    user |o--o{ menu_component : "cooked_by (r37)"
 
     user {
         VARCHAR_36 id PK
@@ -387,11 +389,18 @@ erDiagram
         DECIMAL new_stock
         TIMESTAMP changed_at
     }
+
+    menu_component {
+        VARCHAR_36 id PK
+        VARCHAR_36 menu_id FK
+        VARCHAR_100 name
+        VARCHAR_36 cook_id FK "nullable"
+    }
 ```
 
 ---
 
-## 3. Entity Data Dictionary (26 Relational Tables)
+## 3. Entity Data Dictionary (27 Relational Tables)
 
 ### 3.1. `user` (`t1`)
 Pusat identitas seluruh pengguna sistem (Pelanggan, Administrator, Koki Dapur, Kurir Pengantar).
@@ -998,7 +1007,26 @@ Jejak audit append-only setiap perubahan stok bahan baku dapur (PRD UC-40). Disi
 
 ---
 
-## 4. Relationship & Cardinality Matrix (35 Relational Edges)
+### 3.27. `menu_component` (`t27`)
+Sub-hidangan penyusun suatu menu beserta staf dapur yang ditugaskan memasaknya (PRD UC-34). Opsional (0 atau lebih komponen per menu); perubahan daftar komponen atau penugasan juru masak mengganti seluruh baris komponen menu terkait dalam satu transaksi dan tidak memicu pengumuman `SCHEDULE` (BR-26).
+- **Primary Key:** `id` (`VARCHAR(36)`)
+- **Foreign Keys:**
+  - `menu_id` $\rightarrow$ `menu(id)` (ON DELETE CASCADE)
+  - `cook_id` $\rightarrow$ `user(id)` (ON DELETE SET NULL)
+- **Columns:**
+  | Column | Data Type | Nullable | Constraints | Description & Domain Rules |
+  | :--- | :--- | :---: | :--- | :--- |
+  | `id` | `VARCHAR(36)` | No | PK | UUID v4 komponen menu. |
+  | `menu_id` | `VARCHAR(36)` | No | FK $\rightarrow$ `t13.id` | Menu induk pemilik komponen. |
+  | `name` | `VARCHAR(100)` | No | - | Nama sub-hidangan/komponen (e.g., `'Nasi Merah'`, `'Ayam Bakar'`, `'Sambal Matah'`); unik per menu. |
+  | `cook_id` | `VARCHAR(36)` | Yes | FK $\rightarrow$ `t1.id` | Staf dapur aktif (`user.role = 'KITCHEN'`, `is_active = true`) yang ditugaskan memasak komponen ini; `NULL` bila belum ditugaskan. |
+- **Indexes:**
+  - `uq_menu_component_name` UNIQUE (`menu_id`, `name`)
+  - `idx_menu_component_cook` (`cook_id`)
+
+---
+
+## 4. Relationship & Cardinality Matrix (37 Relational Edges)
 
 | ID | Parent / From Entity (`Card`) | Child / To Entity (`Card`) | Foreign Key Column | Referential Action | Business Semantics & Invariants |
 | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -1037,6 +1065,8 @@ Jejak audit append-only setiap perubahan stok bahan baku dapur (PRD UC-40). Disi
 | **`r33`**| `order` (`1`) | `delivery_method_change_slot` (`0..N`) | `delivery_method_change_slot.order_id` | `ON DELETE CASCADE` | Satu slot dapat tercatat pada riwayat perubahan metode apabila pesanan diubah lebih dari sekali sebelum cut-off slot tersebut. |
 | **`r34`**| `ingredient` (`1`) | `ingredient_stock_history` (`0..N`) | `ingredient_stock_history.ingredient_id` | `ON DELETE CASCADE` | Setiap perubahan kuantitas stok bahan baku dicatat sebagai satu baris histori (PRD UC-40). Jika bahan dihapus, historinya ikut terhapus. |
 | **`r35`**| `user` (`1`) | `ingredient_stock_history` (`0..N`) | `ingredient_stock_history.changed_by_id` | `ON DELETE RESTRICT` | Staf dapur atau admin yang melakukan perubahan stok tercatat sebagai aktor audit. |
+| **`r36`**| `menu` (`1`) | `menu_component` (`0..N`) | `menu_component.menu_id` | `ON DELETE CASCADE` | Satu menu dapat memiliki nol atau banyak sub-hidangan (`menu_component`, PRD UC-34). Jika menu dihapus, komponennya ikut terhapus. |
+| **`r37`**| `user` (`0..1`) | `menu_component` (`0..N`) | `menu_component.cook_id` | `ON DELETE SET NULL` | Staf dapur (`role = 'KITCHEN'`) yang ditugaskan memasak suatu komponen menu (PRD UC-34); `NULL` jika belum ditugaskan. |
 
 ---
 
@@ -1446,6 +1476,17 @@ CREATE TABLE IF NOT EXISTS ingredient_stock_history (
 
 CREATE INDEX IF NOT EXISTS idx_ingredient_stock_history_ingredient ON ingredient_stock_history(ingredient_id, changed_at);
 CREATE INDEX IF NOT EXISTS idx_ingredient_stock_history_actor ON ingredient_stock_history(changed_by_id);
+
+-- 25. Table: menu_component (t27)
+CREATE TABLE IF NOT EXISTS menu_component (
+    id VARCHAR(36) PRIMARY KEY,
+    menu_id VARCHAR(36) NOT NULL REFERENCES menu(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    cook_id VARCHAR(36) REFERENCES "user"(id) ON DELETE SET NULL,
+    CONSTRAINT uq_menu_component_name UNIQUE (menu_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_menu_component_cook ON menu_component(cook_id);
 ```
 
 ---
@@ -1520,6 +1561,7 @@ model User {
   refreshTokens RefreshToken[]
   deliveryMethodChanges DeliveryMethodChange[]
   stockChanges  IngredientStockHistory[]
+  cookedComponents MenuComponent[] @relation("CookComponents")
 
   @@index([role])
   @@map("user")
@@ -1716,10 +1758,25 @@ model Menu {
 
   scheduleMenus   ScheduleMenu[]
   menuIngredients MenuIngredient[]
+  menuComponents  MenuComponent[]
 
   @@index([name])
   @@index([isAlternative])
   @@map("menu")
+}
+
+model MenuComponent {
+  id     VarChar(36)  @id @onCreate(uuid())
+  menuId VarChar(36)  @map("menu_id")
+  name   VarChar(100)
+  cookId VarChar(36)? @map("cook_id")
+
+  menu Menu  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  cook User? @relation("CookComponents", fields: [cookId], references: [id], onDelete: SetNull)
+
+  @@unique([menuId, name])
+  @@index([cookId])
+  @@map("menu_component")
 }
 
 model ScheduleMenu {
@@ -2038,6 +2095,7 @@ model Announcement {
 | **BR-23 & PRD §9.4 (Transisi Status & Audit Trail)** | Status slot hanya bergerak maju. Setiap perubahan `order.status` wajib menyisipkan baris `order_status_history` (`from_status`, `to_status`, `changed_by_id`, `changed_at`) dalam transaksi yang sama; koreksi admin (UC-27) wajib menyertakan `admin_note`. Kendala pengantaran dicatat pada `delivery_obstacle`, bukan sebagai status baru. |
 | **BR-24 (Allergen Inheritance)** | Relasi `ingredient_allergy` mengikat alergen pada bahan. Tag alergen menu dikompilasi secara otomatis melalui query `UNION` dari seluruh `ingredient` yang terikat pada `menu_ingredient`. Penugasan Menu Alternatif oleh dapur dicatat sebagai `order.uses_alternative_menu = true` (menu diambil dari `schedule_menu` dengan `is_primary = false`). Alergi di luar daftar dicatat sebagai teks bebas pada `user.allergy_note`; karena tidak dapat dicocokkan otomatis, pelanggan dengan catatan terisi selalu dimasukkan ke kategori khusus dapur (UC-39). |
 | **UC-40 (Riwayat Perubahan Stok Bahan)** | Setiap perubahan kuantitas `ingredient.stock` (baik stok awal `> 0` saat pembuatan bahan dengan `previous_stock = 0` maupun pembaruan stok oleh admin atau dapur ketika `new_stock <> previous_stock`) menyisipkan baris `ingredient_stock_history` (`ingredient_id`, `changed_by_id`, `previous_stock`, `new_stock`, `changed_at`) dalam transaksi yang sama; selisih `delta` diturunkan saat dibaca. |
+| **UC-34 (Komponen Menu & Penugasan Juru Masak)** | Setiap menu dapat memiliki 0 atau lebih sub-hidangan pada `menu_component` (`menu_id`, `name` unik per menu) dengan `cook_id` opsional yang menunjuk ke staf dapur aktif (`user.role = 'KITCHEN'`, `is_active = true`). Perubahan `components` mengganti seluruh baris komponen menu terkait dalam satu transaksi dan tidak memicu pengumuman `SCHEDULE` (BR-26). |
 | **BR-27 (3-Level Notifications)** | Notifikasi Level Pelanggan disimpan pada `notification.user_id`. Notifikasi Level Paket dan Global dicatat pada `announcement` dengan `scope = 'PACKAGE'` atau `scope = 'GLOBAL'`; pengumuman yang hanya menyasar satu hari jadwal (perubahan menu, BR-26) memakai `scope = 'SCHEDULE'`. |
 | **UC-13 & Logout (Sesi Login)** | Setiap refresh token yang diterbitkan (register, login, refresh) dicatat pada `refresh_token` dengan `id` = klaim `jti`. Refresh hanya berhasil jika baris token masih aktif (`revoked_at IS NULL`); pencabutan memakai `UPDATE ... WHERE revoked_at IS NULL` sehingga dua permintaan bersamaan tidak dapat merotasi token yang sama. Token yang sudah dicabut tetapi dipakai lagi mencabut seluruh token aktif pengguna. Logout mencabut token yang dikirim. `user.is_active = false` tetap menolak refresh. |
 | **BR-28 (Churn Identification)** | Algoritma churn menyeleksi pelanggan di mana `user.role = 'CUSTOMER'` dengan riwayat `subscription.status = 'Success'`, tidak memiliki pesanan `Aktif`, dan `MAX(subscription.end_date) < CURRENT_DATE - INTERVAL '14 days'`. Follow-up memakai `message_template` yang placeholdernya (`{nama}`, `{paket_terakhir}`, `{tanggal_berakhir}`, `{lama_tidak_memesan}`, `{kode_promo}`) diisi aplikasi lalu dibuka lewat `wa.me` (UC-29, UC-48). |
