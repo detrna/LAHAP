@@ -4,14 +4,70 @@
 <header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div class="row-between"><h1 class="t-h1">Notifikasi</h1><button class="btn btn-secondary" id="semua">Tandai Semua Dibaca</button></div>
-<section class="stack" id="daftar">
- <div class="alert alert--warning" data-baru><span class="alert-title">Peringatan alergi · hari ini 14:32</span>Menu Jumat mengandung telur, sesuai alergimu.</div>
- <div class="alert alert--info" data-baru><span class="alert-title">Menu diganti · hari ini 10:05</span>Nasi uduk diganti nasi kuning karena stok bahan.</div>
- <div class="card"><span class="alert-title">Pesanan #LHP-0142 dibayar</span><span class="t-small t-muted">8 Nov · 09:12</span></div>
- <div class="card"><span class="alert-title">Pengumuman: libur 17 Agustus</span><span class="t-small t-muted">3 Nov · 08:00</span></div>
-</section>
-</main><script src="js/auth.js"></script>
+<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<section class="stack"><p class="t-muted" id="kosong" hidden>Belum ada notifikasi.</p><div class="stack" id="notif"></div></section>
+<section class="stack" id="boxInfo" hidden><h2 class="t-h2">Pengumuman</h2><div class="stack" id="info"></div></section>
+</main>
+<script src="js/auth.js"></script>
 <script>
-// Ganti dengan API daftar notifikasi dan tandai dibaca.
-document.getElementById('semua').onclick=function(){document.querySelectorAll('[data-baru]').forEach(function(el){el.className='card';el.removeAttribute('data-baru')})};
+const $ = selector => document.querySelector(selector);
+const waktu = s => new Date(s).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+
+function galat(error) {
+    $("#err").hidden = !error;
+    if (error) $("#err .msg").textContent = errorMessage(error);
+}
+
+function kartu(n) {
+    const box = el("div", n.isRead ? "card" : "alert alert--info");
+    box.append(el("span", "alert-title", n.title), n.body, el("p", "t-small t-muted", waktu(n.createdAt)));
+    if (!n.isRead) {
+        box.style.cursor = "pointer";
+        box.onclick = async () => {
+            try {
+                await api(`/me/notifications/${n.id}/read`, { method: "POST" });
+                muat();
+            } catch (error) {
+                galat(error);
+            }
+        };
+    }
+    return box;
+}
+
+function pengumuman(a) {
+    const box = el("div", "card");
+    box.append(el("span", "alert-title", a.title), a.body, el("p", "t-small t-muted", waktu(a.createdAt)));
+    return box;
+}
+
+async function muat() {
+    try {
+        const [notif, info] = await Promise.all([api("/me/notifications"), api("/me/announcements")]);
+        $("#notif").replaceChildren(...notif.data.map(kartu));
+        $("#kosong").hidden = notif.data.length > 0;
+        $("#info").replaceChildren(...info.data.map(pengumuman));
+        $("#boxInfo").hidden = info.data.length === 0;
+    } catch (error) {
+        galat(error);
+    }
+}
+
+$("#semua").onclick = async () => {
+    try {
+        await api("/me/notifications/read-all", { method: "POST" });
+        muat();
+    } catch (error) {
+        galat(error);
+    }
+};
+
+muat();
 </script></body></html>

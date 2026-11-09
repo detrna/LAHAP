@@ -1,85 +1,219 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Langganan Saya · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
-<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
-<nav class="nav"></nav></div></header>
-
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container">
 <div class="row-between" style="margin-bottom:24px">
  <div><h1 class="t-h1">Langganan Saya</h1><p class="t-muted">Pantau pesanan, jadwal makan, dan pembayaranmu di sini.</p></div>
  <a class="btn btn-primary" href="index.html">Pesan Paket Baru</a>
 </div>
-
+<div class="alert alert--error" id="err" hidden style="margin-bottom:16px"><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <div class="dash">
-<div class="stack-lg"><!-- kolom utama -->
-
- <!-- Pesanan aktif: GET pesanan milik pelanggan (UC-11) -->
- <section class="card stack">
-  <div class="row-between"><div><p class="label">Pesanan #LHP-0142</p><h2 class="t-h2">Paket Hemat · Mingguan</h2></div><span class="badge badge--success">Aktif</span></div>
-  <dl class="meta">
-   <div><dt>Periode</dt><dd>9 – 15 Nov 2026</dd></div>
-   <div><dt>Waktu makan</dt><dd>Siang · 12:00</dd></div>
-   <div><dt>Penerimaan</dt><dd>Diantar</dd></div>
-   <div><dt>Total dibayar</dt><dd>Rp169.750</dd></div>
-  </dl>
-  <div class="price-row t-small t-muted"><span>7 slot × Rp15.000 + ongkir 7 × Rp10.000 − diskon tier Rp5.250</span><span></span></div>
- </section>
-
- <!-- Status hari ini: diperbarui lewat SSE (UC-12) -->
- <section class="card live stack" aria-live="polite">
-  <div class="row-between"><div><p class="label">Hari ini · Rabu, 11 Nov 2026</p><h2 class="t-h2">Siang · 12:00</h2></div><span class="badge badge--delivering">Diantar</span></div>
-  <ol class="steps"><li class="step is-done">Disiapkan</li><li class="step is-current" aria-current="step">Diantar</li><li class="step">Selesai</li></ol>
-  <div class="alert alert--warning"><span class="alert-title">Catatan kurir · 14:32</span>Ban bocor, estimasi delay 20 menit.</div>
-  <div><p class="t-h3">Ayam goreng + sayur asem</p><p class="t-small t-muted">Kurir: Ahmad Fauzi · Tidak ada alergen terdaftar</p></div>
- </section>
-
- <!-- Jadwal slot: skip tanpa refund (UC-44) -->
- <section class="card">
-  <div class="section-head"><h2 class="t-h2">Jadwal makan</h2><span class="t-small t-muted">Skip tidak mengembalikan dana</span></div>
-  <div class="slot"><div><p class="t-h3">Kamis, 12 Nov · Siang</p><p class="t-small t-muted">Nasi ayam bakar + lalapan</p></div><div class="row"><span class="badge badge--prepared">Terjadwal</span><button class="btn btn-secondary btn-sm skip">Skip</button></div></div>
-  <div class="slot"><div><p class="t-h3">Jumat, 13 Nov · Siang</p><p class="t-small t-muted">Nasi uduk + telur balado · Mengandung telur</p></div><div class="row"><span class="badge badge--prepared">Terjadwal</span><button class="btn btn-secondary btn-sm skip">Skip</button></div></div>
-  <div class="slot"><div><p class="t-h3">Senin, 9 Nov · Siang</p><p class="t-small t-muted">Soto ayam + nasi</p></div><span class="badge badge--success">Selesai</span></div>
- </section>
-
- <!-- Riwayat pembayaran (UC-10) -->
- <section class="card">
-  <div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2><span class="t-small t-muted">Lewat Midtrans</span></div>
-  <div class="invoice"><div><p class="t-h3">Paket Hemat · Mingguan</p><p class="t-small t-muted">8 Nov 2026 · QRIS</p></div><div class="row"><span class="t-h3">Rp169.750</span><span class="badge badge--success">Success</span></div></div>
-  <div class="invoice"><div><p class="t-h3">Paket Reguler · Harian</p><p class="t-small t-muted">1 Nov 2026 · Virtual account</p></div><div class="row"><span class="t-h3">Rp60.000</span><span class="badge badge--expire">Expire</span></div></div>
- </section>
+<div class="stack-lg">
+ <section class="stack" id="boxHariIni" hidden><h2 class="t-h2">Hari ini</h2><div class="stack" id="hariIni" aria-live="polite"></div></section>
+ <section class="stack"><h2 class="t-h2">Pesanan</h2><p class="t-muted" id="kosong" hidden>Belum ada pesanan. Pilih paket untuk mulai.</p><div class="stack-lg" id="pesanan"></div></section>
+ <section class="card"><div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2></div><p class="t-muted" id="kosongBayar" hidden>Belum ada pembayaran.</p><div id="bayar"></div></section>
 </div>
-
-<aside class="stack-lg"><!-- kolom samping -->
- <!-- Profil dan tier (UC-41, UC-51) -->
+<aside class="stack-lg">
  <section class="card stack">
-  <div class="row"><div class="avatar" aria-hidden="true">BS</div><div><h2 class="t-h3">Budi Santoso</h2><p class="t-small t-muted">0812-3456-7890 · Malang</p></div></div>
-  <div><div class="row-between"><span class="t-h3">Tier Silver</span><span class="badge badge--ready">Diskon 5%</span></div>
-   <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="60" aria-valuenow="28" style="margin:8px 0"><span style="width:47%"></span></div>
-   <p class="t-small t-muted">28 dari 60 hari menuju Gold (diskon 10%). Tier berlaku sampai 23 Des 2026.</p></div>
-  <div><p class="label">Alergi</p><p>Telur</p></div>
+  <div class="row"><div class="avatar" aria-hidden="true" id="avatar"></div><div><h2 class="t-h3" id="nama"></h2><p class="t-small t-muted" id="hp"></p></div></div>
+  <div id="tier"></div>
   <a class="btn btn-secondary btn-block" href="profil.html">Ubah Profil</a>
- </section>
-
- <!-- Notifikasi (UC-42) -->
- <section class="stack">
-  <h2 class="t-h2">Notifikasi</h2>
-  <div class="alert alert--info"><span class="alert-title">Menu Jumat diganti</span>Nasi uduk + telur balado diganti karena stok bahan. Cek jadwalmu.</div>
-  <div class="alert alert--warning"><span class="alert-title">Peringatan alergi</span>Menu Jumat mengandung telur.</div>
+  <a class="btn btn-ghost btn-block" href="notifikasi.html">Lihat Notifikasi</a>
  </section>
 </aside>
 </div>
-
-<footer class="footer t-small"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM. Butuh bantuan pesanan? Hubungi admin lewat WhatsApp.</p></footer>
 </main>
-
+<script src="js/auth.js"></script>
 <script>
-// Skip slot: sementara hanya ubah tampilan. Sambungkan ke API milik backend.
-document.querySelectorAll('.skip').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    if(!confirm('Skip slot ini? Tagihan tidak berkurang dan tidak ada pengembalian dana.')) return;
-    var badge=btn.parentElement.querySelector('.badge');
-    badge.className='badge badge--expire';badge.textContent='Dilewati';btn.remove();
-  });
-});
-</script>
-<script src="js/auth.js"></script></body></html>
+const $ = selector => document.querySelector(selector);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+const WIB = { timeZone: "Asia/Jakarta" };
+const tgl = (s, opsi = { day: "numeric", month: "short", year: "numeric" }) =>
+    new Date(s.length === 10 ? `${s}T00:00:00+07:00` : s).toLocaleDateString("id-ID", { ...WIB, ...opsi });
+const hariIni = () => new Date().toLocaleDateString("sv-SE", WIB);
+const BADGE = {
+    Terjadwal: "badge--prepared", Disiapkan: "badge--prepared", Diantar: "badge--delivering", "Siap Diambil": "badge--ready",
+    Selesai: "badge--success", Dilewati: "badge--expire", Pending: "badge--pending", Success: "badge--success",
+    Expire: "badge--expire", Dibatalkan: "badge--cancel", Aktif: "badge--success", "Akan Datang": "badge--prepared", Refund: "badge--cancel",
+};
+
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+const badge = teks => el("span", `badge ${BADGE[teks] || "badge--expire"}`, teks);
+
+function galat(error) {
+    $("#err").hidden = !error;
+    if (error) $("#err .msg").textContent = errorMessage(error);
+}
+
+async function jalankan(aksi) {
+    galat(null);
+    try {
+        await aksi();
+        await muat();
+    } catch (error) {
+        galat(error);
+    }
+}
+
+function barisSlot(o) {
+    const baris = el("div", "slot");
+    const jadwal = o.menuSchedule;
+    const kiri = el("div");
+    kiri.append(
+        el("p", "t-h3", jadwal ? `${tgl(jadwal.date, { weekday: "long", day: "numeric", month: "short" })} · ${jadwal.deliveryTime.time}` : "Slot"),
+        el("p", "t-small t-muted", o.menu ? o.menu.name : ""),
+    );
+    const kanan = el("div", "row");
+    kanan.append(badge(o.status));
+    if (o.status === "Terjadwal" || o.status === "Disiapkan") {
+        const skip = el("button", "btn btn-secondary btn-sm", "Skip");
+        skip.onclick = () => {
+            if (confirm("Skip slot ini? Tagihan tidak berkurang dan tidak ada pengembalian dana."))
+                jalankan(() => api(`/orders/${o.id}/skip`, { method: "POST", body: {} }));
+        };
+        kanan.append(skip);
+    }
+    baris.append(kiri, kanan);
+    return baris;
+}
+
+function kartuPesanan(s, slot) {
+    const card = el("section", "card stack");
+    const label = s.displayStatus || s.status;
+    const kepala = el("div", "row-between");
+    const judul = el("div");
+    judul.append(el("p", "label", `Pesanan ${s.id.slice(0, 8).toUpperCase()}`), el("h3", "t-h2", `${s.package ? s.package.name : "Paket"} · ${s.period}`));
+    kepala.append(judul, badge(s.status === "Success" ? label : s.status));
+    const meta = el("dl", "meta");
+    [["Periode", `${tgl(s.startDate)} – ${tgl(s.endDate)}`], ["Penerimaan", s.isDelivery ? "Diantar" : "Ambil sendiri"], ["Total", rp(s.totalPrice)]].forEach(([k, v]) => {
+        const kotak = el("div");
+        kotak.append(el("dt", "", k), el("dd", "", v));
+        meta.append(kotak);
+    });
+    card.append(kepala, meta);
+    if (s.needsRefund) card.append(el("div", "alert alert--info", "Menunggu refund dari admin."));
+    if (s.status === "Pending") {
+        const bayar = el("button", "btn btn-primary", "Lanjutkan Pembayaran");
+        bayar.onclick = () =>
+            jalankan(async () => {
+                const { data } = await api(`/subscriptions/${s.id}/payment-session`, { method: "POST" });
+                location.href = data.redirectUrl;
+            });
+        card.append(bayar);
+    }
+    if (slot.length) card.append(...slot.map(barisSlot));
+    if (s.status === "Success" && label !== "Selesai") {
+        const batal = el("button", "btn btn-danger", "Batalkan Pesanan");
+        batal.onclick = () => {
+            if (confirm("Batalkan pesanan ini? Pesanan yang sudah dibayar diproses refund manual oleh admin."))
+                jalankan(() => api(`/subscriptions/${s.id}/cancel`, { method: "POST" }));
+        };
+        card.append(batal);
+    }
+    return card;
+}
+
+function kartuHariIni(o) {
+    const card = el("section", "card live stack");
+    const jadwal = o.menuSchedule;
+    const kepala = el("div", "row-between");
+    kepala.append(el("h3", "t-h3", jadwal ? `${jadwal.deliveryTime.range} · ${jadwal.deliveryTime.time}` : "Hari ini"), badge(o.status));
+    card.append(kepala);
+    if (o.status !== "Dilewati") {
+        const langkah = o.isDelivery ? ["Terjadwal", "Disiapkan", "Diantar", "Selesai"] : ["Terjadwal", "Disiapkan", "Siap Diambil", "Selesai"];
+        const sekarang = langkah.indexOf(o.status);
+        const daftar = el("ol", "steps");
+        langkah.forEach((nama, i) => {
+            const li = el("li", `step${i < sekarang ? " is-done" : i === sekarang ? " is-current" : ""}`, nama);
+            if (i === sekarang) li.setAttribute("aria-current", "step");
+            daftar.append(li);
+        });
+        card.append(daftar);
+    }
+    (o.obstacles || []).forEach(k => {
+        const box = el("div", "alert alert--warning");
+        box.append(el("span", "alert-title", `Catatan kurir · ${tgl(k.createdAt, { hour: "2-digit", minute: "2-digit" })}`), k.note);
+        card.append(box);
+    });
+    card.append(el("p", "t-small t-muted", o.menu ? o.menu.name : ""));
+    return card;
+}
+
+function tampilTier(m) {
+    const box = $("#tier");
+    const tier = m.membership && m.membership.tier;
+    const kepala = el("div", "row-between");
+    kepala.append(el("span", "t-h3", tier ? `Tier ${tier.name}` : "Belum punya tier"));
+    if (tier) kepala.append(el("span", "badge badge--ready", `Diskon ${tier.discountPercent}%`));
+    const info = el("p", "t-small t-muted", `${m.subscriptionDays} hari langganan terbayar.`);
+    box.replaceChildren(kepala, info);
+    if (m.nextTier && m.daysToNextTier != null) {
+        const total = m.subscriptionDays + m.daysToNextTier;
+        const bar = el("div", "progress");
+        bar.style.margin = "8px 0";
+        const isi = el("span");
+        isi.style.width = `${total ? Math.min(100, (m.subscriptionDays / total) * 100) : 0}%`;
+        bar.append(isi);
+        box.append(bar, el("p", "t-small t-muted", `${m.daysToNextTier} hari lagi menuju ${m.nextTier.name}.`));
+    }
+    if (m.membership && m.membership.expiresAt) box.append(el("p", "t-small t-muted", `Tier berlaku sampai ${tgl(m.membership.expiresAt)}.`));
+}
+
+function baris(p) {
+    const row = el("div", "invoice");
+    const kiri = el("div");
+    kiri.append(el("p", "t-h3", p.type === "SUBSCRIPTION" ? "Pembayaran pesanan" : "Upgrade pengantaran"), el("p", "t-small t-muted", `${tgl(p.paidAt || p.createdAt)} · ${p.method}`));
+    const kanan = el("div", "row");
+    kanan.append(el("span", "t-h3", rp(p.amount)), badge(p.status));
+    row.append(kiri, kanan);
+    return row;
+}
+
+async function muat() {
+    try {
+        const user = currentUser();
+        if (user) {
+            $("#nama").textContent = user.name;
+            $("#hp").textContent = user.phone || "";
+            $("#avatar").textContent = (user.name || "?").split(" ").map(k => k[0]).slice(0, 2).join("").toUpperCase();
+        }
+        const [subs, hari, bayar, member] = await Promise.all([
+            api("/subscriptions"),
+            api(`/orders?date=${hariIni()}`),
+            api("/payments"),
+            api("/me/membership"),
+        ]);
+        const aktif = subs.data.filter(s => s.status === "Success" && s.displayStatus !== "Selesai").slice(0, 3);
+        const detail = new Map(await Promise.all(aktif.map(async s => [s.id, (await api(`/subscriptions/${s.id}`)).data.orders || []])));
+        $("#pesanan").replaceChildren(...subs.data.map(s => kartuPesanan(s, detail.get(s.id) || [])));
+        $("#kosong").hidden = subs.data.length > 0;
+        $("#hariIni").replaceChildren(...hari.data.map(kartuHariIni));
+        $("#boxHariIni").hidden = hari.data.length === 0;
+        $("#bayar").replaceChildren(...bayar.data.map(baris));
+        $("#kosongBayar").hidden = bayar.data.length > 0;
+        tampilTier(member.data);
+    } catch (error) {
+        galat(error);
+    }
+}
+
+function sambung() {
+    if (!store.token) return;
+    const stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
+    ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muat));
+    stream.onerror = async () => {
+        stream.close();
+        await api("/me").catch(() => null);
+        setTimeout(sambung, 5000);
+    };
+}
+
+muat();
+sambung();
+</script></body></html>
