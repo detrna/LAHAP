@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Langganan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<title>Langganan · LAHAP</title><link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"></head><body data-roles="admin">
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div><h1 class="t-h1">Langganan pelanggan</h1><p class="t-muted">Semua pesanan paket, rincian harga, slot, dan pembayarannya.</p></div>
@@ -19,6 +20,7 @@
   <h3 class="t-h3" id="uJudul">Ubah metode pengantaran</h3>
   <div class="stack" id="uAlamat">
    <div class="field"><label for="uAddr">Alamat pengantaran</label><textarea class="textarea" id="uAddr"></textarea><p class="error-msg" hidden>Alamat wajib diisi.</p></div>
+   <div class="field"><span class="field-label">Titik pengantaran</span><div id="uPeta"></div></div>
    <div class="grid grid-2">
     <div class="field"><label for="uLat">Latitude</label><input class="input" id="uLat" type="number" step="0.00000001" min="-90" max="90"><p class="error-msg" hidden>Latitude antara -90 dan 90.</p></div>
     <div class="field"><label for="uLng">Longitude</label><input class="input" id="uLng" type="number" step="0.00000001" min="-180" max="180"><p class="error-msg" hidden>Longitude antara -180 dan 180.</p></div>
@@ -48,7 +50,10 @@
  <div id="list" aria-busy="true"><div class="skeleton"></div></div>
  <div id="pager" hidden></div>
 </section>
-</main><script src="js/auth.js"></script>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/peta.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
@@ -203,6 +208,8 @@ async function bukaDetail(id) {
     } catch (error) { galat(error); }
 }
 
+let petaUbah = null;
+
 function siapkanUbah(s) {
     const bisa = s.status === "Success" && s.displayStatus !== "Selesai";
     $("ubah").hidden = !bisa;
@@ -213,6 +220,14 @@ function siapkanUbah(s) {
     $("uAddr").value = s.deliveryAddress || "";
     $("uLat").value = s.deliveryLatitude ?? "";
     $("uLng").value = s.deliveryLongitude ?? "";
+    if (keAntar) {
+        petaUbah ??= pasangPeta($("uPeta"), {
+            label: "Peta titik pengantaran. Ketuk untuk memindahkan pin.",
+            masukan: { lat: $("uLat"), lng: $("uLng") },
+            onPilih: () => { $("uKonfirmasi").hidden = true; },
+        });
+        petaUbah.setTitik(s.deliveryLatitude != null && s.deliveryLongitude != null ? { lat: Number(s.deliveryLatitude), lng: Number(s.deliveryLongitude) } : null);
+    }
     $("uMulai").value = "";
     $("uMulai").min = (() => { const d = new Date(`${hariIni()}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
     $("fBayar").hidden = !keAntar;

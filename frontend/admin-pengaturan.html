@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pengaturan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<title>Pengaturan · LAHAP</title><link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"></head><body data-roles="admin">
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div><h1 class="t-h1">Pengaturan usaha</h1><p class="t-muted" id="diubah"></p></div>
@@ -14,11 +15,13 @@
  </div>
  <h2 class="t-h3">Lokasi dapur</h2>
  <div class="field"><label for="alamat">Alamat</label><textarea class="textarea" id="alamat"></textarea><p class="error-msg" hidden>Alamat wajib diisi.</p></div>
+ <div class="field"><span class="field-label">Titik dapur</span><div id="peta"></div></div>
+ <ul class="map-legend" id="legenda" hidden></ul>
  <div class="grid grid-2">
   <div class="field"><label for="lat">Latitude</label><input class="input" id="lat" type="number" step="0.00000001" min="-90" max="90"><p class="error-msg" hidden>Latitude antara -90 dan 90.</p></div>
   <div class="field"><label for="lng">Longitude</label><input class="input" id="lng" type="number" step="0.00000001" min="-180" max="180"><p class="error-msg" hidden>Longitude antara -180 dan 180.</p></div>
  </div>
- <p class="hint">Salin koordinat dari Google Maps (klik kanan pada titik dapur).</p>
+ <p class="hint">Koordinat ikut berubah saat pin dipindah, dan bisa juga diketik langsung.</p>
  <h2 class="t-h3">Ongkir bawaan</h2>
  <p class="hint">Dipakai paket yang tidak mengisi tarifnya sendiri.</p>
  <div class="grid grid-3">
@@ -30,7 +33,10 @@
  <div class="field"><label for="batas">Batas waktu pembayaran (menit)</label><input class="input" id="batas" type="number" min="1" max="1440" step="1"><p class="hint">Pesanan yang belum dibayar dibatalkan otomatis setelah waktu ini.</p><p class="error-msg" hidden>Isi 1 sampai 1440 menit.</p></div>
  <button class="btn btn-primary" type="submit" id="simpan">Simpan Pengaturan</button>
 </form>
-</main><script src="js/auth.js"></script>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/peta.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const waktu = s => new Date(s).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -48,6 +54,35 @@ function periksa(daftar) {
     if (pertama) pertama.focus();
     return !pertama;
 }
+const warna = nama => getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
+const peta = pasangPeta($("peta"), {
+    label: "Peta lokasi dapur. Ketuk untuk memindahkan pin.",
+    petunjuk: "Ketuk peta, cari alamat, atau pakai lokasi Anda untuk menaruh pin dapur.",
+    masukan: { lat: $("lat"), lng: $("lng") },
+});
+
+function aturRadius() {
+    const km = id => (ada(id) && Number($(id).value) >= 0 ? Math.floor(Number($(id).value)) : 0);
+    const daftar = [
+        { km: km("r2"), warna: warna("--orange-700"), teks: "batas antar" },
+        { km: km("r1"), warna: warna("--success-text"), teks: "gratis ongkir" },
+    ].filter(c => c.km > 0);
+    peta.aturLingkaran(daftar);
+    $("legenda").hidden = !daftar.length;
+    $("legenda").replaceChildren(
+        ...daftar.map(c => {
+            const li = document.createElement("li");
+            const swatch = document.createElement("span");
+            swatch.className = "swatch";
+            swatch.style.color = c.warna;
+            li.append(swatch, `${c.teks[0].toUpperCase()}${c.teks.slice(1)} sampai ${c.km} km`);
+            return li;
+        }),
+        Object.assign(document.createElement("li"), { textContent: "Jarak garis lurus, dibulatkan ke atas per km seperti saat checkout." }),
+    );
+}
+["r1", "r2"].forEach(id => $(id).addEventListener("input", aturRadius));
+
 const FIELDS = { name: "nama", whatsappNumber: "wa", address: "alamat", latitude: "lat", longitude: "lng", deliveryFreeRadius: "r1", deliveryMaxDistance: "r2", deliveryPricePerKm: "r3", paymentTimeoutMinutes: "batas" };
 
 function isi(s) {
@@ -61,6 +96,9 @@ function isi(s) {
     $("r3").value = s.deliveryPricePerKm;
     $("batas").value = s.paymentTimeoutMinutes;
     $("diubah").textContent = s.updatedAt ? `Terakhir diubah ${waktu(s.updatedAt)}.` : "";
+    peta.setTitik({ lat: Number(s.latitude), lng: Number(s.longitude) });
+    aturRadius();
+    peta.tampilkanSemua();
 }
 
 async function muat() {

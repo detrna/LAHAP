@@ -145,6 +145,20 @@ a{color:var(--orange-700)}
 .task-actions{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .task-actions .btn{flex:1 1 140px}
 .map-box{min-height:180px;display:grid;place-items:center;background:var(--orange-100);color:var(--orange-900);border-radius:var(--radius-card)}
+.map-picker{display:grid;gap:var(--sp-2)}
+.map-canvas{display:block;min-height:300px;position:relative;z-index:0;overflow:hidden;border:1px solid var(--line)}
+.map-canvas:not(.leaflet-container){display:grid;place-items:center;padding:var(--sp-4);text-align:center}
+.map-tools{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.map-tools .input{flex:1 1 220px;min-width:0}
+@media(max-width:480px){.map-tools .input{flex-basis:100%}}
+.map-results{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-1);max-height:220px;overflow-y:auto}
+.map-result{display:block;width:100%;min-height:44px;padding:var(--sp-2) var(--sp-3);background:var(--white);border:1px solid var(--line);border-radius:var(--radius-control);font:inherit;font-size:13px;line-height:18px;text-align:left;color:var(--ink);cursor:pointer}
+.map-result:hover{background:var(--orange-50)}
+.map-result[aria-pressed=true]{border-color:var(--orange-700);background:var(--orange-50);font-weight:600}
+.map-status{margin-top:0}
+.map-legend{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin:0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+.map-legend li{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.map-legend .swatch{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;flex:none}
 
 /* Halaman Langganan Saya */
 .dash{display:grid;gap:var(--sp-5)}

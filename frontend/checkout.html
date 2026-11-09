@@ -21,7 +21,7 @@
  <div class="field"><label for="penerima">Nama penerima</label><input class="input" id="penerima" autocomplete="name"></div>
  <div class="stack" id="boxAntar">
   <div class="field"><label for="alamat">Alamat pengantaran</label><textarea class="textarea" id="alamat" autocomplete="street-address"></textarea></div>
-  <div class="field"><span class="field-label">Titik lokasi</span><div id="peta" class="map-box" style="min-height:240px"></div><p class="hint" id="hintPin">Ketuk peta untuk menaruh pin.</p></div>
+  <div class="field"><span class="field-label">Titik lokasi</span><div id="peta"></div></div>
  </div>
  <div class="field"><label for="catatan">Catatan (opsional)</label><textarea class="textarea" id="catatan" maxlength="500" placeholder="Mis. tanpa sambal"></textarea><p class="hint">Untuk permintaan non-alergi. Alergi diisi di profil.</p></div>
  <div class="field"><label for="promo">Kode promo</label><div class="row"><input class="input" id="promo" style="flex:1" placeholder="MERDEKA" maxlength="50"><button class="btn btn-secondary" id="pakai" type="button">Pakai</button></div><div class="alert alert--error" id="promoErr" hidden style="margin-top:8px"><span class="alert-title">Kode promo tidak berlaku</span><span class="msg"></span></div></div>
@@ -40,6 +40,7 @@
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/peta.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
 const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
@@ -56,8 +57,6 @@ const waktu = item => item.time ?? item;
 
 let paket = null;
 let pin = null;
-let marker = null;
-let peta = null;
 let timer = null;
 let nomor = 0;
 
@@ -95,7 +94,6 @@ function aturPeriode() {
     $("#boxAntar").hidden = nilai("metode") !== "antar";
     $("#boxBayar").hidden = nilai("jenis") !== "Offline";
     $("#kirim").textContent = nilai("jenis") === "Offline" && nilai("bayar") === "CASH" ? "Buat Pesanan" : "Bayar Sekarang";
-    if (peta) peta.invalidateSize();
 }
 
 function badan() {
@@ -203,22 +201,15 @@ const tunda = () => {
 };
 
 function mulaiPeta(titik) {
-    if (typeof L === "undefined") {
-        // Peta tidak termuat (mis. offline): pesanan ambil sendiri tetap bisa dibuat.
-        $("#peta").textContent = "Peta tidak bisa dimuat. Periksa koneksi atau pilih Ambil Sendiri.";
-        return;
-    }
-    peta = L.map("peta").setView(titik ? [titik.lat, titik.lng] : [-7.9666, 112.6326], 13);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(peta);
-    const taruh = latlng => {
-        pin = { lat: Number(latlng.lat.toFixed(6)), lng: Number(latlng.lng.toFixed(6)) };
-        if (marker) marker.setLatLng(latlng);
-        else marker = L.marker(latlng).addTo(peta);
-        $("#hintPin").textContent = `Pin: ${pin.lat}, ${pin.lng}`;
-        tunda();
-    };
-    peta.on("click", event => taruh(event.latlng));
-    if (titik) taruh({ lat: titik.lat, lng: titik.lng });
+    const kendali = pasangPeta($("#peta"), {
+        titik,
+        label: "Peta titik pengantaran. Ketuk untuk menaruh pin.",
+        onPilih: baru => {
+            pin = baru;
+            tunda();
+        },
+    });
+    pin = kendali.ambilTitik();
 }
 
 async function muat() {
