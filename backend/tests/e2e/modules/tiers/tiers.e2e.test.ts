@@ -322,6 +322,38 @@ describe("tiers routes (e2e)", () => {
         });
     });
 
+    describe("GET /tiers", () => {
+        it("lists every tier in threshold order without a token and without the admin stats", async () => {
+            const upper = await createTier(510, { photoKey: PHOTO, discountPercent: 10 });
+            const lower = await createTier(500, { discountPercent: 5 });
+            discounts = new Map([[upper.id, 9000]]);
+
+            const response = await request(app).get("/api/tiers");
+
+            expect(response.status).toBe(200);
+            expect(response.body.meta).toBeUndefined();
+            const tiers = response.body.data as Record<string, unknown>[];
+            const thresholds = tiers.map(tier => tier.requiredSubscriptionDays as number);
+            expect(thresholds).toEqual([...thresholds].sort((a, b) => a - b));
+            const ours = tiers.filter(tier => tier.id === lower.id || tier.id === upper.id);
+            expect(ours.map(tier => tier.id)).toEqual([lower.id, upper.id]);
+            expect(ours[0]).toMatchObject({ discountPercent: 5, photoUrl: null });
+            expect(ours[1]).toMatchObject({
+                discountPercent: 10,
+                photoKey: PHOTO,
+                photoUrl: `https://storage.test/${PHOTO}`,
+            });
+            for (const tier of tiers) {
+                expect(tier).not.toHaveProperty("memberCount");
+                expect(tier).not.toHaveProperty("totalDiscountGiven");
+            }
+        });
+
+        it.each(["CUSTOMER", "ADMIN", "KITCHEN", "COURIER"] as const)("also answers a signed-in %s", async role => {
+            expect((await request(app).get("/api/tiers").set(asRole(role))).status).toBe(200);
+        });
+    });
+
     describe("GET /me/membership", () => {
         it("shows no membership and the days paid so far", async () => {
             paidDays = 0;

@@ -739,6 +739,49 @@
         "x-apidog-folder": "Catalog"
       }
     },
+    "/tiers": {
+      "get": {
+        "operationId": "listPublicTiers",
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "List loyalty tiers",
+        "description": "**Public** (no token).\n\nEvery tier by `requiredSubscriptionDays` ascending, so customers and visitors can see how each tier is earned and its discount (BR-18). Admin-only fields (`memberCount`, `totalDiscountGiven`) are omitted.",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponseBody"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Tier"
+                          },
+                          "description": "All tiers by `requiredSubscriptionDays` ascending."
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [],
+        "x-apidog-folder": "Catalog"
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",

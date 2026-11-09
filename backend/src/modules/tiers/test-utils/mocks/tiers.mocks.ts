@@ -10,7 +10,16 @@ export type Mocked<T> = { [K in keyof T]: T[K] & ReturnType<typeof vi.fn> };
 export type MockedObjectStorage = Mocked<Pick<ObjectStorage, "getSignedUrl">>;
 
 export type MockedTiersService = Mocked<
-    Pick<TiersService, "listTiers" | "getTier" | "createTier" | "updateTier" | "deleteTier" | "getMembershipOverview">
+    Pick<
+        TiersService,
+        | "listTiers"
+        | "listPublicTiers"
+        | "getTier"
+        | "createTier"
+        | "updateTier"
+        | "deleteTier"
+        | "getMembershipOverview"
+    >
 >;
 
 export function createMockTiersRepository(): Mocked<TiersRepository> {
@@ -54,6 +63,7 @@ export function createMockOrderStats(): Mocked<OrderStats> {
 export function createMockTiersService(): MockedTiersService {
     return {
         listTiers: vi.fn(),
+        listPublicTiers: vi.fn(),
         getTier: vi.fn(),
         createTier: vi.fn(),
         updateTier: vi.fn(),

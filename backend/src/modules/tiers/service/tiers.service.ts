@@ -9,6 +9,7 @@ import { getTier } from "./get-tier.js";
 import type { OrderStats } from "./interfaces/order-stats.js";
 import type { PhotoKeys } from "./interfaces/photo-keys.js";
 import type { TiersRepository } from "./interfaces/tiers.repository.js";
+import { listPublicTiers } from "./list-public-tiers.js";
 import { listTiers } from "./list-tiers.js";
 import { presentTier, presentTiers } from "./present-tiers.js";
 import { reevaluate } from "./reevaluate.js";
@@ -28,6 +29,7 @@ export class TiersService {
     presentTier = presentTier;
     toMembership = toMembership;
     listTiers = listTiers;
+    listPublicTiers = listPublicTiers;
     getTier = getTier;
     createTier = createTier;
     updateTier = updateTier;

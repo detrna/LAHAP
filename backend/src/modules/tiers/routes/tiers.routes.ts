@@ -27,6 +27,8 @@ export function createTiersRouter({ controller, tokenProvider }: TiersRouterDeps
     const signedIn = authenticate({ tokenProvider });
     const admin = authorize("ADMIN");
 
+    router.get("/tiers", controller.listPublicTiers);
+
     router.get("/me/membership", signedIn, authorize("CUSTOMER"), controller.getMyMembership);
 
     router.get("/admin/tiers", signedIn, admin, validateQuery(tierListQuerySchema), paginate(), controller.listTiers);
