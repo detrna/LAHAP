@@ -5,7 +5,7 @@
 <header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pesan <span id="namaPaket"></span></h1>
-<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <form class="stack-lg" id="form" novalidate>
  <div class="field"><span class="field-label">Jenis pembelian</span><div class="chip-group">
   <label class="chip"><input type="radio" name="jenis" value="Online" checked>Online</label><label class="chip"><input type="radio" name="jenis" value="Offline">Offline</label></div>
@@ -64,6 +64,7 @@ let nomor = 0;
 function galat(message) {
     $("#err").hidden = !message;
     $("#err .msg").textContent = message || "";
+    if (message) $("#err").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function chip(name, value, label, checked, type = "radio") {
@@ -111,7 +112,7 @@ function badan() {
     if (periode === "Harian") body.menuScheduleIds = semua("hari");
     else {
         const mulai = $("#mulai").value;
-        body.periodStart = periode === "Mingguan" ? senin(mulai) : awalBulan(mulai);
+        body.periodStart = !mulai ? "" : periode === "Mingguan" ? senin(mulai) : awalBulan(mulai);
         body.deliveryTimes = semua("waktu");
     }
     if (antar) {
@@ -130,6 +131,24 @@ function lengkap(body) {
     if (!body.period || !body.recipientName) return false;
     if (body.period === "Harian" ? !body.menuScheduleIds.length : !body.periodStart || !body.deliveryTimes.length) return false;
     return !body.isDelivery || Boolean(body.deliveryAddress && pin);
+}
+
+// Daftar yang masih kurang, supaya pelanggan tahu kenapa harga belum muncul.
+function kurang(body) {
+    const daftar = [];
+    if (!body.recipientName) daftar.push("nama penerima");
+    if (!body.period) daftar.push("periode");
+    else if (body.period === "Harian") {
+        if (!body.menuScheduleIds.length) daftar.push("minimal satu hari layanan");
+    } else {
+        if (!body.periodStart) daftar.push("tanggal mulai");
+        if (!body.deliveryTimes.length) daftar.push("waktu makan");
+    }
+    if (body.isDelivery) {
+        if (!body.deliveryAddress) daftar.push("alamat pengantaran");
+        if (!pin) daftar.push("titik lokasi di peta");
+    }
+    return daftar;
 }
 
 function tampilHarga(p) {
@@ -160,6 +179,8 @@ async function hitung() {
     if (!lengkap(body)) {
         $("#rincian").hidden = true;
         $("#kosongHarga").hidden = false;
+        const k = kurang(body);
+        $("#kosongHarga").textContent = k.length ? `Lengkapi dulu: ${k.join(", ")}.` : "Lengkapi pilihan di atas untuk melihat harga.";
         return;
     }
     try {
@@ -182,6 +203,11 @@ const tunda = () => {
 };
 
 function mulaiPeta(titik) {
+    if (typeof L === "undefined") {
+        // Peta tidak termuat (mis. offline): pesanan ambil sendiri tetap bisa dibuat.
+        $("#peta").textContent = "Peta tidak bisa dimuat. Periksa koneksi atau pilih Ambil Sendiri.";
+        return;
+    }
     peta = L.map("peta").setView(titik ? [titik.lat, titik.lng] : [-7.9666, 112.6326], 13);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(peta);
     const taruh = latlng => {
@@ -209,6 +235,7 @@ async function muat() {
                 return chip("waktu", item, t.range ? `${t.range} · ${item}` : item, true, "checkbox");
             }),
         );
+        $("#mulai").min = tambahHari(hariIni(), 1);
         $("#mulai").value = tambahHari(senin(hariIni()), 7);
         $("#penerima").value = (currentUser() && currentUser().name) || "";
         const [{ data: jadwal }, profil] = await Promise.all([
@@ -245,7 +272,10 @@ $("#form").addEventListener("change", () => {
     aturPeriode();
     tunda();
 });
-$("#pakai").onclick = hitung;
+$("#pakai").onclick = () => {
+    if (!$("#promo").value.trim()) return $("#promo").focus();
+    hitung();
+};
 $("#form").addEventListener("submit", async event => {
     event.preventDefault();
     const body = badan();

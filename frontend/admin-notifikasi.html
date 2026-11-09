@@ -6,31 +6,56 @@
 <h1 class="t-h1">Notifikasi dan pengumuman</h1>
 <form class="card stack" id="kirim">
 <h2 class="t-h3">Kirim ke satu pelanggan</h2>
-<div class="field"><label for="hp">Nomor HP pelanggan</label><input class="input" id="hp" inputmode="tel"></div>
-<div class="field"><label for="j1">Judul</label><input class="input" id="j1" maxlength="150"></div>
-<div class="field"><label for="b1">Isi pesan</label><textarea class="textarea" id="b1" maxlength="2000"></textarea></div>
+<div class="field"><label for="hp">Nomor HP pelanggan</label><input class="input" id="hp" inputmode="tel" autocomplete="off" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid.</p></div>
+<div class="field"><label for="j1">Judul</label><input class="input" id="j1" maxlength="150"><p class="error-msg" hidden>Judul wajib diisi.</p></div>
+<div class="field"><label for="b1">Isi pesan</label><textarea class="textarea" id="b1" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pesan wajib diisi.</p></div>
 <button class="btn btn-primary" type="submit">Kirim Notifikasi</button>
 </form>
 <form class="card stack" id="umum">
 <h2 class="t-h3">Pengumuman</h2>
 <div class="field"><label for="c">Cakupan</label><select class="select input" id="c"><option>Semua pelanggan</option><option>Pelanggan satu paket</option><option>Satu hari layanan</option></select></div>
-<div class="field"><label for="j2">Judul</label><input class="input" id="j2" maxlength="150"></div>
-<div class="field"><label for="b2">Isi pengumuman</label><textarea class="textarea" id="b2" maxlength="2000"></textarea></div>
+<div class="field"><label for="j2">Judul</label><input class="input" id="j2" maxlength="150"><p class="error-msg" hidden>Judul wajib diisi.</p></div>
+<div class="field"><label for="b2">Isi pengumuman</label><textarea class="textarea" id="b2" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pengumuman wajib diisi.</p></div>
 <button class="btn btn-secondary" type="submit">Kirim Pengumuman</button>
 </form>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Pengumuman terkirim</h2></div>
-<div class="invoice"><div><p class="t-h3">Libur 17 Agustus</p><p class="t-small t-muted">Semua pelanggan · 3 Nov 2026</p></div><button class="btn btn-danger btn-sm hapus">Hapus</button></div>
+<div class="invoice"><div><p class="t-h3">Libur 17 Agustus</p><p class="t-small t-muted">Semua pelanggan · 3 Nov 2026</p></div><button class="btn btn-danger btn-sm hapus" type="button" aria-label="Hapus pengumuman Libur 17 Agustus">Hapus</button></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
-["kirim", "umum"].forEach(id => {
-    document.getElementById(id).onsubmit = event => {
-        event.preventDefault();
-        alert("Terkirim (demo).");
-        event.target.reset();
-    };
-});
+// Periksa daftar [elemen, valid]; tandai error, fokus ke yang pertama salah.
+function periksa(daftar) {
+    let pertama = null;
+    daftar.forEach(([input, valid]) => {
+        const field = input.closest(".field");
+        field.classList.toggle("is-error", !valid);
+        field.querySelector(".error-msg").hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return !pertama;
+}
+const el = id => document.getElementById(id);
+el("kirim").onsubmit = event => {
+    event.preventDefault();
+    const hp = el("hp").value.replace(/[\s-]/g, "");
+    if (!periksa([
+        [el("hp"), /^(\+?62|0)8\d{8,12}$/.test(hp)],
+        [el("j1"), el("j1").value.trim() !== ""],
+        [el("b1"), el("b1").value.trim() !== ""],
+    ])) return;
+    toast("Notifikasi terkirim (demo).");
+    event.target.reset();
+};
+el("umum").onsubmit = event => {
+    event.preventDefault();
+    if (!periksa([[el("j2"), el("j2").value.trim() !== ""], [el("b2"), el("b2").value.trim() !== ""]])) return;
+    if (!confirm(`Kirim pengumuman ini ke: ${el("c").value.toLowerCase()}?`)) return;
+    toast("Pengumuman terkirim (demo).");
+    event.target.reset();
+};
 document.querySelectorAll(".hapus").forEach(b => {
     b.onclick = () => {
         if (confirm("Hapus pengumuman ini?")) b.closest(".invoice").remove();

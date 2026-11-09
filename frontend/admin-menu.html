@@ -7,7 +7,7 @@
 <form class="card stack">
  <h2 class="t-h3">Tambah jadwal menu</h2>
  <div class="grid grid-2">
-  <div class="field"><label for="tg">Tanggal</label><input class="input" id="tg" type="date"></div>
+  <div class="field" id="fTg"><label for="tg">Tanggal</label><input class="input" id="tg" type="date"><p class="error-msg" hidden>Pilih tanggal.</p></div>
   <div class="field"><label for="wk">Waktu makan</label><select class="select input" id="wk"><option>Pagi · 07:00</option><option>Siang · 12:00</option><option>Malam · 17:00</option></select></div>
   <div class="field"><label for="pk">Paket</label><select class="select input" id="pk"><option>Paket Hemat</option><option>Paket Reguler</option></select></div>
   <div class="field"><label for="mn">Menu</label><select class="select input" id="mn"><option>Ayam goreng + sayur asem</option><option>Nasi uduk + telur balado</option></select></div>
@@ -16,13 +16,35 @@
 </form>
 <section class="card" id="jadwal">
  <div class="section-head"><h2 class="t-h2">Jadwal minggu depan</h2><span class="t-small t-muted">Pelanggan hanya melihat yang terbit</span></div>
- <div class="slot"><div><p class="t-h3">Senin 16 Nov · Siang · Paket Hemat</p><p class="t-small t-muted">Ayam goreng + sayur asem</p></div><div class="row"><span class="badge badge--pending">Draft</span><button class="btn btn-primary btn-sm pub">Terbitkan</button></div></div>
- <div class="slot"><div><p class="t-h3">Selasa 17 Nov · Siang · Paket Reguler</p><p class="t-small t-muted">Nasi uduk + telur balado · Mengandung telur</p></div><div class="row"><span class="badge badge--success">Terbit</span><button class="btn btn-secondary btn-sm unpub">Batalkan Terbit</button></div></div>
+ <div class="slot" data-terbit="0"><div><p class="t-h3">Senin 16 Nov · Siang · Paket Hemat</p><p class="t-small t-muted">Ayam goreng + sayur asem</p></div><div class="row"><span class="badge badge--pending">Draft</span><button class="btn btn-primary btn-sm tombol" type="button">Terbitkan</button></div></div>
+ <div class="slot" data-terbit="1"><div><p class="t-h3">Selasa 17 Nov · Siang · Paket Reguler</p><p class="t-small t-muted">Nasi uduk + telur balado · Mengandung telur</p></div><div class="row"><span class="badge badge--success">Terbit</span><button class="btn btn-secondary btn-sm tombol" type="button">Batalkan Terbit</button></div></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
 // Ganti dengan API jadwal dan publish. Batal terbit hanya jika belum ada pesanan.
-draft.onclick=function(){alert('Draft disimpan (demo).')};
-document.querySelectorAll('.pub').forEach(function(b){b.onclick=function(){var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--success';bd.textContent='Terbit';b.remove()}});
-document.querySelectorAll('.unpub').forEach(function(b){b.onclick=function(){if(!confirm('Batalkan terbit jadwal ini?'))return;var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--pending';bd.textContent='Draft';b.remove()}});
+function tampilStatus(slot) {
+    const terbit = slot.dataset.terbit === "1";
+    setBadge(slot.querySelector(".badge"), terbit ? "badge--success" : "badge--pending", terbit ? "Terbit" : "Draft");
+    const tombol = slot.querySelector(".tombol");
+    tombol.textContent = terbit ? "Batalkan Terbit" : "Terbitkan";
+    tombol.className = `btn btn-sm tombol ${terbit ? "btn-secondary" : "btn-primary"}`;
+}
+document.querySelectorAll(".slot").forEach(slot => {
+    slot.querySelector(".tombol").onclick = () => {
+        const terbit = slot.dataset.terbit === "1";
+        if (terbit && !confirm("Batalkan terbit jadwal ini?")) return;
+        slot.dataset.terbit = terbit ? "0" : "1";
+        tampilStatus(slot);
+        toast(terbit ? "Jadwal dikembalikan ke draft." : "Jadwal diterbitkan.");
+    };
+});
+document.getElementById("draft").onclick = () => {
+    const tg = document.getElementById("tg");
+    const ok = tg.value !== "";
+    document.getElementById("fTg").classList.toggle("is-error", !ok);
+    document.querySelector("#fTg .error-msg").hidden = ok;
+    tg.setAttribute("aria-invalid", String(!ok));
+    if (!ok) return tg.focus();
+    toast("Draft disimpan (demo).");
+};
 </script></body></html>

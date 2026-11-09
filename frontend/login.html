@@ -21,28 +21,31 @@
                 </div>
 
                 <form id="formMasuk" class="stack card" novalidate>
-                    <div class="alert alert--error" id="errMasuk" hidden>
+                    <div class="alert alert--error" id="errMasuk" role="alert" hidden>
                         <span class="alert-title">Gagal masuk</span><span class="msg"></span>
                     </div>
-                    <div class="field">
+                    <div class="field" id="fId">
                         <label for="id">Nomor HP atau email</label>
-                        <input class="input" id="id" autocomplete="username" />
+                        <input class="input" id="id" autocomplete="username" autocapitalize="none" spellcheck="false" />
+                        <p class="error-msg" hidden>Isi nomor HP atau email.</p>
                     </div>
-                    <div class="field">
+                    <div class="field" id="fPwMasuk">
                         <label for="pw">Password</label>
                         <input class="input" id="pw" type="password" autocomplete="current-password" />
+                        <p class="error-msg" hidden>Isi password.</p>
                     </div>
+                    <label class="row t-small"><input type="checkbox" class="lihat-pw" /> Tampilkan password</label>
                     <button class="btn btn-primary btn-block" type="submit">Masuk</button>
                     <button class="btn btn-ghost btn-block" type="button" id="keDaftar">Belum punya akun? Daftar</button>
                 </form>
 
                 <form id="formDaftar" class="stack card" novalidate hidden>
-                    <div class="alert alert--error" id="errDaftar" hidden>
+                    <div class="alert alert--error" id="errDaftar" role="alert" hidden>
                         <span class="alert-title">Gagal mendaftar</span><span class="msg"></span>
                     </div>
                     <div class="field" id="fHp">
                         <label for="dHp">Nomor HP</label>
-                        <input class="input" id="dHp" inputmode="tel" placeholder="081234567890" />
+                        <input class="input" id="dHp" inputmode="tel" autocomplete="tel" placeholder="081234567890" />
                         <p class="error-msg" hidden>Nomor HP tidak valid. Contoh: 081234567890</p>
                     </div>
                     <div class="field" id="fPw">
@@ -56,13 +59,20 @@
                         <input class="input" id="dUlang" type="password" autocomplete="new-password" />
                         <p class="error-msg" hidden>Password tidak sama.</p>
                     </div>
+                    <label class="row t-small"><input type="checkbox" class="lihat-pw" /> Tampilkan password</label>
                     <div class="field">
                         <label for="dNama">Nama (opsional)</label>
-                        <input class="input" id="dNama" />
+                        <input class="input" id="dNama" autocomplete="name" />
                     </div>
-                    <div class="field">
+                    <div class="field" id="fEmail">
                         <label for="dEmail">Email (opsional)</label>
-                        <input class="input" id="dEmail" type="email" />
+                        <input class="input" id="dEmail" type="email" autocomplete="email" />
+                        <p class="error-msg" hidden>Format email tidak valid.</p>
+                    </div>
+                    <div class="field" id="fAlergi" hidden>
+                        <span class="field-label">Alergi (opsional)</span>
+                        <div class="chip-group" id="alergi"></div>
+                        <p class="hint">Dipakai untuk peringatan menu. Bisa diubah nanti di profil.</p>
                     </div>
                     <button class="btn btn-primary btn-block" type="submit">Daftar</button>
                     <button class="btn btn-ghost btn-block" type="button" id="keMasuk">Sudah punya akun? Masuk</button>
@@ -73,13 +83,44 @@
         <script>
             const $ = selector => document.querySelector(selector);
 
-            if (currentUser()) location.href = homeFor(currentUser());
+            // ?redirect= hanya menerima nama halaman .html di situs ini, bukan alamat luar.
+            function tujuan(user) {
+                const minta = new URLSearchParams(location.search).get("redirect");
+                return minta && /^[\w-]+\.html(\?[\w%=&.-]*)?$/.test(minta) ? minta : homeFor(user);
+            }
+
+            if (currentUser()) location.href = tujuan(currentUser());
 
             function tampil(daftar) {
                 $("#formMasuk").hidden = daftar;
                 $("#formDaftar").hidden = !daftar;
                 $("#judul").textContent = daftar ? "Daftar akun pelanggan" : "Masuk ke LAHAP";
+                document.title = `${daftar ? "Daftar" : "Masuk"} · LAHAP`;
+                (daftar ? $("#dHp") : $("#id")).focus();
             }
+
+            // Tandai tiap field valid atau tidak, lalu fokuskan yang pertama salah.
+            function periksa(daftar) {
+                const salah = [];
+                daftar.forEach(([selector, valid]) => {
+                    const field = $(selector);
+                    const input = field.querySelector("input");
+                    field.classList.toggle("is-error", !valid);
+                    field.querySelector(".error-msg").hidden = valid;
+                    input.setAttribute("aria-invalid", String(!valid));
+                    if (!valid) salah.push(input);
+                });
+                if (salah.length) salah[0].focus();
+                return salah.length === 0;
+            }
+
+            document.querySelectorAll(".lihat-pw").forEach(box => {
+                box.addEventListener("change", () => {
+                    box.closest("form").querySelectorAll("input[autocomplete$=password]").forEach(input => {
+                        input.type = box.checked ? "text" : "password";
+                    });
+                });
+            });
 
             function tampilError(box, message) {
                 box.hidden = !message;
@@ -92,7 +133,7 @@
                 tampilError(box, "");
                 try {
                     const user = await aksi();
-                    location.href = homeFor(user);
+                    location.href = tujuan(user);
                 } catch (error) {
                     tampilError(box, errorMessage(error));
                 } finally {
@@ -100,29 +141,51 @@
                 }
             }
 
+            // Daftar alergi bersifat opsional: jika gagal dimuat, form tetap bisa dipakai tanpa itu.
+            api("/allergies", { auth: false })
+                .then(({ data }) => {
+                    if (!data.length) return;
+                    $("#alergi").replaceChildren(
+                        ...data.map(item => {
+                            const label = document.createElement("label");
+                            label.className = "chip";
+                            const input = document.createElement("input");
+                            input.type = "checkbox";
+                            input.value = item.id;
+                            label.append(input, item.name);
+                            return label;
+                        }),
+                    );
+                    $("#fAlergi").hidden = false;
+                })
+                .catch(() => {});
+
             $("#keDaftar").onclick = () => tampil(true);
             $("#keMasuk").onclick = () => tampil(false);
 
             $("#formMasuk").addEventListener("submit", event => {
                 event.preventDefault();
-                kirim(event.target, () => login($("#id").value.trim(), $("#pw").value), $("#errMasuk"));
+                const identifier = $("#id").value.trim();
+                const password = $("#pw").value;
+                if (!periksa([["#fId", identifier !== ""], ["#fPwMasuk", password !== ""]])) return;
+                kirim(event.target, () => login(identifier, password), $("#errMasuk"));
             });
 
             $("#formDaftar").addEventListener("submit", event => {
                 event.preventDefault();
                 const phone = $("#dHp").value.trim();
                 const password = $("#dPw").value;
-                const cek = [
-                    ["#fHp", /^(\+?62|0)8\d{8,12}$/.test(phone)],
+                const email = $("#dEmail").value.trim();
+                const valid = periksa([
+                    ["#fHp", /^(\+?62|0)8\d{8,12}$/.test(phone.replace(/[\s-]/g, ""))],
                     ["#fPw", password.length >= 8 && password.length <= 72],
                     ["#fUlang", password === $("#dUlang").value],
-                ];
-                cek.forEach(([selector, valid]) => {
-                    $(selector).classList.toggle("is-error", !valid);
-                    $(`${selector} .error-msg`).hidden = valid;
-                });
-                if (cek.some(([, valid]) => !valid)) return;
+                    ["#fEmail", email === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)],
+                ]);
+                if (!valid) return;
                 const fields = { phone, password, confirmPassword: $("#dUlang").value };
+                const alergi = [...document.querySelectorAll("#alergi input:checked")].map(input => input.value);
+                if (alergi.length) fields.allergyIds = alergi; // nama field mengikuti PATCH /me; cek dengan openapi.json
                 if ($("#dNama").value.trim()) fields.name = $("#dNama").value.trim();
                 if ($("#dEmail").value.trim()) fields.email = $("#dEmail").value.trim();
                 kirim(event.target, () => register(fields), $("#errDaftar"));

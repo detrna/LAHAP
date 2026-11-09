@@ -6,18 +6,71 @@
 <h1 class="t-h1">Bahan, stok, dan alergen</h1>
 <section class="card">
  <div class="section-head"><h2 class="t-h2">Stok bahan</h2><span class="t-small t-muted">Isi stok terbaru lalu simpan</span></div>
- <div class="invoice"><div><p class="t-h3">Ayam</p><p class="t-small t-muted">Stok 3,2 kg · butuh 4,8 kg hari ini</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input" style="width:96px" type="number" aria-label="Stok ayam (kg)" value="3.2"><button class="btn btn-secondary btn-sm simpan">Simpan</button></div></div>
- <div class="invoice"><div><p class="t-h3">Beras</p><p class="t-small t-muted">Stok 20 kg · butuh 2,4 kg hari ini</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input" style="width:96px" type="number" aria-label="Stok beras (kg)" value="20"><button class="btn btn-secondary btn-sm simpan">Simpan</button></div></div>
+ <div class="invoice" data-nama="Ayam" data-butuh="4.8"><div><p class="t-h3">Ayam</p><p class="t-small t-muted info">Stok 3,2 kg · butuh 4,8 kg hari ini</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" aria-label="Stok ayam (kg)" value="3.2"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button></div></div>
+ <div class="invoice" data-nama="Beras" data-butuh="2.4"><div><p class="t-h3">Beras</p><p class="t-small t-muted info">Stok 20 kg · butuh 2,4 kg hari ini</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" aria-label="Stok beras (kg)" value="20"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button></div></div>
 </section>
 <section class="card stack">
  <h2 class="t-h2">Alergen</h2>
- <div class="chip-group"><span class="chip">Telur</span><span class="chip">Kacang</span><span class="chip">Susu</span><span class="chip">Seafood</span><span class="chip">Gluten</span></div>
- <div class="row"><input class="input" style="flex:1" id="baru" placeholder="Nama alergen baru" aria-label="Nama alergen baru"><button class="btn btn-secondary" id="addAl">Tambah</button></div>
+ <div class="chip-group" id="alergen"></div>
+ <form class="row" id="formAl"><input class="input flex-1" id="baru" maxlength="50" placeholder="Nama alergen baru" aria-label="Nama alergen baru"><button class="btn btn-secondary" type="submit">Tambah</button></form>
 </section>
 <section class="card stack"><h2 class="t-h2">Daftar belanja minggu depan</h2><p class="t-muted">Ayam 33,6 kg · Beras 16,8 kg · Telur 40 butir · Sayur asem 25,2 kg</p><p class="t-small t-muted">Dihitung dari menu yang sudah terbit dan jumlah pesanan.</p></section>
 </main><script src="js/auth.js"></script>
 <script>
 // Ganti dengan API bahan, stok, dan alergen.
-document.querySelectorAll('.simpan').forEach(function(b){b.onclick=function(){b.textContent='Tersimpan'}});
-addAl.onclick=function(){var v=baru.value.trim();if(!v)return;var s=document.createElement('span');s.className='chip';s.textContent=v;document.querySelector('.chip-group').appendChild(s);baru.value=''};
+const fmt = n => String(n).replace(".", ",");
+document.querySelectorAll(".simpan").forEach(b => {
+    b.onclick = () => {
+        const baris = b.closest(".invoice");
+        const input = baris.querySelector("input");
+        const stok = parseFloat(input.value);
+        if (!Number.isFinite(stok) || stok < 0) {
+            input.setAttribute("aria-invalid", "true");
+            input.focus();
+            toast("Isi stok dengan angka 0 atau lebih.", "error");
+            return;
+        }
+        input.removeAttribute("aria-invalid");
+        const butuh = parseFloat(baris.dataset.butuh);
+        baris.querySelector(".info").textContent = `Stok ${fmt(stok)} kg · butuh ${fmt(butuh)} kg hari ini`;
+        const cukup = stok >= butuh;
+        setBadge(baris.querySelector(".badge"), cukup ? "badge--success" : "badge--pending", cukup ? "Cukup" : "Menipis");
+        toast(`Stok ${baris.dataset.nama.toLowerCase()} disimpan.`);
+    };
+});
+
+const daftarAlergen = ["Telur", "Kacang", "Susu", "Seafood", "Gluten"];
+function gambarAlergen() {
+    document.getElementById("alergen").replaceChildren(...daftarAlergen.map(nama => {
+        const chip = document.createElement("span");
+        chip.className = "chip chip-static";
+        chip.append(nama);
+        const hapus = document.createElement("button");
+        hapus.type = "button";
+        hapus.className = "chip-remove";
+        hapus.textContent = "×";
+        hapus.setAttribute("aria-label", `Hapus alergen ${nama}`);
+        hapus.onclick = () => {
+            if (!confirm(`Hapus alergen "${nama}"?`)) return;
+            daftarAlergen.splice(daftarAlergen.indexOf(nama), 1);
+            gambarAlergen();
+        };
+        chip.append(hapus);
+        return chip;
+    }));
+}
+document.getElementById("formAl").onsubmit = event => {
+    event.preventDefault();
+    const input = document.getElementById("baru");
+    const nama = input.value.trim();
+    if (!nama) return input.focus();
+    if (daftarAlergen.some(a => a.toLowerCase() === nama.toLowerCase())) {
+        toast("Alergen itu sudah ada.", "error");
+        return;
+    }
+    daftarAlergen.push(nama.charAt(0).toUpperCase() + nama.slice(1));
+    input.value = "";
+    gambarAlergen();
+};
+gambarAlergen();
 </script></body></html>

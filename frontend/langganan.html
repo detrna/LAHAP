@@ -7,12 +7,12 @@
  <div><h1 class="t-h1">Langganan Saya</h1><p class="t-muted">Pantau pesanan, jadwal makan, dan pembayaranmu di sini.</p></div>
  <a class="btn btn-primary" href="index.html">Pesan Paket Baru</a>
 </div>
-<div class="alert alert--error" id="err" hidden style="margin-bottom:16px"><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<div class="alert alert--error" id="err" role="alert" hidden style="margin-bottom:16px"><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <div class="dash">
 <div class="stack-lg">
  <section class="stack" id="boxHariIni" hidden><h2 class="t-h2">Hari ini</h2><div class="stack" id="hariIni" aria-live="polite"></div></section>
- <section class="stack"><h2 class="t-h2">Pesanan</h2><p class="t-muted" id="kosong" hidden>Belum ada pesanan. Pilih paket untuk mulai.</p><div class="stack-lg" id="pesanan"></div></section>
- <section class="card"><div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2></div><p class="t-muted" id="kosongBayar" hidden>Belum ada pembayaran.</p><div id="bayar"></div></section>
+ <section class="stack"><h2 class="t-h2">Pesanan</h2><p class="t-muted" id="kosong" hidden>Belum ada pesanan. Pilih paket untuk mulai.</p><div class="stack-lg" id="pesanan" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div></section>
+ <section class="card"><div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2></div><p class="t-muted" id="kosongBayar" hidden>Belum ada pembayaran.</p><div id="bayar"><div class="skeleton"></div></div></section>
 </div>
 <aside class="stack-lg">
  <section class="card stack">
@@ -48,16 +48,27 @@ const badge = teks => el("span", `badge ${BADGE[teks] || "badge--expire"}`, teks
 
 function galat(error) {
     $("#err").hidden = !error;
-    if (error) $("#err .msg").textContent = errorMessage(error);
+    if (error) {
+        $("#err .msg").textContent = errorMessage(error);
+        $("#err").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
 }
 
-async function jalankan(aksi) {
+// Satu aksi pada satu waktu: mencegah klik ganda yang bisa mengirim permintaan dua kali.
+let sibuk = false;
+async function jalankan(aksi, tombol) {
+    if (sibuk) return;
+    sibuk = true;
+    if (tombol) tombol.disabled = true;
     galat(null);
     try {
         await aksi();
         await muat();
     } catch (error) {
         galat(error);
+    } finally {
+        sibuk = false;
+        if (tombol) tombol.disabled = false;
     }
 }
 
@@ -73,9 +84,11 @@ function barisSlot(o) {
     kanan.append(badge(o.status));
     if (o.status === "Terjadwal" || o.status === "Disiapkan") {
         const skip = el("button", "btn btn-secondary btn-sm", "Skip");
+        skip.type = "button";
+        skip.setAttribute("aria-label", `Skip slot ${jadwal ? tgl(jadwal.date, { weekday: "long", day: "numeric", month: "long" }) : ""}`.trim());
         skip.onclick = () => {
             if (confirm("Skip slot ini? Tagihan tidak berkurang dan tidak ada pengembalian dana."))
-                jalankan(() => api(`/orders/${o.id}/skip`, { method: "POST", body: {} }));
+                jalankan(() => api(`/orders/${o.id}/skip`, { method: "POST", body: {} }), skip);
         };
         kanan.append(skip);
     }
@@ -100,19 +113,21 @@ function kartuPesanan(s, slot) {
     if (s.needsRefund) card.append(el("div", "alert alert--info", "Menunggu refund dari admin."));
     if (s.status === "Pending") {
         const bayar = el("button", "btn btn-primary", "Lanjutkan Pembayaran");
+        bayar.type = "button";
         bayar.onclick = () =>
             jalankan(async () => {
                 const { data } = await api(`/subscriptions/${s.id}/payment-session`, { method: "POST" });
                 location.href = data.redirectUrl;
-            });
+            }, bayar);
         card.append(bayar);
     }
     if (slot.length) card.append(...slot.map(barisSlot));
     if (s.status === "Success" && label !== "Selesai") {
         const batal = el("button", "btn btn-danger", "Batalkan Pesanan");
+        batal.type = "button";
         batal.onclick = () => {
             if (confirm("Batalkan pesanan ini? Pesanan yang sudah dibayar diproses refund manual oleh admin."))
-                jalankan(() => api(`/subscriptions/${s.id}/cancel`, { method: "POST" }));
+                jalankan(() => api(`/subscriptions/${s.id}/cancel`, { method: "POST" }), batal);
         };
         card.append(batal);
     }
@@ -175,7 +190,10 @@ function baris(p) {
     return row;
 }
 
+// Jika dua pemuatan berjalan bersamaan (mis. klik + event realtime), hanya yang terbaru yang ditampilkan.
+let muatKe = 0;
 async function muat() {
+    const ke = ++muatKe;
     try {
         const user = currentUser();
         if (user) {
@@ -191,6 +209,8 @@ async function muat() {
         ]);
         const aktif = subs.data.filter(s => s.status === "Success" && s.displayStatus !== "Selesai").slice(0, 3);
         const detail = new Map(await Promise.all(aktif.map(async s => [s.id, (await api(`/subscriptions/${s.id}`)).data.orders || []])));
+        if (ke !== muatKe) return;
+        $("#pesanan").removeAttribute("aria-busy");
         $("#pesanan").replaceChildren(...subs.data.map(s => kartuPesanan(s, detail.get(s.id) || [])));
         $("#kosong").hidden = subs.data.length > 0;
         $("#hariIni").replaceChildren(...hari.data.map(kartuHariIni));
@@ -199,20 +219,53 @@ async function muat() {
         $("#kosongBayar").hidden = bayar.data.length > 0;
         tampilTier(member.data);
     } catch (error) {
+        if (ke !== muatKe) return;
+        $("#pesanan").removeAttribute("aria-busy");
+        $("#pesanan").replaceChildren();
+        $("#bayar").replaceChildren();
         galat(error);
     }
 }
 
-function sambung() {
-    if (!store.token) return;
-    const stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
-    ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muat));
-    stream.onerror = async () => {
-        stream.close();
-        await api("/me").catch(() => null);
-        setTimeout(sambung, 5000);
-    };
+let tundaMuat;
+const muatTertunda = () => {
+    clearTimeout(tundaMuat);
+    tundaMuat = setTimeout(muat, 300);
+};
+
+let stream = null;
+let menyambung = false;
+async function sambung() {
+    if (stream || menyambung) return;
+    menyambung = true;
+    try {
+        if (!(await ensureToken())) return;
+        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
+        ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muatTertunda));
+        // Sudah tersambung kembali setelah putus: data mungkin terlewat, jadi muat ulang.
+        stream.onopen = () => {
+            if (stream.sudahPernahPutus) muatTertunda();
+        };
+        stream.onerror = async () => {
+            const lama = stream;
+            lama.close();
+            stream = null;
+            await refreshSession(); // token di URL sudah kedaluwarsa: ambil yang baru
+            setTimeout(async () => {
+                await sambung();
+                if (stream) stream.sudahPernahPutus = true;
+            }, 5000);
+        };
+    } finally {
+        menyambung = false;
+    }
 }
+
+// Saat tab kembali aktif, data mungkin sudah usang: muat ulang.
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) muatTertunda();
+});
+window.addEventListener("pagehide", () => stream && stream.close());
 
 muat();
 sambung();

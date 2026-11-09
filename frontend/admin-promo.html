@@ -6,37 +6,91 @@
 <h1 class="t-h1">Tier dan promo</h1>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Tier loyalitas</h2><span class="t-small t-muted">Diskon dari subtotal makanan, bukan ongkir</span></div>
-<div class="invoice"><div><p class="t-h3">Biasa</p><p class="t-small t-muted">0 hari · diskon 0% · berlaku 30 hari</p></div><button class="btn btn-secondary btn-sm">Ubah</button></div>
-<div class="invoice"><div><p class="t-h3">Silver</p><p class="t-small t-muted">30 hari · diskon 5% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm hapus">Hapus</button></div></div>
-<div class="invoice"><div><p class="t-h3">Gold</p><p class="t-small t-muted">60 hari · diskon 10% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm hapus">Hapus</button></div></div>
+<div class="invoice" data-tier="Biasa"><div><p class="t-h3">Biasa</p><p class="t-small t-muted info">0 hari · diskon 0% · berlaku 30 hari</p></div><button class="btn btn-secondary btn-sm ubah-tier" type="button" aria-label="Ubah tier Biasa">Ubah</button></div>
+<div class="invoice" data-tier="Silver" data-hari="30" data-berlaku="30"><div><p class="t-h3">Silver</p><p class="t-small t-muted info">30 hari · diskon 5% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm ubah-tier" type="button" aria-label="Ubah tier Silver">Ubah</button><button class="btn btn-danger btn-sm hapus" type="button" aria-label="Hapus tier Silver">Hapus</button></div></div>
+<div class="invoice" data-tier="Gold" data-hari="60" data-berlaku="30"><div><p class="t-h3">Gold</p><p class="t-small t-muted info">60 hari · diskon 10% · berlaku 30 hari</p></div><div class="row"><button class="btn btn-secondary btn-sm ubah-tier" type="button" aria-label="Ubah tier Gold">Ubah</button><button class="btn btn-danger btn-sm hapus" type="button" aria-label="Hapus tier Gold">Hapus</button></div></div>
 </section>
-<section class="card">
+<section class="card" id="daftarKode">
 <div class="section-head"><h2 class="t-h2">Kode promo</h2><span class="t-small t-muted">Satu pelanggan hanya bisa pakai sekali</span></div>
-<div class="invoice"><div><p class="t-h3">MERDEKA</p><p class="t-small t-muted">10% · kuota 100 · sampai 31 Des 2026 · min. belanja Rp50.000</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button></div></div>
+<div class="invoice"><div><p class="t-h3">MERDEKA</p><p class="t-small t-muted">10% · kuota 100 · sampai 31 Des 2026 · min. belanja Rp50.000</p></div><div class="row"><span class="badge badge--success">Aktif</span></div></div>
 </section>
-<form class="card stack" id="form">
+<form class="card stack" id="form" novalidate>
 <h2 class="t-h3">Tambah kode promo</h2>
 <div class="grid grid-2">
-<div class="field"><label for="k">Kode</label><input class="input" id="k" maxlength="50" placeholder="HEMAT10"></div>
+<div class="field"><label for="k">Kode</label><input class="input" id="k" maxlength="50" placeholder="HEMAT10" autocapitalize="characters" autocomplete="off"><p class="error-msg" hidden>Kode wajib diisi (huruf, angka, tanpa spasi).</p></div>
 <div class="field"><label for="j">Jenis diskon</label><select class="select input" id="j"><option>Persen</option><option>Nominal</option></select></div>
-<div class="field"><label for="v">Nilai diskon</label><input class="input" id="v" type="number" min="0"></div>
+<div class="field"><label for="v">Nilai diskon</label><input class="input" id="v" type="number" min="0" inputmode="numeric"><p class="error-msg" id="errV" hidden>Isi nilai diskon yang valid.</p></div>
 <div class="field"><label for="q">Kuota</label><input class="input" id="q" type="number" min="0"></div>
 <div class="field"><label for="m">Minimal belanja (Rp)</label><input class="input" id="m" type="number" min="0"></div>
 <div class="field"><label for="u">Berlaku sampai</label><input class="input" id="u" type="date"></div>
 </div>
-<div class="chip-group"><label class="chip"><input type="checkbox" checked>Boleh digabung dengan diskon tier</label></div>
+<div class="chip-group"><label class="chip"><input type="checkbox" id="gabung" checked>Boleh digabung dengan diskon tier</label></div>
 <button class="btn btn-primary" type="submit">Simpan Kode</button>
 </form>
 </main><script src="js/auth.js"></script>
 <script>
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+
 document.querySelectorAll(".hapus").forEach(b => {
     b.onclick = () => {
         if (!confirm("Hapus tier ini? Anggotanya dipindah ke tier di bawahnya.")) return;
         b.closest(".invoice").remove();
+        toast("Tier dihapus.");
     };
 });
-document.getElementById("form").onsubmit = event => {
+
+// Ubah diskon tier lewat prompt sederhana; ganti dengan form ketika API tier siap.
+document.querySelectorAll(".ubah-tier").forEach(b => {
+    b.onclick = () => {
+        const baris = b.closest(".invoice");
+        const info = baris.querySelector(".info");
+        const lama = /diskon (\d+)%/.exec(info.textContent)[1];
+        const jawab = prompt(`Diskon baru untuk tier ${baris.dataset.tier} (0 sampai 100 persen):`, lama);
+        if (jawab === null) return;
+        const nilai = Number(jawab);
+        if (jawab.trim() === "" || !Number.isFinite(nilai) || nilai < 0 || nilai > 100) {
+            toast("Diskon harus angka 0 sampai 100.", "error");
+            return;
+        }
+        info.textContent = info.textContent.replace(/diskon \d+%/, `diskon ${nilai}%`);
+        toast("Diskon tier diperbarui.");
+    };
+});
+
+$("j").addEventListener("change", () => {
+    $("v").placeholder = $("j").value === "Persen" ? "10" : "10000";
+});
+
+$("form").onsubmit = event => {
     event.preventDefault();
-    alert("Kode promo disimpan (demo).");
+    const kode = $("k").value.trim().toUpperCase();
+    const persen = $("j").value === "Persen";
+    const nilai = Number($("v").value);
+    const cek = [
+        [$("k"), /^[A-Z0-9_-]+$/.test(kode)],
+        [$("v"), $("v").value !== "" && nilai > 0 && (!persen || nilai <= 100)],
+    ];
+    let pertama = null;
+    cek.forEach(([input, valid]) => {
+        const field = input.closest(".field");
+        field.classList.toggle("is-error", !valid);
+        field.querySelector(".error-msg").hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    $("errV").textContent = persen ? "Diskon persen harus antara 1 dan 100." : "Diskon nominal harus lebih dari 0.";
+    if (pertama) return pertama.focus();
+    const baris = document.createElement("div");
+    baris.className = "invoice";
+    baris.innerHTML = `<div><p class="t-h3"></p><p class="t-small t-muted"></p></div><div class="row"><span class="badge badge--success">Aktif</span></div>`;
+    baris.querySelector(".t-h3").textContent = kode;
+    const kuota = $("q").value || "tanpa batas";
+    const sampai = $("u").value ? new Date(`${$("u").value}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" }) : "tanpa batas waktu";
+    const min = Number($("m").value) > 0 ? ` · min. belanja ${rp(Number($("m").value))}` : "";
+    baris.querySelector(".t-small").textContent = `${persen ? `${nilai}%` : rp(nilai)} · kuota ${kuota} · sampai ${sampai}${min}${$("gabung").checked ? "" : " · tidak digabung tier"}`;
+    $("daftarKode").append(baris);
+    toast("Kode promo disimpan (demo).");
+    event.target.reset();
 };
 </script></body></html>

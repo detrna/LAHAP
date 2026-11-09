@@ -4,9 +4,9 @@
 <header class="app-header"><div class="container"><a class="brand" href="kurir.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pengantaran hari ini</h1>
-<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <p class="t-muted" id="kosong" hidden>Tidak ada pengantaran untuk kamu hari ini.</p>
-<div class="stack-lg" id="daftar"></div>
+<div class="stack-lg" id="daftar" aria-live="polite" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>
 </main>
 <script src="js/auth.js"></script>
 <script>
@@ -17,6 +17,7 @@ const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/J
 function galat(message) {
     $("#err").hidden = !message;
     $("#err .msg").textContent = message || "";
+    if (message) $("#err").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function el(tag, className, text) {
@@ -37,16 +38,46 @@ function kartu(item) {
         el("p", "", item.deliveryAddress),
         el("p", "t-muted", catatan),
     );
+    // Nama field nomor HP dan koordinat mengikuti pola checkout; hanya tampil bila API mengirimnya.
+    const hp = item.recipientPhone || item.phone;
+    const lat = item.deliveryLatitude ?? item.latitude;
+    const lng = item.deliveryLongitude ?? item.longitude;
+    if (hp || (lat != null && lng != null)) {
+        const kontak = el("div", "task-actions");
+        if (hp) {
+            const telp = el("a", "btn btn-secondary", `Telepon ${hp}`);
+            telp.href = `tel:${String(hp).replace(/[^\d+]/g, "")}`;
+            kontak.append(telp);
+        }
+        if (lat != null && lng != null) {
+            const peta = el("a", "btn btn-secondary", "Buka Peta");
+            peta.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+            peta.target = "_blank";
+            peta.rel = "noopener";
+            kontak.append(peta);
+        }
+        card.append(kontak);
+    }
     item.obstacles.forEach(o => {
         const box = el("div", "alert alert--warning");
         box.append(el("span", "alert-title", "Kendala tercatat"), o.note);
+        if (o.photoUrl) {
+            const link = el("a", "", " Lihat foto");
+            link.href = o.photoUrl;
+            link.target = "_blank";
+            link.rel = "noopener";
+            box.append(link);
+        }
         card.append(box);
     });
 
     const aksi = el("div", "task-actions");
     const selesai = el("button", "btn btn-primary", "Selesai");
+    selesai.type = "button";
     selesai.disabled = item.status !== "Diantar";
     const kendala = el("button", "btn btn-secondary", "Tulis Kendala");
+    kendala.type = "button";
+    kendala.disabled = item.status !== "Diantar"; // kendala hanya untuk slot yang sedang diantar
     aksi.append(selesai, kendala);
 
     const form = el("form", "stack");
@@ -55,7 +86,15 @@ function kartu(item) {
     const area = el("textarea", "textarea");
     area.maxLength = 1000;
     area.setAttribute("aria-label", "Catatan kendala");
-    field.append(area, el("p", "hint", "Maksimal 1000 karakter."));
+    const foto = el("input", "input");
+    foto.type = "file";
+    foto.accept = "image/jpeg,image/png,image/webp";
+    foto.setAttribute("aria-label", "Foto kendala (opsional)");
+    const sisa = el("p", "hint", "Maksimal 1000 karakter.");
+    area.addEventListener("input", () => {
+        sisa.textContent = `${1000 - area.value.length} karakter tersisa.`;
+    });
+    field.append(area, sisa, foto, el("p", "hint", "Foto opsional: JPEG, PNG, atau WebP."));
     const kirim = el("button", "btn btn-primary", "Kirim Kendala");
     kirim.type = "submit";
     form.append(field, kirim);
@@ -70,6 +109,7 @@ function kartu(item) {
         galat("");
         try {
             await api(`/courier/orders/${item.orderId}/complete`, { method: "POST" });
+            toast("Pengantaran ditandai selesai.");
             muat();
         } catch (error) {
             selesai.disabled = false;
@@ -83,7 +123,10 @@ function kartu(item) {
         kirim.disabled = true;
         galat("");
         try {
-            await api(`/courier/orders/${item.orderId}/obstacles`, { method: "POST", body: { note } });
+            const body = { note };
+            if (foto.files.length) body.photoKey = (await upload("obstacles", foto.files[0])).key;
+            await api(`/courier/orders/${item.orderId}/obstacles`, { method: "POST", body });
+            toast("Kendala tercatat.");
             muat();
         } catch (error) {
             kirim.disabled = false;
@@ -96,12 +139,52 @@ function kartu(item) {
 async function muat() {
     try {
         const { data } = await api(`/courier/orders?date=${hariIni()}`);
+        // Jangan timpa formulir kendala yang sedang diisi kurir.
+        if (document.activeElement && document.activeElement.closest("#daftar form")) return;
         $("#daftar").replaceChildren(...data.map(kartu));
         $("#kosong").hidden = data.length > 0;
+        galat("");
     } catch (error) {
+        $("#daftar").replaceChildren();
         galat(errorMessage(error));
+    } finally {
+        $("#daftar").removeAttribute("aria-busy");
     }
 }
 
+let tunda;
+const muatTertunda = () => {
+    clearTimeout(tunda);
+    tunda = setTimeout(muat, 300);
+};
+
+let stream = null;
+let menyambung = false;
+async function sambung() {
+    if (stream || menyambung) return;
+    menyambung = true;
+    try {
+        if (!(await ensureToken())) return;
+        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
+        ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muatTertunda));
+        stream.onerror = async () => {
+            stream.close();
+            stream = null;
+            await refreshSession();
+            setTimeout(async () => {
+                await sambung();
+                muatTertunda(); // ada kemungkinan event terlewat saat terputus
+            }, 5000);
+        };
+    } finally {
+        menyambung = false;
+    }
+}
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) muatTertunda();
+});
+window.addEventListener("pagehide", () => stream && stream.close());
+
 muat();
+sambung();
 </script></body></html>

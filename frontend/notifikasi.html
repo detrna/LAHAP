@@ -3,9 +3,9 @@
 <title>Notifikasi · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
 <header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<div class="row-between"><h1 class="t-h1">Notifikasi</h1><button class="btn btn-secondary" id="semua">Tandai Semua Dibaca</button></div>
-<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
-<section class="stack"><p class="t-muted" id="kosong" hidden>Belum ada notifikasi.</p><div class="stack" id="notif"></div></section>
+<div class="row-between"><h1 class="t-h1">Notifikasi</h1><button class="btn btn-secondary" id="semua" type="button" disabled>Tandai Semua Dibaca</button></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<section class="stack"><p class="t-muted" id="kosong" hidden>Belum ada notifikasi.</p><div class="stack" id="notif" aria-live="polite"><div class="skeleton"></div><div class="skeleton"></div></div></section>
 <section class="stack" id="boxInfo" hidden><h2 class="t-h2">Pengumuman</h2><div class="stack" id="info"></div></section>
 </main>
 <script src="js/auth.js"></script>
@@ -29,13 +29,27 @@ function kartu(n) {
     const box = el("div", n.isRead ? "card" : "alert alert--info");
     box.append(el("span", "alert-title", n.title), n.body, el("p", "t-small t-muted", waktu(n.createdAt)));
     if (!n.isRead) {
+        // Bisa diklik dan juga dioperasikan dengan keyboard (Enter atau Spasi).
         box.style.cursor = "pointer";
-        box.onclick = async () => {
+        box.tabIndex = 0;
+        box.setAttribute("role", "button");
+        box.append(el("span", "sr-only", "Belum dibaca. Tekan untuk menandai sudah dibaca."));
+        const tandai = async () => {
+            if (box.dataset.sibuk) return;
+            box.dataset.sibuk = "1";
             try {
                 await api(`/me/notifications/${n.id}/read`, { method: "POST" });
                 muat();
             } catch (error) {
+                delete box.dataset.sibuk;
                 galat(error);
+            }
+        };
+        box.onclick = tandai;
+        box.onkeydown = event => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                tandai();
             }
         };
     }
@@ -53,18 +67,24 @@ async function muat() {
         const [notif, info] = await Promise.all([api("/me/notifications"), api("/me/announcements")]);
         $("#notif").replaceChildren(...notif.data.map(kartu));
         $("#kosong").hidden = notif.data.length > 0;
+        $("#semua").disabled = !notif.data.some(n => !n.isRead);
         $("#info").replaceChildren(...info.data.map(pengumuman));
         $("#boxInfo").hidden = info.data.length === 0;
+        galat(null);
     } catch (error) {
+        $("#notif").replaceChildren();
         galat(error);
     }
 }
 
-$("#semua").onclick = async () => {
+$("#semua").onclick = async event => {
+    const tombol = event.currentTarget;
+    tombol.disabled = true;
     try {
         await api("/me/notifications/read-all", { method: "POST" });
-        muat();
+        await muat();
     } catch (error) {
+        tombol.disabled = false;
         galat(error);
     }
 };

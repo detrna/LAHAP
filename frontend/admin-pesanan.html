@@ -11,29 +11,37 @@
 </section>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Papan pengantaran</h2></div>
-<div class="slot"><div><p class="t-h3">Budi Santoso · Siang · Diantar</p><p class="t-small t-muted">Jl. Veteran 12, Malang</p></div><div class="row"><span class="badge badge--delivering">Diantar</span><select class="select input" style="width:auto" aria-label="Kurir untuk Budi"><option>Ahmad Fauzi</option><option>Tanpa kurir</option></select></div></div>
-<div class="slot"><div><p class="t-h3">Sari Wulandari · Malam · Diantar</p><p class="t-small t-muted">Jl. Soekarno Hatta 8, Malang</p></div><div class="row"><span class="badge badge--prepared">Disiapkan</span><select class="select input" style="width:auto" aria-label="Kurir untuk Sari"><option>Tanpa kurir</option><option>Ahmad Fauzi</option></select></div></div>
-<button class="btn btn-secondary" id="simpan">Simpan Penugasan</button>
+<div class="slot"><div><p class="t-h3">Budi Santoso · Siang · Diantar</p><p class="t-small t-muted">Jl. Veteran 12, Malang</p></div><div class="row"><span class="badge badge--delivering">Diantar</span><select class="select input w-auto" aria-label="Kurir untuk Budi"><option>Ahmad Fauzi</option><option>Tanpa kurir</option></select></div></div>
+<div class="slot"><div><p class="t-h3">Sari Wulandari · Malam · Diantar</p><p class="t-small t-muted">Jl. Soekarno Hatta 8, Malang</p></div><div class="row"><span class="badge badge--prepared">Disiapkan</span><select class="select input w-auto" aria-label="Kurir untuk Sari"><option>Tanpa kurir</option><option>Ahmad Fauzi</option></select></div></div>
+<button class="btn btn-secondary" id="simpan" type="button">Simpan Penugasan</button>
 </section>
-<form class="card stack" id="koreksi">
+<form class="card stack" id="koreksi" novalidate>
 <h2 class="t-h3">Koreksi status slot</h2>
 <div class="grid grid-2">
 <div class="field"><label for="slot">Slot</label><select class="select input" id="slot"><option>Budi Santoso · Siang</option><option>Sari Wulandari · Malam</option></select></div>
 <div class="field"><label for="st">Status baru</label><select class="select input" id="st"><option>Disiapkan</option><option>Diantar</option><option>Siap Diambil</option><option>Selesai</option><option>Dilewati</option></select></div>
 </div>
-<div class="field" id="fAlasan"><label for="alasan">Alasan koreksi</label><textarea class="textarea" id="alasan"></textarea><p class="error-msg" hidden>Alasan wajib diisi.</p></div>
+<div class="field" id="fAlasan"><label for="alasan">Alasan koreksi</label><textarea class="textarea" id="alasan" aria-describedby="errAlasan"></textarea><p class="error-msg" id="errAlasan" hidden>Alasan wajib diisi.</p></div>
 <button class="btn btn-primary" type="submit">Simpan Koreksi</button>
 </form>
 </main><script src="js/auth.js"></script>
 <script>
-document.getElementById("simpan").onclick = event => {
-    event.target.textContent = "Tersimpan";
+const simpan = document.getElementById("simpan");
+simpan.onclick = () => {
+    toast("Penugasan kurir disimpan (demo).");
+    simpan.textContent = "Tersimpan";
+    simpan.disabled = true;
+    setTimeout(() => { simpan.textContent = "Simpan Penugasan"; simpan.disabled = false; }, 1500);
 };
 document.getElementById("koreksi").onsubmit = event => {
     event.preventDefault();
-    const ok = document.getElementById("alasan").value.trim() !== "";
+    const alasan = document.getElementById("alasan");
+    const ok = alasan.value.trim() !== "";
     document.getElementById("fAlasan").classList.toggle("is-error", !ok);
-    document.querySelector("#fAlasan .error-msg").hidden = ok;
-    if (ok) alert("Status dikoreksi (demo).");
+    document.getElementById("errAlasan").hidden = ok;
+    alasan.setAttribute("aria-invalid", String(!ok));
+    if (!ok) return alasan.focus();
+    toast("Status dikoreksi (demo).");
+    event.target.reset();
 };
 </script></body></html>

@@ -2,6 +2,9 @@
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LAHAP · Katering langganan harian, mingguan, bulanan</title>
 <meta name="description" content="Pesan katering langganan tanpa chat berulang. Pilih paket, atur hari makan, bayar online, dan pantau pesananmu.">
+<meta property="og:title" content="LAHAP · Katering langganan">
+<meta property="og:description" content="Pilih paket, atur hari makan, bayar online, dan pantau pesananmu.">
+<meta name="theme-color" content="#C2410C">
 <link rel="stylesheet" href="css/style.css">
 <style>
 .hero{display:grid;gap:var(--sp-5);align-items:center}
@@ -21,7 +24,7 @@
 details{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-3) var(--sp-4)}
 summary{cursor:pointer;font-weight:600;min-height:32px}
 details p{margin-top:var(--sp-2);color:var(--muted)}
-@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:repeat(3,1fr)}.menu-card{grid-template-columns:1fr 1.2fr}.menu-foto{aspect-ratio:auto;min-height:260px}}
+@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}.menu-card{grid-template-columns:1fr 1.2fr}.menu-foto{aspect-ratio:auto;min-height:260px}}
 </style></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
@@ -37,9 +40,12 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
  </div>
 </section>
 
-<section class="stack" id="boxPaket" hidden>
+<div class="alert alert--warning row-between" id="galatMuat" role="status" hidden><span>Paket dan menu belum bisa dimuat. Periksa koneksi lalu coba lagi.</span><button class="btn btn-secondary btn-sm" type="button" id="ulang">Coba lagi</button></div>
+<p class="empty" id="kosongPaket" hidden>Belum ada paket yang tersedia. Silakan cek lagi nanti.</p>
+
+<section class="stack" id="boxPaket">
  <div><p class="label">Paket</p><h2 class="t-h2">Paket fleksibel sesuai rutinitasmu</h2></div>
- <div class="grid grid-3" id="paket"></div>
+ <div class="grid grid-3" id="paket" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
 </section>
 
 <section class="stack" id="boxMenu" hidden>
@@ -98,13 +104,14 @@ function kartuPaket(p) {
     harga.append(el("span", "price-big", rp(p.basePrice)), el("span", "t-small t-muted", " per porsi"));
     const aksi = el("a", "btn btn-primary btn-block", "Pilih Paket");
     aksi.href = `checkout.html?paket=${encodeURIComponent(p.id)}`;
-    body.append(el("h3", "t-h3", p.name), el("p", "t-muted", p.description || ""), harga, el("p", "t-small t-muted", `Periode: ${p.periods.join(", ")}`), aksi);
+    body.append(el("h3", "t-h3", p.name), el("p", "t-muted", p.description || ""), harga, el("p", "t-small t-muted", `Periode: ${(p.periods || []).join(", ")}`), aksi);
     card.append(foto, body);
     return card;
 }
 
 function kartuMenu(item) {
-    const utama = item.jadwal.menus.find(m => !m.isAlternative) || item.jadwal.menus[0];
+    const menus = item.jadwal.menus || [];
+    const utama = menus.find(m => !m.isAlternative) || menus[0];
     const card = el("article", "card menu-card");
     const foto = el("div", "menu-foto");
     if (utama && utama.photoUrl) foto.append(gambar(utama.photoUrl, utama.name));
@@ -114,7 +121,7 @@ function kartuMenu(item) {
     const aksi = el("a", "btn btn-primary", `Pesan ${item.paket.name}`);
     aksi.href = `checkout.html?paket=${encodeURIComponent(item.paket.id)}`;
     info.append(
-        el("p", "label", `${item.jadwal.deliveryTime.range} · ${item.jadwal.deliveryTime.time} · ${item.paket.name}`),
+        el("p", "label", `${item.jadwal.deliveryTime ? `${item.jadwal.deliveryTime.range} · ${item.jadwal.deliveryTime.time} · ` : ""}${item.paket.name}`),
         el("h3", "t-h2", utama ? utama.name : "Menu belum diisi"),
         el("p", "t-muted", utama && utama.description ? utama.description : ""),
         el("p", "t-small t-muted", alergen.length ? `Mengandung: ${alergen.join(", ").toLowerCase()}` : "Tidak ada alergen terdaftar"),
@@ -148,25 +155,37 @@ function bangunTab(daftar) {
 }
 
 async function muat() {
+    $("#galatMuat").hidden = true;
+    $("#kosongPaket").hidden = true;
+    $("#paket").setAttribute("aria-busy", "true");
+    let tersedia;
     try {
         const { data } = await api("/packages", { auth: false });
-        const tersedia = data.filter(p => p.isAvailable);
-        $("#paket").replaceChildren(...tersedia.map(kartuPaket));
-        $("#boxPaket").hidden = tersedia.length === 0;
-        const hasil = await Promise.all(
-            tersedia.map(async paket => {
-                const { data: jadwal } = await api(`/packages/${paket.id}/schedules`, { auth: false });
-                return jadwal.filter(j => j.isPublished).map(j => ({ paket, jadwal: j }));
-            }),
-        );
-        const daftar = hasil.flat();
-        const berfoto = daftar.map(item => item.jadwal.menus.find(m => m.photoUrl)).find(Boolean);
-        if (berfoto) $("#heroFoto").replaceChildren(gambar(berfoto.photoUrl, berfoto.name));
-        bangunTab(daftar);
+        tersedia = data.filter(p => p.isAvailable);
     } catch {
+        $("#paket").replaceChildren();
+        $("#paket").removeAttribute("aria-busy");
         $("#boxPaket").hidden = true;
         $("#boxMenu").hidden = true;
+        $("#galatMuat").hidden = false;
+        return;
     }
+    $("#paket").removeAttribute("aria-busy");
+    $("#paket").replaceChildren(...tersedia.map(kartuPaket));
+    $("#boxPaket").hidden = tersedia.length === 0;
+    $("#kosongPaket").hidden = tersedia.length > 0;
+    // Satu paket yang gagal dimuat jadwalnya tidak boleh menghilangkan seluruh menu.
+    const hasil = await Promise.allSettled(
+        tersedia.map(async paket => {
+            const { data: jadwal } = await api(`/packages/${paket.id}/schedules`, { auth: false });
+            return jadwal.filter(j => j.isPublished).map(j => ({ paket, jadwal: j }));
+        }),
+    );
+    const daftar = hasil.flatMap(h => (h.status === "fulfilled" ? h.value : []));
+    if (hasil.some(h => h.status === "rejected")) $("#galatMuat").hidden = false;
+    const berfoto = daftar.map(item => (item.jadwal.menus || []).find(m => m.photoUrl)).find(Boolean);
+    if (berfoto) $("#heroFoto").replaceChildren(gambar(berfoto.photoUrl, berfoto.name));
+    bangunTab(daftar);
 }
 
 const user = currentUser();
@@ -174,5 +193,6 @@ if (user) {
     $("#masuk").href = homeFor(user);
     $("#masuk").textContent = "Buka Dashboard";
 }
+$("#ulang").onclick = muat;
 muat();
 </script></body></html>

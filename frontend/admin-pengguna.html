@@ -4,24 +4,99 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div class="row-between"><h1 class="t-h1">Pengguna</h1><button class="btn btn-primary" id="tambah">Tambah Pengguna</button></div>
-<form class="card stack" id="form" hidden>
- <div class="field"><label for="n">Nama</label><input class="input" id="n"></div>
- <div class="field"><label for="hp">Nomor HP</label><input class="input" id="hp" inputmode="tel"></div>
+<form class="card stack" id="form" hidden novalidate>
+ <h2 class="t-h3" id="judulForm">Tambah pengguna</h2>
+ <div class="field"><label for="n">Nama</label><input class="input" id="n" maxlength="100"><p class="error-msg" hidden>Nama wajib diisi.</p></div>
+ <div class="field"><label for="hp">Nomor HP</label><input class="input" id="hp" inputmode="tel" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid.</p></div>
  <div class="field"><label for="r">Peran</label><select class="select input" id="r"><option>Admin</option><option>Dapur</option><option>Kurir</option></select></div>
- <div class="field"><label for="p">Password awal</label><input class="input" id="p" type="password" minlength="8" maxlength="72" autocomplete="new-password"><p class="hint">8 sampai 72 karakter.</p></div>
+ <div class="field"><label for="p">Password awal</label><input class="input" id="p" type="password" minlength="8" maxlength="72" autocomplete="new-password"><p class="hint" id="hintPw">8 sampai 72 karakter.</p><p class="error-msg" hidden>Password harus 8 sampai 72 karakter.</p></div>
  <div class="row"><button class="btn btn-primary" type="submit">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
-<section class="card">
- <div class="invoice"><div><p class="t-h3">Siti</p><p class="t-small t-muted">083333 · Dapur</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
- <div class="invoice"><div><p class="t-h3">Ahmad Fauzi</p><p class="t-small t-muted">084444 · Kurir</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
- <div class="invoice"><div><p class="t-h3">Budi Santoso</p><p class="t-small t-muted">082222 · Pelanggan</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
-</section>
+<section class="card" id="list"></section>
 </main><script src="js/auth.js"></script>
 <script>
 // Ganti dengan API pengguna. Tidak ada hapus, hanya nonaktifkan lewat ubah status.
-tambah.onclick=function(){form.hidden=false};batal.onclick=function(){form.hidden=true};
-form.onsubmit=function(e){e.preventDefault();var pw=document.getElementById('p').value;if(pw.length<8||pw.length>72){alert('Password harus 8 sampai 72 karakter.');return}alert('Pengguna disimpan (demo).');form.hidden=true};
-document.querySelectorAll('.off').forEach(function(b){b.onclick=function(){
- if(!confirm('Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.'))return;
- var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--expire';bd.textContent='Nonaktif';b.remove()}});
+const $ = id => document.getElementById(id);
+const pengguna = [
+    { nama: "Siti", hp: "083333", peran: "Dapur", aktif: true },
+    { nama: "Ahmad Fauzi", hp: "084444", peran: "Kurir", aktif: true },
+    { nama: "Budi Santoso", hp: "082222", peran: "Pelanggan", aktif: true },
+];
+let sedangUbah = null;
+
+function gambar() {
+    $("list").replaceChildren(...pengguna.map(u => {
+        const baris = document.createElement("div");
+        baris.className = "invoice";
+        baris.innerHTML = `<div><p class="t-h3"></p><p class="t-small t-muted"></p></div><div class="row"><span class="badge"></span><button class="btn btn-secondary btn-sm ubah" type="button">Ubah</button><button class="btn btn-sm toggle" type="button"></button></div>`;
+        baris.querySelector(".t-h3").textContent = u.nama;
+        baris.querySelector(".t-small").textContent = `${u.hp} · ${u.peran}`;
+        setBadge(baris.querySelector(".badge"), u.aktif ? "badge--success" : "badge--expire", u.aktif ? "Aktif" : "Nonaktif");
+        const toggle = baris.querySelector(".toggle");
+        toggle.textContent = u.aktif ? "Nonaktifkan" : "Aktifkan";
+        toggle.classList.add(u.aktif ? "btn-danger" : "btn-secondary");
+        toggle.setAttribute("aria-label", `${toggle.textContent} ${u.nama}`);
+        const ubah = baris.querySelector(".ubah");
+        ubah.setAttribute("aria-label", `Ubah ${u.nama}`);
+        // Peran Pelanggan dikelola dari alur pendaftaran, bukan dari form staf ini.
+        if (u.peran === "Pelanggan") ubah.hidden = true;
+        ubah.onclick = () => bukaForm(u);
+        toggle.onclick = () => {
+            if (u.aktif && !confirm("Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.")) return;
+            u.aktif = !u.aktif;
+            gambar();
+            toast(u.aktif ? "Pengguna diaktifkan." : "Pengguna dinonaktifkan.");
+        };
+        return baris;
+    }));
+}
+
+function bukaForm(u) {
+    sedangUbah = u || null;
+    $("judulForm").textContent = u ? `Ubah ${u.nama}` : "Tambah pengguna";
+    $("n").value = u ? u.nama : "";
+    $("hp").value = u ? u.hp : "";
+    $("r").value = u ? u.peran : "Admin";
+    $("p").value = "";
+    $("p").required = !u;
+    $("hintPw").textContent = u ? "Kosongkan jika password tidak diubah. Jika diisi: 8 sampai 72 karakter." : "8 sampai 72 karakter.";
+    $("form").hidden = false;
+    $("n").focus();
+}
+
+function periksa(daftar) {
+    let pertama = null;
+    daftar.forEach(([input, valid]) => {
+        const field = input.closest(".field");
+        field.classList.toggle("is-error", !valid);
+        const pesan = field.querySelector(".error-msg");
+        if (pesan) pesan.hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return !pertama;
+}
+
+$("tambah").onclick = () => bukaForm(null);
+$("batal").onclick = () => { $("form").hidden = true; };
+$("form").onsubmit = event => {
+    event.preventDefault();
+    const pw = $("p").value;
+    const pwValid = sedangUbah && pw === "" ? true : pw.length >= 8 && pw.length <= 72;
+    const hp = $("hp").value.replace(/[\s-]/g, "");
+    if (!periksa([
+        [$("n"), $("n").value.trim() !== ""],
+        [$("hp"), /^(\+?62|0)8\d{8,12}$/.test(hp)],
+        [$("p"), pwValid],
+    ])) return;
+    const data = { nama: $("n").value.trim(), hp: $("hp").value.trim(), peran: $("r").value };
+    if (sedangUbah) Object.assign(sedangUbah, data);
+    else pengguna.push({ ...data, aktif: true });
+    gambar();
+    $("form").hidden = true;
+    event.target.reset();
+    toast("Pengguna disimpan (demo).");
+};
+gambar();
 </script></body></html>

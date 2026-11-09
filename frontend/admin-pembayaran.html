@@ -4,37 +4,47 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pembayaran</h1>
-<section class="card">
-<div class="section-head"><h2 class="t-h2">Transaksi</h2><div class="chip-group" id="filter"><label class="chip"><input type="radio" name="f" value="" checked>Semua</label><label class="chip"><input type="radio" name="f" value="Pending">Pending</label><label class="chip"><input type="radio" name="f" value="Success">Success</label></div></div>
-<div class="invoice" data-s="Pending"><div><p class="t-h3">Dewi Lestari · Paket Reguler · Bulanan</p><p class="t-small t-muted">Offline · Tunai · Rp560.000</p></div><div class="row"><span class="badge badge--pending">Pending</span><button class="btn btn-primary btn-sm verif">Verifikasi Tunai</button></div></div>
+<section class="card" id="transaksi">
+<div class="section-head"><h2 class="t-h2">Transaksi</h2><div class="chip-group" id="filter" role="radiogroup" aria-label="Filter status"><label class="chip"><input type="radio" name="f" value="" checked>Semua</label><label class="chip"><input type="radio" name="f" value="Pending">Pending</label><label class="chip"><input type="radio" name="f" value="Success">Success</label><label class="chip"><input type="radio" name="f" value="Expire">Expire</label></div></div>
+<p class="empty" id="kosong" hidden>Tidak ada transaksi dengan status ini.</p>
+<div class="invoice" data-s="Pending"><div><p class="t-h3">Dewi Lestari · Paket Reguler · Bulanan</p><p class="t-small t-muted">Offline · Tunai · Rp560.000</p></div><div class="row"><span class="badge badge--pending">Pending</span><button class="btn btn-primary btn-sm verif" type="button">Verifikasi Tunai</button></div></div>
 <div class="invoice" data-s="Success"><div><p class="t-h3">Budi Santoso · Paket Hemat · Mingguan</p><p class="t-small t-muted">Online · QRIS · Rp175.000 · INV-0142</p></div><span class="badge badge--success">Success</span></div>
 <div class="invoice" data-s="Expire"><div><p class="t-h3">Rani Putri · Paket Hemat · Harian</p><p class="t-small t-muted">Online · Virtual account · Rp45.000</p></div><span class="badge badge--expire">Expire</span></div>
 </section>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Perlu refund</h2><span class="t-small t-muted">Refund dilakukan di luar aplikasi, lalu dikonfirmasi di sini</span></div>
-<div class="invoice"><div><p class="t-h3">Andi Pratama · pesanan dibatalkan</p><p class="t-small t-muted">Rp120.000 · dibatalkan 7 Nov 2026</p></div><div class="row"><span class="badge badge--cancel">Perlu refund</span><button class="btn btn-secondary btn-sm refund">Konfirmasi Refund</button></div></div>
+<div class="invoice"><div><p class="t-h3">Andi Pratama · pesanan dibatalkan</p><p class="t-small t-muted">Rp120.000 · dibatalkan 7 Nov 2026</p></div><div class="row"><span class="badge badge--cancel">Perlu refund</span><button class="btn btn-secondary btn-sm refund" type="button">Konfirmasi Refund</button></div></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
 const ubah = (tombol, kelas, teks) => {
-    const badge = tombol.parentElement.querySelector(".badge");
-    badge.className = `badge ${kelas}`;
-    badge.textContent = teks;
+    setBadge(tombol.parentElement.querySelector(".badge"), kelas, teks);
     tombol.remove();
 };
+function terapkanFilter() {
+    const nilai = document.querySelector("#filter input:checked").value;
+    let tampil = 0;
+    document.querySelectorAll("#transaksi .invoice").forEach(row => {
+        row.hidden = nilai !== "" && row.dataset.s !== nilai;
+        if (!row.hidden) tampil++;
+    });
+    document.getElementById("kosong").hidden = tampil > 0;
+}
 document.querySelectorAll(".verif").forEach(b => {
     b.onclick = () => {
-        if (confirm("Tandai pembayaran tunai ini sudah diterima?")) ubah(b, "badge--success", "Success");
+        if (!confirm("Tandai pembayaran tunai ini sudah diterima?")) return;
+        b.closest(".invoice").dataset.s = "Success"; // supaya filter ikut berubah
+        ubah(b, "badge--success", "Success");
+        terapkanFilter();
+        toast("Pembayaran diverifikasi.");
     };
 });
 document.querySelectorAll(".refund").forEach(b => {
     b.onclick = () => {
-        if (confirm("Refund sudah dikirim ke pelanggan?")) ubah(b, "badge--success", "Refund selesai");
+        if (!confirm("Refund sudah dikirim ke pelanggan?")) return;
+        ubah(b, "badge--success", "Refund selesai");
+        toast("Refund dikonfirmasi.");
     };
 });
-document.getElementById("filter").addEventListener("change", event => {
-    document.querySelectorAll("section:first-of-type .invoice").forEach(row => {
-        row.hidden = event.target.value !== "" && row.dataset.s !== event.target.value;
-    });
-});
+document.getElementById("filter").addEventListener("change", terapkanFilter);
 </script></body></html>

@@ -18,11 +18,11 @@
                 <h1 class="t-h1">Profil</h1>
                 <p class="t-muted">Data dan alergi dipakai untuk peringatan menu.</p>
             </div>
-            <div class="alert alert--error" id="errMuat" hidden><span class="alert-title">Gagal memuat</span><span class="msg"></span></div>
-            <div class="alert alert--info" id="okProfil" hidden><span class="alert-title">Tersimpan</span><span class="msg"></span></div>
+            <div class="alert alert--error" id="errMuat" role="alert" hidden><span class="alert-title">Gagal memuat</span><span class="msg"></span></div>
+            <div class="alert alert--success" id="okProfil" role="status" hidden><span class="alert-title">Tersimpan</span><span class="msg"></span></div>
 
             <form class="card stack" id="fProfil" novalidate>
-                <div class="alert alert--error" id="errProfil" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
+                <div class="alert alert--error" id="errProfil" role="alert" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
                 <div class="field">
                     <label for="nama">Nama</label>
                     <input class="input" id="nama" autocomplete="name" />
@@ -41,21 +41,22 @@
                 </div>
                 <div class="field">
                     <span class="field-label">Alergi</span>
-                    <div class="chip-group" id="alergi"></div>
+                    <div class="chip-group" id="alergi" aria-busy="true"><div class="skeleton" style="width:100%"></div></div>
                 </div>
                 <div class="field">
                     <label for="catAlergi">Catatan alergi lain</label>
                     <input class="input" id="catAlergi" />
                 </div>
-                <button class="btn btn-primary" type="submit">Simpan Perubahan</button>
+                <button class="btn btn-primary" type="submit" id="simpanProfil" disabled>Simpan Perubahan</button>
             </form>
 
             <form class="card stack" id="fPw" novalidate>
                 <h2 class="t-h3">Ganti password</h2>
-                <div class="alert alert--error" id="errPw" hidden><span class="alert-title">Gagal mengganti password</span><span class="msg"></span></div>
-                <div class="field">
+                <div class="alert alert--error" id="errPw" role="alert" hidden><span class="alert-title">Gagal mengganti password</span><span class="msg"></span></div>
+                <div class="field" id="fLama">
                     <label for="pl">Password lama</label>
                     <input class="input" id="pl" type="password" autocomplete="current-password" />
+                    <p class="error-msg" hidden>Isi password lama.</p>
                 </div>
                 <div class="field" id="fBaru">
                     <label for="pb">Password baru</label>
@@ -93,6 +94,7 @@
                     const [profil, alergi] = await Promise.all([api("/me"), api("/allergies", { auth: false })]);
                     isiForm(profil.data);
                     const dipilih = new Set((profil.data.allergies || []).map(item => item.id));
+                    $("#alergi").replaceChildren();
                     alergi.data.forEach(item => {
                         const label = document.createElement("label");
                         label.className = "chip";
@@ -103,8 +105,12 @@
                         label.append(input, item.name);
                         $("#alergi").append(label);
                     });
+                    $("#alergi").removeAttribute("aria-busy");
+                    $("#simpanProfil").disabled = false;
                 } catch (error) {
-                    tampil($("#errMuat"), errorMessage(error));
+                    $("#alergi").replaceChildren();
+                    $("#alergi").removeAttribute("aria-busy");
+                    tampil($("#errMuat"), `${errorMessage(error)} Muat ulang halaman untuk mencoba lagi.`);
                 }
             }
 
@@ -132,7 +138,7 @@
                     store.user = data;
                     isiForm(data);
                     tampil($("#okProfil"), "Perubahan profil sudah disimpan.");
-                    scrollTo(0, 0);
+                    scrollTo({ top: 0, behavior: "smooth" });
                 } catch (error) {
                     tampil($("#errProfil"), errorMessage(error));
                 } finally {
@@ -145,22 +151,27 @@
                 const tombol = event.target.querySelector("button[type=submit]");
                 const baru = $("#pb").value;
                 const cek = [
+                    ["#fLama", $("#pl").value !== ""],
                     ["#fBaru", baru.length >= 8 && baru.length <= 72],
                     ["#fUlang", baru === $("#pu").value],
                 ];
+                let pertama = null;
                 cek.forEach(([selector, valid]) => {
                     $(selector).classList.toggle("is-error", !valid);
                     $(`${selector} .error-msg`).hidden = valid;
+                    const input = $(`${selector} input`);
+                    input.setAttribute("aria-invalid", String(!valid));
+                    if (!valid && !pertama) pertama = input;
                 });
                 tampil($("#errPw"), "");
-                if (cek.some(([, valid]) => !valid)) return;
+                if (pertama) return pertama.focus();
                 tombol.disabled = true;
                 try {
                     await api("/me/password", { method: "PUT", body: { currentPassword: $("#pl").value, newPassword: baru } });
-                    store.token = null;
-                    store.user = null;
-                    alert("Password diganti. Silakan masuk lagi.");
-                    location.href = "login.html";
+                    // Ganti password mengakhiri semua sesi, jadi pengguna harus masuk lagi.
+                    clearSession();
+                    toast("Password diganti. Silakan masuk lagi.");
+                    setTimeout(() => location.replace("login.html"), 1200);
                 } catch (error) {
                     tampil($("#errPw"), error.code === "INVALID_STATE" ? "Password lama salah." : errorMessage(error));
                     tombol.disabled = false;

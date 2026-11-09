@@ -5,22 +5,90 @@
 <main class="container stack-lg">
 <div class="row-between"><h1 class="t-h1">Paket</h1><button class="btn btn-primary" id="tambah">Tambah Paket</button></div>
 <form class="card stack" id="form" hidden>
- <div class="field"><label for="n">Nama paket</label><input class="input" id="n"></div>
+ <h2 class="t-h3" id="judulForm">Tambah paket</h2>
+ <div class="field"><label for="n">Nama paket</label><input class="input" id="n" maxlength="100"><p class="error-msg" hidden>Nama paket wajib diisi.</p></div>
  <div class="field"><label for="d">Deskripsi</label><textarea class="textarea" id="d"></textarea></div>
- <div class="field"><label for="h">Harga per porsi (Rp)</label><input class="input" id="h" type="number" min="0"></div>
- <div class="grid grid-2"><div class="field"><label for="m">Berlaku mulai</label><input class="input" id="m" type="date"></div><div class="field"><label for="s">Berlaku sampai</label><input class="input" id="s" type="date"></div></div>
+ <div class="field"><label for="h">Harga per porsi (Rp)</label><input class="input" id="h" type="number" min="0" inputmode="numeric"><p class="error-msg" hidden>Harga harus lebih dari 0.</p></div>
+ <div class="grid grid-2"><div class="field"><label for="m">Berlaku mulai</label><input class="input" id="m" type="date"></div><div class="field"><label for="s">Berlaku sampai</label><input class="input" id="s" type="date"><p class="error-msg" hidden>Tanggal akhir tidak boleh sebelum tanggal mulai.</p></div></div>
  <div class="row"><button class="btn btn-primary" type="submit">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
-<section class="card" id="list">
- <div class="invoice"><div><p class="t-h3">Paket Hemat</p><p class="t-small t-muted">Rp15.000 · 1 Nov – 31 Des 2026</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
- <div class="invoice"><div><p class="t-h3">Paket Reguler</p><p class="t-small t-muted">Rp20.000 · 1 Nov – 31 Des 2026</p></div><div class="row"><span class="badge badge--success">Aktif</span><button class="btn btn-secondary btn-sm">Ubah</button><button class="btn btn-danger btn-sm off">Nonaktifkan</button></div></div>
-</section>
+<section class="card" id="list"></section>
 </main><script src="js/auth.js"></script>
 <script>
 // Ganti dengan API paket. Paket yang sudah dipesan hanya bisa dinonaktifkan.
-tambah.onclick=function(){form.hidden=false};batal.onclick=function(){form.hidden=true};
-form.onsubmit=function(e){e.preventDefault();alert('Paket disimpan (demo).');form.hidden=true};
-document.querySelectorAll('.off').forEach(function(b){b.onclick=function(){
- if(!confirm('Nonaktifkan paket ini? Pesanan yang sudah ada tidak terpengaruh.'))return;
- var bd=b.parentElement.querySelector('.badge');bd.className='badge badge--expire';bd.textContent='Nonaktif';b.remove()}});
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+const tglPendek = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+const paket = [
+    { nama: "Paket Hemat", deskripsi: "", harga: 15000, mulai: "2026-11-01", sampai: "2026-12-31", aktif: true },
+    { nama: "Paket Reguler", deskripsi: "", harga: 20000, mulai: "2026-11-01", sampai: "2026-12-31", aktif: true },
+];
+let sedangUbah = null;
+
+function gambar() {
+    $("list").replaceChildren(...paket.map(p => {
+        const baris = document.createElement("div");
+        baris.className = "invoice";
+        baris.innerHTML = `<div><p class="t-h3"></p><p class="t-small t-muted"></p></div><div class="row"><span class="badge"></span><button class="btn btn-secondary btn-sm ubah" type="button">Ubah</button><button class="btn btn-sm toggle" type="button"></button></div>`;
+        baris.querySelector(".t-h3").textContent = p.nama;
+        baris.querySelector(".t-small").textContent = `${rp(p.harga)} · ${p.mulai ? tglPendek(p.mulai) : "—"} – ${p.sampai ? tglPendek(p.sampai) : "—"}`;
+        setBadge(baris.querySelector(".badge"), p.aktif ? "badge--success" : "badge--expire", p.aktif ? "Aktif" : "Nonaktif");
+        const toggle = baris.querySelector(".toggle");
+        toggle.textContent = p.aktif ? "Nonaktifkan" : "Aktifkan";
+        toggle.classList.add(p.aktif ? "btn-danger" : "btn-secondary");
+        toggle.setAttribute("aria-label", `${toggle.textContent} ${p.nama}`);
+        baris.querySelector(".ubah").setAttribute("aria-label", `Ubah ${p.nama}`);
+        baris.querySelector(".ubah").onclick = () => bukaForm(p);
+        toggle.onclick = () => {
+            if (p.aktif && !confirm("Nonaktifkan paket ini? Pesanan yang sudah ada tidak terpengaruh.")) return;
+            p.aktif = !p.aktif;
+            gambar();
+            toast(p.aktif ? "Paket diaktifkan." : "Paket dinonaktifkan.");
+        };
+        return baris;
+    }));
+}
+
+function bukaForm(p) {
+    sedangUbah = p || null;
+    $("judulForm").textContent = p ? `Ubah ${p.nama}` : "Tambah paket";
+    $("n").value = p ? p.nama : "";
+    $("d").value = p ? p.deskripsi : "";
+    $("h").value = p ? p.harga : "";
+    $("m").value = p ? p.mulai : "";
+    $("s").value = p ? p.sampai : "";
+    $("form").hidden = false;
+    $("n").focus();
+}
+
+function periksa(daftar) {
+    let pertama = null;
+    daftar.forEach(([input, valid]) => {
+        const field = input.closest(".field");
+        field.classList.toggle("is-error", !valid);
+        const pesan = field.querySelector(".error-msg");
+        if (pesan) pesan.hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return !pertama;
+}
+
+$("tambah").onclick = () => bukaForm(null);
+$("batal").onclick = () => { $("form").hidden = true; };
+$("form").onsubmit = event => {
+    event.preventDefault();
+    const harga = Number($("h").value);
+    const urut = !$("m").value || !$("s").value || $("s").value >= $("m").value;
+    if (!periksa([[$("n"), $("n").value.trim() !== ""], [$("h"), harga > 0], [$("s"), urut]])) return;
+    const data = { nama: $("n").value.trim(), deskripsi: $("d").value.trim(), harga, mulai: $("m").value, sampai: $("s").value };
+    if (sedangUbah) Object.assign(sedangUbah, data);
+    else paket.push({ ...data, aktif: true });
+    gambar();
+    $("form").hidden = true;
+    event.target.reset();
+    toast("Paket disimpan (demo).");
+};
+gambar();
 </script></body></html>
