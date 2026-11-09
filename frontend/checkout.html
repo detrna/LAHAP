@@ -1,60 +1,266 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pesan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
-<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
-<nav class="nav"></nav></div></header>
+<title>Pesan · LAHAP</title><link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"></head><body data-roles="pelanggan">
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<h1 class="t-h1">Pesan paket <span id="namaPaket">Hemat</span></h1>
-<form class="stack-lg" onsubmit="return false">
+<h1 class="t-h1">Pesan <span id="namaPaket"></span></h1>
+<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<form class="stack-lg" id="form" novalidate>
  <div class="field"><span class="field-label">Jenis pembelian</span><div class="chip-group">
-  <label class="chip"><input type="radio" name="jenis" value="online" checked>Online</label><label class="chip"><input type="radio" name="jenis" value="offline">Offline</label></div>
+  <label class="chip"><input type="radio" name="jenis" value="Online" checked>Online</label><label class="chip"><input type="radio" name="jenis" value="Offline">Offline</label></div>
   <p class="hint">Online bayar non-tunai. Offline bisa tunai, diverifikasi admin.</p></div>
- <div class="field" id="boxBayar" hidden><span class="field-label">Metode bayar</span><div class="chip-group"><label class="chip"><input type="radio" name="bayar" value="MIDTRANS" checked>Non-tunai</label><label class="chip"><input type="radio" name="bayar" value="CASH">Tunai</label></div></div>
- <div class="field"><span class="field-label">Periode</span><div class="chip-group">
-  <label class="chip"><input type="radio" name="periode" value="1">Harian</label><label class="chip"><input type="radio" name="periode" value="7" checked>Mingguan</label><label class="chip"><input type="radio" name="periode" value="30">Bulanan</label></div></div>
- <div class="field"><span class="field-label">Waktu makan</span><div class="chip-group" id="slots">
-  <label class="chip"><input type="checkbox" checked>Pagi · 07:00</label><label class="chip"><input type="checkbox" checked>Siang · 12:00</label><label class="chip"><input type="checkbox">Malam · 17:00</label></div></div>
- <div class="alert alert--warning" role="alert"><span class="alert-title">Peringatan alergi</span>Menu ini mengandung telur, sesuai alergi di profilmu. Kamu tetap bisa lanjut atau Skip hari itu.</div>
+ <div class="field" id="boxBayar" hidden><span class="field-label">Metode bayar</span><div class="chip-group">
+  <label class="chip"><input type="radio" name="bayar" value="MIDTRANS" checked>Non-tunai</label><label class="chip"><input type="radio" name="bayar" value="CASH">Tunai</label></div></div>
+ <div class="field"><span class="field-label">Periode</span><div class="chip-group" id="periode"></div></div>
+ <div class="field" id="boxMulai" hidden><label for="mulai">Mulai tanggal</label><input class="input" id="mulai" type="date"><p class="hint" id="hintMulai"></p></div>
+ <div class="field" id="boxWaktu" hidden><span class="field-label">Waktu makan</span><div class="chip-group" id="waktu"></div></div>
+ <div class="field" id="boxHari" hidden><span class="field-label">Pilih hari layanan</span><div class="chip-group" id="hari"></div><p class="hint" id="hintHari"></p></div>
  <div class="field"><span class="field-label">Metode penerimaan</span><div class="chip-group">
-  <label class="chip"><input type="radio" name="metode" value="antar" checked>Diantar</label><label class="chip" id="pickup"><input type="radio" name="metode" value="ambil">Ambil Sendiri</label></div>
-  <p class="hint" id="hintJarak">Metode berlaku untuk seluruh pesanan.</p></div>
- <div class="field" id="boxJarak"><label for="jarak">Jarak dari pin lokasi (km, demo)</label><input class="input" id="jarak" type="number" min="0" step="0.1" value="3.2">
-  <div class="map-box" style="margin-top:12px">Peta pin (Leaflet + OpenStreetMap)</div></div>
+  <label class="chip"><input type="radio" name="metode" value="antar" checked>Diantar</label><label class="chip"><input type="radio" name="metode" value="ambil">Ambil Sendiri</label></div></div>
  <div class="field"><label for="penerima">Nama penerima</label><input class="input" id="penerima" autocomplete="name"></div>
- <div class="field" id="boxAlamat"><label for="alamat">Alamat pengantaran</label><textarea class="textarea" id="alamat" autocomplete="street-address"></textarea></div>
- <div class="field"><label for="catatan">Catatan (opsional)</label><textarea class="textarea" id="catatan" placeholder="Mis. tanpa sambal"></textarea><p class="hint">Untuk permintaan non-alergi. Alergi diisi di profil.</p></div>
- <div class="field" id="boxPromo"><label for="promo">Kode promo</label><div class="row"><input class="input" id="promo" style="flex:1" placeholder="MERDEKA"><button class="btn btn-secondary" id="pakai" type="button">Pakai</button></div><div class="alert alert--error" id="promoErr" hidden style="margin-top:8px"><span class="alert-title">Kode promo tidak berlaku</span>Cek kembali kode atau masa berlakunya.</div></div>
- <section class="card" aria-label="Rincian harga">
-  <div class="price-row"><span id="rMakan"></span><span id="vMakan"></span></div>
-  <div class="price-row price-row--discount"><span>Diskon tier (10%)</span><span id="vTier"></span></div>
-  <div class="price-row price-row--discount" id="rKode" hidden><span>Kode promo (10%)</span><span id="vKode"></span></div>
-  <div class="price-row"><span id="rOngkir"></span><span id="vOngkir"></span></div>
-  <div class="price-total"><span>Total</span><span id="vTotal"></span></div></section>
- <button class="btn btn-primary btn-block" type="submit">Bayar Sekarang</button>
+ <div class="stack" id="boxAntar">
+  <div class="field"><label for="alamat">Alamat pengantaran</label><textarea class="textarea" id="alamat" autocomplete="street-address"></textarea></div>
+  <div class="field"><span class="field-label">Titik lokasi</span><div id="peta" class="map-box" style="min-height:240px"></div><p class="hint" id="hintPin">Ketuk peta untuk menaruh pin.</p></div>
+ </div>
+ <div class="field"><label for="catatan">Catatan (opsional)</label><textarea class="textarea" id="catatan" maxlength="500" placeholder="Mis. tanpa sambal"></textarea><p class="hint">Untuk permintaan non-alergi. Alergi diisi di profil.</p></div>
+ <div class="field"><label for="promo">Kode promo</label><div class="row"><input class="input" id="promo" style="flex:1" placeholder="MERDEKA" maxlength="50"><button class="btn btn-secondary" id="pakai" type="button">Pakai</button></div><div class="alert alert--error" id="promoErr" hidden style="margin-top:8px"><span class="alert-title">Kode promo tidak berlaku</span><span class="msg"></span></div></div>
+ <section class="card" aria-label="Rincian harga" aria-live="polite">
+  <p class="t-muted" id="kosongHarga">Lengkapi pilihan di atas untuk melihat harga.</p>
+  <div id="rincian" hidden>
+   <div class="price-row"><span id="rMakan"></span><span id="vMakan"></span></div>
+   <div class="price-row price-row--discount" id="rTier" hidden><span>Diskon tier</span><span id="vTier"></span></div>
+   <div class="price-row price-row--discount" id="rKode" hidden><span>Kode promo</span><span id="vKode"></span></div>
+   <div class="price-row" id="rOngkir" hidden><span id="tOngkir"></span><span id="vOngkir"></span></div>
+   <div class="price-total"><span>Total</span><span id="vTotal"></span></div>
+   <p class="hint" id="batas"></p>
+  </div></section>
+ <button class="btn btn-primary btn-block" type="submit" id="kirim" disabled>Bayar Sekarang</button>
 </form>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="js/auth.js"></script>
 <script>
-// Estimasi tampilan saja. Backend adalah sumber total akhir (BR-17).
-const PRM={radius:1,max:10,perKm:5000},HARGA={hemat:15000,reguler:20000},TIER=.1,KODE=.1;
-const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n).toLocaleString('id-ID');
-const paket0=new URLSearchParams(location.search).get('paket'),paket=HARGA[paket0]?paket0:'hemat';let kode=false;
-$('#namaPaket').textContent=paket[0].toUpperCase()+paket.slice(1);
-function hitung(){
- const hari=+document.querySelector('[name=periode]:checked').value,
-  waktu=document.querySelectorAll('#slots input:checked').length,slot=hari*waktu,
-  km=Math.ceil(+$('#jarak').value||0),luar=km>PRM.max;
- $('#pickup input').checked=luar?true:$('#pickup input').checked;
- document.querySelector('[value=antar]').disabled=luar;
- $('#hintJarak').textContent=luar?'Di luar jarak maksimum '+PRM.max+' km. Hanya Ambil Sendiri.':'Metode berlaku untuk seluruh pesanan.';
- const antar=document.querySelector('[name=metode]:checked').value==='antar';
- $('#boxJarak').hidden=!antar;$('#boxAlamat').hidden=!antar;
- const perSlot=!antar||km<=PRM.radius?0:(km-PRM.radius)*PRM.perKm,
-  makan=slot*HARGA[paket],tier=Math.floor(makan*TIER),kd=kode?Math.floor((makan-tier)*KODE):0,ongkir=perSlot*(antar?slot:0);
- $('#rMakan').textContent=slot+' slot × '+rp(HARGA[paket]);$('#vMakan').textContent=rp(makan);
- $('#vTier').textContent='−'+rp(tier);$('#rKode').hidden=!kode;$('#vKode').textContent='−'+rp(kd);
- $('#rOngkir').textContent=antar?slot+' slot × '+rp(perSlot)+' (jarak '+km+' km)':'Ongkir (Ambil Sendiri)';
- $('#vOngkir').textContent=rp(ongkir);$('#vTotal').textContent=rp(makan-tier-kd+ongkir);
+const $ = selector => document.querySelector(selector);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+const idPaket = new URLSearchParams(location.search).get("paket");
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tambahHari = (tanggal, n) => {
+    const d = new Date(`${tanggal}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+};
+const senin = tanggal => tambahHari(tanggal, -((new Date(`${tanggal}T00:00:00Z`).getUTCDay() + 6) % 7));
+const awalBulan = tanggal => `${tanggal.slice(0, 8)}01`;
+const waktu = item => item.time ?? item;
+
+let paket = null;
+let pin = null;
+let marker = null;
+let peta = null;
+let timer = null;
+let nomor = 0;
+
+function galat(message) {
+    $("#err").hidden = !message;
+    $("#err .msg").textContent = message || "";
 }
-$('#pakai').onclick=()=>{kode=$('#promo').value.trim().toUpperCase()==='MERDEKA';$('#promoErr').hidden=kode;hitung()};
-document.querySelectorAll('[name=jenis]').forEach(r=>r.addEventListener('change',()=>{$('#boxBayar').hidden=document.querySelector('[name=jenis]:checked').value!=='offline'}));
-document.querySelector('form').addEventListener('input',hitung);hitung();
-</script></main><script src="js/auth.js"></script></body></html>
+
+function chip(name, value, label, checked, type = "radio") {
+    const wrap = document.createElement("label");
+    wrap.className = "chip";
+    const input = document.createElement("input");
+    input.type = type;
+    input.name = name;
+    input.value = value;
+    input.checked = checked;
+    wrap.append(input, label);
+    return wrap;
+}
+
+const nilai = name => {
+    const dipilih = document.querySelector(`[name=${name}]:checked`);
+    return dipilih ? dipilih.value : "";
+};
+const semua = name => [...document.querySelectorAll(`[name=${name}]:checked`)].map(input => input.value);
+
+function aturPeriode() {
+    const periode = nilai("periode");
+    $("#boxHari").hidden = periode !== "Harian";
+    $("#boxWaktu").hidden = periode === "Harian" || !periode;
+    $("#boxMulai").hidden = periode === "Harian" || !periode;
+    $("#hintMulai").textContent =
+        periode === "Mingguan" ? "Dimulai dari hari Senin pada minggu tanggal ini." : "Dimulai dari tanggal 1 pada bulan tanggal ini.";
+    $("#boxAntar").hidden = nilai("metode") !== "antar";
+    $("#boxBayar").hidden = nilai("jenis") !== "Offline";
+    $("#kirim").textContent = nilai("jenis") === "Offline" && nilai("bayar") === "CASH" ? "Buat Pesanan" : "Bayar Sekarang";
+    if (peta) peta.invalidateSize();
+}
+
+function badan() {
+    const periode = nilai("periode");
+    const antar = nilai("metode") === "antar";
+    const body = {
+        packageId: paket.id,
+        purchaseType: nilai("jenis"),
+        period: periode,
+        isDelivery: antar,
+        recipientName: $("#penerima").value.trim(),
+        paymentMethod: nilai("jenis") === "Offline" ? nilai("bayar") : "MIDTRANS",
+    };
+    if (periode === "Harian") body.menuScheduleIds = semua("hari");
+    else {
+        const mulai = $("#mulai").value;
+        body.periodStart = periode === "Mingguan" ? senin(mulai) : awalBulan(mulai);
+        body.deliveryTimes = semua("waktu");
+    }
+    if (antar) {
+        body.deliveryAddress = $("#alamat").value.trim();
+        if (pin) {
+            body.deliveryLatitude = pin.lat;
+            body.deliveryLongitude = pin.lng;
+        }
+    }
+    if ($("#catatan").value.trim()) body.notes = $("#catatan").value.trim();
+    if ($("#promo").value.trim()) body.promoCode = $("#promo").value.trim().toUpperCase();
+    return body;
+}
+
+function lengkap(body) {
+    if (!body.period || !body.recipientName) return false;
+    if (body.period === "Harian" ? !body.menuScheduleIds.length : !body.periodStart || !body.deliveryTimes.length) return false;
+    return !body.isDelivery || Boolean(body.deliveryAddress && pin);
+}
+
+function tampilHarga(p) {
+    $("#kosongHarga").hidden = true;
+    $("#rincian").hidden = false;
+    $("#rMakan").textContent = `${p.slotCount} slot × ${rp(p.pricePerPortion)}`;
+    $("#vMakan").textContent = rp(p.foodSubtotal);
+    $("#rTier").hidden = !p.tierDiscount;
+    $("#vTier").textContent = `−${rp(p.tierDiscount)}`;
+    $("#rKode").hidden = !p.promoDiscount;
+    $("#vKode").textContent = `−${rp(p.promoDiscount)}`;
+    $("#rOngkir").hidden = !p.deliveryFeeTotal;
+    $("#tOngkir").textContent = `Ongkir ${p.slotCount} slot × ${rp(p.deliveryFeePerSlot)}`;
+    $("#vOngkir").textContent = rp(p.deliveryFeeTotal);
+    $("#vTotal").textContent = rp(p.totalPrice);
+    $("#batas").textContent = p.cutoffAt
+        ? `Batas pesan: ${new Date(p.cutoffAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "long", timeStyle: "short" })} WIB.`
+        : "";
+    const alasan = p.promo && p.promo.reason;
+    $("#promoErr").hidden = !alasan;
+    $("#promoErr .msg").textContent = alasan || "";
+}
+
+async function hitung() {
+    const ini = ++nomor;
+    const body = badan();
+    $("#kirim").disabled = true;
+    if (!lengkap(body)) {
+        $("#rincian").hidden = true;
+        $("#kosongHarga").hidden = false;
+        return;
+    }
+    try {
+        const { data } = await api("/subscriptions/preview", { method: "POST", body });
+        if (ini !== nomor) return;
+        galat("");
+        tampilHarga(data);
+        $("#kirim").disabled = false;
+    } catch (error) {
+        if (ini !== nomor) return;
+        $("#rincian").hidden = true;
+        $("#kosongHarga").hidden = false;
+        galat(errorMessage(error));
+    }
+}
+
+const tunda = () => {
+    clearTimeout(timer);
+    timer = setTimeout(hitung, 350);
+};
+
+function mulaiPeta(titik) {
+    peta = L.map("peta").setView(titik ? [titik.lat, titik.lng] : [-7.9666, 112.6326], 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(peta);
+    const taruh = latlng => {
+        pin = { lat: Number(latlng.lat.toFixed(6)), lng: Number(latlng.lng.toFixed(6)) };
+        if (marker) marker.setLatLng(latlng);
+        else marker = L.marker(latlng).addTo(peta);
+        $("#hintPin").textContent = `Pin: ${pin.lat}, ${pin.lng}`;
+        tunda();
+    };
+    peta.on("click", event => taruh(event.latlng));
+    if (titik) taruh({ lat: titik.lat, lng: titik.lng });
+}
+
+async function muat() {
+    try {
+        const { data: daftar } = await api("/packages", { auth: false });
+        paket = daftar.find(p => p.id === idPaket);
+        if (!paket) return galat("Paket tidak ditemukan. Pilih paket dari halaman utama.");
+        $("#namaPaket").textContent = paket.name;
+        document.title = `Pesan ${paket.name} · LAHAP`;
+        $("#periode").replaceChildren(...paket.periods.map((p, i) => chip("periode", p, p, i === 0)));
+        $("#waktu").replaceChildren(
+            ...paket.deliveryTimes.map(t => {
+                const item = waktu(t);
+                return chip("waktu", item, t.range ? `${t.range} · ${item}` : item, true, "checkbox");
+            }),
+        );
+        $("#mulai").value = tambahHari(senin(hariIni()), 7);
+        $("#penerima").value = (currentUser() && currentUser().name) || "";
+        const [{ data: jadwal }, profil] = await Promise.all([
+            api(`/packages/${paket.id}/schedules`, { auth: false }),
+            api("/me").catch(() => null),
+        ]);
+        const terbit = jadwal.filter(j => j.isPublished && j.date > hariIni());
+        $("#hari").replaceChildren(
+            ...terbit.map(j => {
+                const hari = new Date(`${j.date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+                return chip("hari", j.id, `${hari} · ${j.deliveryTime.time}`, false, "checkbox");
+            }),
+        );
+        $("#hintHari").textContent = terbit.length ? "" : "Belum ada menu terbit untuk dipilih harian.";
+        let titik = null;
+        if (profil) {
+            if (profil.data.address) $("#alamat").value = profil.data.address;
+            if (profil.data.latitude != null && profil.data.longitude != null)
+                titik = { lat: Number(profil.data.latitude), lng: Number(profil.data.longitude) };
+        }
+        mulaiPeta(titik);
+        aturPeriode();
+        tunda();
+    } catch (error) {
+        galat(errorMessage(error));
+    }
+}
+
+$("#form").addEventListener("input", () => {
+    aturPeriode();
+    tunda();
+});
+$("#form").addEventListener("change", () => {
+    aturPeriode();
+    tunda();
+});
+$("#pakai").onclick = hitung;
+$("#form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const body = badan();
+    if (!lengkap(body)) return;
+    $("#kirim").disabled = true;
+    galat("");
+    try {
+        const { data } = await api("/subscriptions", { method: "POST", body });
+        const sesi = data.paymentSession;
+        location.href = sesi && sesi.redirectUrl ? sesi.redirectUrl : "langganan.html";
+    } catch (error) {
+        $("#kirim").disabled = false;
+        galat(errorMessage(error));
+    }
+});
+
+muat();
+</script></body></html>
