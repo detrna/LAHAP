@@ -22,9 +22,16 @@
  <div class="stack" id="boxAntar">
   <div class="field"><label for="alamat">Alamat pengantaran</label><textarea class="textarea" id="alamat" autocomplete="street-address"></textarea></div>
   <div class="field"><span class="field-label">Titik lokasi</span><div id="peta"></div></div>
+  <div class="alert alert--error" id="luarJangkau" role="alert" hidden></div>
+  <p class="hint" id="infoJarak" aria-live="polite"></p>
  </div>
  <div class="field"><label for="catatan">Catatan (opsional)</label><textarea class="textarea" id="catatan" maxlength="500" placeholder="Mis. tanpa sambal"></textarea><p class="hint">Untuk permintaan non-alergi. Alergi diisi di profil.</p></div>
  <div class="field"><label for="promo">Kode promo</label><div class="row"><input class="input" id="promo" style="flex:1" placeholder="MERDEKA" maxlength="50"><button class="btn btn-secondary" id="pakai" type="button">Pakai</button></div><div class="alert alert--error" id="promoErr" hidden style="margin-top:8px"><span class="alert-title">Kode promo tidak berlaku</span><span class="msg"></span></div></div>
+ <section class="card stack" id="jadwalBox" aria-label="Jadwal pesananmu" hidden>
+  <h2 class="t-h3">Jadwal pesananmu</h2><p id="jadwalRingkas"></p>
+  <div class="alert alert--warning" id="bentrok" role="status" hidden></div>
+  <details><summary class="t-small">Lihat tanggal dan menu</summary><div id="jadwalDaftar"></div></details>
+ </section>
  <section class="card" aria-label="Rincian harga" aria-live="polite">
   <p class="t-muted" id="kosongHarga">Lengkapi pilihan di atas untuk melihat harga.</p>
   <div id="rincian" hidden>
@@ -37,20 +44,15 @@
   </div></section>
  <button class="btn btn-primary btn-block" type="submit" id="kirim" disabled>Bayar Sekarang</button>
 </form>
+<section class="card stack" id="sukses" role="status" hidden></section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/peta.js"></script>
+<script src="js/pelanggan.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
-const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
 const idPaket = new URLSearchParams(location.search).get("paket");
-const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
-const tambahHari = (tanggal, n) => {
-    const d = new Date(`${tanggal}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + n);
-    return d.toISOString().slice(0, 10);
-};
 const senin = tanggal => tambahHari(tanggal, -((new Date(`${tanggal}T00:00:00Z`).getUTCDay() + 6) % 7));
 const awalBulan = tanggal => `${tanggal.slice(0, 8)}01`;
 const waktu = item => item.time ?? item;
@@ -161,7 +163,44 @@ function kurang(body) {
     return daftar;
 }
 
-function tampilHarga(p) {
+function tampilJadwal(p) {
+    $("#jadwalBox").hidden = false;
+    $("#jadwalRingkas").textContent = `${p.slotCount} slot, ${tgl(p.startDate)} – ${tgl(p.endDate)}.`;
+    const bentrok = p.slots.filter(x => x.clashingAllergies.length);
+    $("#bentrok").hidden = !bentrok.length;
+    $("#bentrok").textContent = bentrok.length ? `${bentrok.length} slot mengandung alergenmu. Pesanan tetap bisa dibuat.` : "";
+    $("#jadwalDaftar").replaceChildren(
+        ...p.slots.map(x => {
+            const row = el("div", "slot");
+            const kiri = el("div");
+            kiri.append(el("p", "t-h3", `${namaHari(x.date)} · ${waktu(x.deliveryTime)}`), el("p", "t-small t-muted", x.menu ? x.menu.name : ""));
+            row.append(kiri);
+            if (x.clashingAllergies.length) {
+                const nama = x.clashingAllergies.map(a => a.name).join(", ");
+                row.append(el("p", "t-small", `Mengandung ${nama} (alergimu). ${x.hasAlternative ? "Dapur bisa memberi menu alternatif." : "Belum ada menu alternatif untuk hari ini."}`));
+            }
+            return row;
+        }),
+    );
+}
+
+function tampilHarga(p, antar) {
+    tampilJadwal(p);
+    const luar = antar && p.delivery && !p.delivery.available;
+    $("#luarJangkau").hidden = !luar;
+    $("#luarJangkau").textContent = luar
+        ? `Titik ini ${p.delivery.distanceKm} km dari dapur, di luar jangkauan antar (maksimal ${p.delivery.maxDistanceKm} km). Pindahkan titik atau pilih Ambil Sendiri.`
+        : "";
+    const info = antar && p.delivery && p.delivery.available && p.delivery.distanceKm != null;
+    $("#infoJarak").textContent = info
+        ? `Jarak ${p.delivery.distanceKm} km · ${p.delivery.feePerSlot > 0 ? `ongkir ${rp(p.delivery.feePerSlot)}/slot` : "gratis ongkir"}`
+        : "";
+    if (luar) {
+        $("#rincian").hidden = true;
+        $("#kosongHarga").hidden = false;
+        $("#kosongHarga").textContent = "Pilih titik dalam jangkauan atau ambil sendiri untuk melihat harga.";
+        return false;
+    }
     $("#kosongHarga").hidden = true;
     $("#rincian").hidden = false;
     $("#rMakan").textContent = `${p.slotCount} slot × ${rp(p.pricePerPortion)}`;
@@ -180,6 +219,7 @@ function tampilHarga(p) {
     const alasan = p.promo && p.promo.reason;
     $("#promoErr").hidden = !alasan;
     $("#promoErr .msg").textContent = alasan || "";
+    return true;
 }
 
 async function hitung() {
@@ -187,6 +227,9 @@ async function hitung() {
     const body = badan();
     $("#kirim").disabled = true;
     if (!lengkap(body)) {
+        $("#jadwalBox").hidden = true;
+        $("#luarJangkau").hidden = true;
+        $("#infoJarak").textContent = "";
         $("#rincian").hidden = true;
         $("#kosongHarga").hidden = false;
         const k = kurang(body);
@@ -198,8 +241,7 @@ async function hitung() {
         if (ini !== nomor) return;
         galat("");
         showIssues($("#form"), null, FIELD_CHECKOUT);
-        tampilHarga(data);
-        $("#kirim").disabled = false;
+        $("#kirim").disabled = !tampilHarga(data, body.isDelivery);
     } catch (error) {
         if (ini !== nomor) return;
         $("#rincian").hidden = true;
@@ -232,6 +274,19 @@ function mulaiPeta(titik) {
     pin = kendali.ambilTitik();
 }
 
+async function muatHari() {
+    const dipilih = new Set(semua("hari"));
+    const { data: jadwal } = await api(`/packages/${paket.id}/schedules`, { auth: false });
+    const terbit = jadwal.filter(j => j.isPublished && j.date > hariIni());
+    $("#hari").replaceChildren(
+        ...terbit.map(j => {
+            const hari = new Date(`${j.date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+            return chip("hari", j.id, `${hari} · ${j.deliveryTime.time}`, dipilih.has(j.id), "checkbox");
+        }),
+    );
+    $("#hintHari").textContent = terbit.length ? "" : "Belum ada menu terbit untuk dipilih harian.";
+}
+
 async function muat() {
     try {
         if (!idPaket) return galat("Paket tidak tersedia. Pilih paket lain dari halaman Paket.");
@@ -254,18 +309,7 @@ async function muat() {
         $("#mulai").min = tambahHari(hariIni(), 1);
         $("#mulai").value = tambahHari(senin(hariIni()), 7);
         $("#penerima").value = (currentUser() && currentUser().name) || "";
-        const [{ data: jadwal }, profil] = await Promise.all([
-            api(`/packages/${paket.id}/schedules`, { auth: false }),
-            api("/me").catch(() => null),
-        ]);
-        const terbit = jadwal.filter(j => j.isPublished && j.date > hariIni());
-        $("#hari").replaceChildren(
-            ...terbit.map(j => {
-                const hari = new Date(`${j.date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
-                return chip("hari", j.id, `${hari} · ${j.deliveryTime.time}`, false, "checkbox");
-            }),
-        );
-        $("#hintHari").textContent = terbit.length ? "" : "Belum ada menu terbit untuk dipilih harian.";
+        const [, profil] = await Promise.all([muatHari(), api("/me").catch(() => null)]);
         let titik = null;
         if (profil) {
             if (profil.data.address) $("#alamat").value = profil.data.address;
@@ -300,13 +344,48 @@ $("#form").addEventListener("submit", async event => {
     galat("");
     try {
         const { data } = await api("/subscriptions", { method: "POST", body });
-        const sesi = data.paymentSession;
-        location.href = sesi && sesi.redirectUrl ? sesi.redirectUrl : "langganan.html";
+        const ke = `pesanan.html?id=${data.subscription.id}`;
+        if (data.paymentSession) {
+            await bayarSnap(data.paymentSession, { onSelesai: () => (location.href = ke) });
+            return;
+        }
+        if (data.payment && data.payment.method === "CASH") return tampilSukses(data, ke);
+        toast("Pesanan lunas. Total Rp0.");
+        location.href = ke;
     } catch (error) {
         $("#kirim").disabled = false;
         galat(pesanForm($("#form"), error, FIELD_CHECKOUT));
+        if (error instanceof ApiError && error.status === 422 && /cut-off|slot is not available/.test(error.message)) {
+            try {
+                await muatHari();
+            } catch {}
+            hitung();
+        }
     }
 });
+
+async function tampilSukses(data, ke) {
+    let alamat = "";
+    try {
+        const { data: b } = await api("/business", { auth: false });
+        alamat = b && b.address ? ` (${b.address})` : "";
+    } catch {}
+    const lihat = el("a", "btn btn-primary", "Lihat Pesanan");
+    lihat.href = ke;
+    const kembali = el("a", "btn btn-secondary", "Kembali ke Paket");
+    kembali.href = "index.html";
+    const aksi = el("div", "row");
+    aksi.append(lihat, kembali);
+    $("#sukses").replaceChildren(
+        el("h2", "t-h2", "Pesanan dibuat"),
+        el("p", "", `Bayar ${rp(data.subscription.totalPrice)} tunai di kasir${alamat} secepatnya.`),
+        el("p", "t-small t-muted", "Pesanan yang belum dibayar batal otomatis. Admin memverifikasi pembayaranmu di kasir."),
+        aksi,
+    );
+    $("#form").hidden = true;
+    $("#sukses").hidden = false;
+    $("#sukses").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
 
 muat();
 </script></body></html>
