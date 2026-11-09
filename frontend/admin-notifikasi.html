@@ -4,61 +4,124 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Notifikasi dan pengumuman</h1>
-<form class="card stack" id="kirim">
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<form class="card stack" id="kirim" novalidate>
 <h2 class="t-h3">Kirim ke satu pelanggan</h2>
 <div class="field"><label for="hp">Nomor HP pelanggan</label><input class="input" id="hp" inputmode="tel" autocomplete="off" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid.</p></div>
 <div class="field"><label for="j1">Judul</label><input class="input" id="j1" maxlength="150"><p class="error-msg" hidden>Judul wajib diisi.</p></div>
 <div class="field"><label for="b1">Isi pesan</label><textarea class="textarea" id="b1" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pesan wajib diisi.</p></div>
 <button class="btn btn-primary" type="submit">Kirim Notifikasi</button>
 </form>
-<form class="card stack" id="umum">
+<form class="card stack" id="umum" novalidate>
 <h2 class="t-h3">Pengumuman</h2>
-<div class="field"><label for="c">Cakupan</label><select class="select input" id="c"><option>Semua pelanggan</option><option>Pelanggan satu paket</option><option>Satu hari layanan</option></select></div>
+<div class="field"><label for="c">Cakupan</label><select class="select input" id="c"><option value="GLOBAL">Semua pelanggan</option><option value="PACKAGE">Pelanggan satu paket</option><option value="SCHEDULE">Satu hari layanan</option></select></div>
+<div class="field" id="fPaket" hidden><label for="pk">Paket</label><select class="select input" id="pk"></select></div>
+<div class="field" id="fJadwal" hidden><label for="jd">Hari layanan</label><select class="select input" id="jd"></select><p class="error-msg" hidden>Belum ada jadwal untuk dipilih.</p></div>
 <div class="field"><label for="j2">Judul</label><input class="input" id="j2" maxlength="150"><p class="error-msg" hidden>Judul wajib diisi.</p></div>
 <div class="field"><label for="b2">Isi pengumuman</label><textarea class="textarea" id="b2" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pengumuman wajib diisi.</p></div>
 <button class="btn btn-secondary" type="submit">Kirim Pengumuman</button>
 </form>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Pengumuman terkirim</h2></div>
-<div class="invoice"><div><p class="t-h3">Libur 17 Agustus</p><p class="t-small t-muted">Semua pelanggan · 3 Nov 2026</p></div><button class="btn btn-danger btn-sm hapus" type="button" aria-label="Hapus pengumuman Libur 17 Agustus">Hapus</button></div>
+<p class="t-muted" id="kosong" hidden>Belum ada pengumuman.</p>
+<div id="daftar" aria-busy="true"><div class="skeleton"></div></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
-// Periksa daftar [elemen, valid]; tandai error, fokus ke yang pertama salah.
+const $ = id => document.getElementById(id);
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tgl = s => new Date(s).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const CAKUPAN = { GLOBAL: "Semua pelanggan", PACKAGE: "Satu paket", SCHEDULE: "Satu hari layanan" };
+function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
 function periksa(daftar) {
     let pertama = null;
     daftar.forEach(([input, valid]) => {
-        const field = input.closest(".field");
-        field.classList.toggle("is-error", !valid);
-        field.querySelector(".error-msg").hidden = valid;
+        const f = input.closest(".field");
+        f.classList.toggle("is-error", !valid);
+        const p = f.querySelector(".error-msg");
+        if (p) p.hidden = valid;
         input.setAttribute("aria-invalid", String(!valid));
         if (!valid && !pertama) pertama = input;
     });
     if (pertama) pertama.focus();
     return !pertama;
 }
-const el = id => document.getElementById(id);
-el("kirim").onsubmit = event => {
+// 08xxx / +62xxx diubah ke 62xxx, sama seperti format nomor di database.
+const normal = hp => { const d = hp.replace(/[\s-+]/g, ""); return d.startsWith("0") ? `62${d.slice(1)}` : d; };
+
+async function muatDaftar() {
+    try {
+        const { data } = await api("/admin/announcements?limit=50");
+        $("daftar").removeAttribute("aria-busy");
+        $("kosong").hidden = data.length > 0;
+        $("daftar").replaceChildren(...data.map(a => {
+            const row = el("div", "invoice");
+            const kiri = el("div");
+            kiri.append(el("p", "t-h3", a.title), el("p", "t-small t-muted", `${CAKUPAN[a.scope] || a.scope} · ${tgl(a.createdAt)}`));
+            const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
+            hapus.type = "button";
+            hapus.setAttribute("aria-label", `Hapus pengumuman ${a.title}`);
+            hapus.onclick = async () => {
+                if (!confirm("Hapus pengumuman ini?")) return;
+                hapus.disabled = true;
+                try { await api(`/admin/announcements/${a.id}`, { method: "DELETE" }); toast("Pengumuman dihapus."); muatDaftar(); }
+                catch (error) { hapus.disabled = false; galat(error); }
+            };
+            row.append(kiri, hapus);
+            return row;
+        }));
+    } catch (error) { $("daftar").removeAttribute("aria-busy"); $("daftar").replaceChildren(); galat(error); }
+}
+
+async function muatPilihan() {
+    try {
+        const [pk, jd] = await Promise.all([api("/admin/packages?limit=100"), api(`/admin/menu-schedules?from=${hariIni()}&limit=100`)]);
+        $("pk").replaceChildren(...pk.data.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; }));
+        const nama = new Map(pk.data.map(p => [p.id, p.name]));
+        $("jd").replaceChildren(...jd.data.map(j => { const o = el("option", "", `${tgl(`${j.date}T00:00:00+07:00`)} · ${j.deliveryTime.range} · ${nama.get(j.packageId) || "Paket"}`); o.value = j.id; return o; }));
+    } catch (error) { galat(error); }
+}
+$("c").addEventListener("change", () => { $("fPaket").hidden = $("c").value !== "PACKAGE"; $("fJadwal").hidden = $("c").value !== "SCHEDULE"; });
+
+$("kirim").onsubmit = async event => {
     event.preventDefault();
-    const hp = el("hp").value.replace(/[\s-]/g, "");
-    if (!periksa([
-        [el("hp"), /^(\+?62|0)8\d{8,12}$/.test(hp)],
-        [el("j1"), el("j1").value.trim() !== ""],
-        [el("b1"), el("b1").value.trim() !== ""],
-    ])) return;
-    toast("Notifikasi terkirim (demo).");
-    event.target.reset();
+    const hp = normal($("hp").value);
+    if (!periksa([[$("hp"), /^628\d{8,12}$/.test(hp)], [$("j1"), $("j1").value.trim() !== ""], [$("b1"), $("b1").value.trim() !== ""]])) return;
+    const tombol = event.target.querySelector("button[type=submit]");
+    tombol.disabled = true;
+    galat(null);
+    try {
+        const { data } = await api(`/admin/users?role=CUSTOMER&search=${encodeURIComponent(hp)}&limit=5`);
+        const user = data.find(u => u.phone === hp);
+        if (!user) { periksa([[$("hp"), false]]); toast("Pelanggan dengan nomor itu tidak ditemukan.", "error"); return; }
+        await api("/admin/notifications/broadcast", { method: "POST", body: { title: $("j1").value.trim(), body: $("b1").value.trim(), target: "CUSTOMER", userId: user.id } });
+        toast(`Notifikasi terkirim ke ${user.name || hp}.`);
+        event.target.reset();
+    } catch (error) { galat(error); }
+    finally { tombol.disabled = false; }
 };
-el("umum").onsubmit = event => {
+$("umum").onsubmit = async event => {
     event.preventDefault();
-    if (!periksa([[el("j2"), el("j2").value.trim() !== ""], [el("b2"), el("b2").value.trim() !== ""]])) return;
-    if (!confirm(`Kirim pengumuman ini ke: ${el("c").value.toLowerCase()}?`)) return;
-    toast("Pengumuman terkirim (demo).");
-    event.target.reset();
+    const cakupan = $("c").value;
+    const butuhJadwal = cakupan === "SCHEDULE";
+    if (!periksa([[$("j2"), $("j2").value.trim() !== ""], [$("b2"), $("b2").value.trim() !== ""], ...(butuhJadwal ? [[$("jd"), $("jd").value !== ""]] : [])])) return;
+    const label = $("c").selectedOptions[0].textContent.toLowerCase();
+    if (!confirm(`Kirim pengumuman ini ke: ${label}?`)) return;
+    const body = { title: $("j2").value.trim(), body: $("b2").value.trim(), target: cakupan };
+    if (cakupan === "PACKAGE") body.packageId = $("pk").value;
+    if (butuhJadwal) body.menuScheduleId = $("jd").value;
+    const tombol = event.target.querySelector("button[type=submit]");
+    tombol.disabled = true;
+    galat(null);
+    try {
+        const { data } = await api("/admin/notifications/broadcast", { method: "POST", body });
+        toast(`Pengumuman terkirim ke ${data.recipientCount} pelanggan.`);
+        event.target.reset();
+        $("c").dispatchEvent(new Event("change"));
+        muatDaftar();
+    } catch (error) { galat(error); }
+    finally { tombol.disabled = false; }
 };
-document.querySelectorAll(".hapus").forEach(b => {
-    b.onclick = () => {
-        if (confirm("Hapus pengumuman ini?")) b.closest(".invoice").remove();
-    };
-});
+muatDaftar(); muatPilihan();
 </script></body></html>

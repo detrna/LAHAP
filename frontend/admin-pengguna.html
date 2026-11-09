@@ -3,73 +3,82 @@
 <title>Pengguna · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<div class="row-between"><h1 class="t-h1">Pengguna</h1><button class="btn btn-primary" id="tambah">Tambah Pengguna</button></div>
+<div class="row-between"><h1 class="t-h1">Pengguna</h1><button class="btn btn-primary" id="tambah" type="button">Tambah Pengguna</button></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <form class="card stack" id="form" hidden novalidate>
  <h2 class="t-h3" id="judulForm">Tambah pengguna</h2>
  <div class="field"><label for="n">Nama</label><input class="input" id="n" maxlength="100"><p class="error-msg" hidden>Nama wajib diisi.</p></div>
  <div class="field"><label for="hp">Nomor HP</label><input class="input" id="hp" inputmode="tel" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid.</p></div>
- <div class="field"><label for="r">Peran</label><select class="select input" id="r"><option>Admin</option><option>Dapur</option><option>Kurir</option></select></div>
+ <div class="field"><label for="r">Peran</label><select class="select input" id="r"><option value="ADMIN">Admin</option><option value="KITCHEN">Dapur</option><option value="COURIER">Kurir</option></select></div>
  <div class="field"><label for="p">Password awal</label><input class="input" id="p" type="password" minlength="8" maxlength="72" autocomplete="new-password"><p class="hint" id="hintPw">8 sampai 72 karakter.</p><p class="error-msg" hidden>Password harus 8 sampai 72 karakter.</p></div>
- <div class="row"><button class="btn btn-primary" type="submit">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
+ <div class="row"><button class="btn btn-primary" type="submit" id="simpan">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
-<section class="card" id="list"></section>
+<div class="field"><label for="cari">Cari nama atau nomor HP</label><input class="input" id="cari" type="search" autocomplete="off"></div>
+<section class="card"><p class="t-muted" id="kosong" hidden>Tidak ada pengguna.</p><div id="list" aria-busy="true"><div class="skeleton"></div></div></section>
 </main><script src="js/auth.js"></script>
 <script>
-// Ganti dengan API pengguna. Tidak ada hapus, hanya nonaktifkan lewat ubah status.
 const $ = id => document.getElementById(id);
-const pengguna = [
-    { nama: "Siti", hp: "083333", peran: "Dapur", aktif: true },
-    { nama: "Ahmad Fauzi", hp: "084444", peran: "Kurir", aktif: true },
-    { nama: "Budi Santoso", hp: "082222", peran: "Pelanggan", aktif: true },
-];
-let sedangUbah = null;
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const PERAN = { ADMIN: "Admin", KITCHEN: "Dapur", COURIER: "Kurir", CUSTOMER: "Pelanggan" };
+function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
+let sedangUbah = null, ke = 0;
 
-function gambar() {
-    $("list").replaceChildren(...pengguna.map(u => {
-        const baris = document.createElement("div");
-        baris.className = "invoice";
-        baris.innerHTML = `<div><p class="t-h3"></p><p class="t-small t-muted"></p></div><div class="row"><span class="badge"></span><button class="btn btn-secondary btn-sm ubah" type="button">Ubah</button><button class="btn btn-sm toggle" type="button"></button></div>`;
-        baris.querySelector(".t-h3").textContent = u.nama;
-        baris.querySelector(".t-small").textContent = `${u.hp} · ${u.peran}`;
-        setBadge(baris.querySelector(".badge"), u.aktif ? "badge--success" : "badge--expire", u.aktif ? "Aktif" : "Nonaktif");
-        const toggle = baris.querySelector(".toggle");
-        toggle.textContent = u.aktif ? "Nonaktifkan" : "Aktifkan";
-        toggle.classList.add(u.aktif ? "btn-danger" : "btn-secondary");
-        toggle.setAttribute("aria-label", `${toggle.textContent} ${u.nama}`);
-        const ubah = baris.querySelector(".ubah");
-        ubah.setAttribute("aria-label", `Ubah ${u.nama}`);
-        // Peran Pelanggan dikelola dari alur pendaftaran, bukan dari form staf ini.
-        if (u.peran === "Pelanggan") ubah.hidden = true;
-        ubah.onclick = () => bukaForm(u);
-        toggle.onclick = () => {
-            if (u.aktif && !confirm("Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.")) return;
-            u.aktif = !u.aktif;
-            gambar();
-            toast(u.aktif ? "Pengguna diaktifkan." : "Pengguna dinonaktifkan.");
-        };
-        return baris;
-    }));
+async function muat() {
+    const ini = ++ke;
+    const kata = $("cari").value.trim();
+    try {
+        const { data } = await api(`/admin/users?limit=100${kata ? `&search=${encodeURIComponent(kata)}` : ""}`);
+        if (ini !== ke) return;
+        $("list").removeAttribute("aria-busy");
+        $("kosong").hidden = data.length > 0;
+        $("list").replaceChildren(...data.map(u => {
+            const baris = el("div", "invoice");
+            const kiri = el("div");
+            kiri.append(el("p", "t-h3", u.name || "Tanpa nama"), el("p", "t-small t-muted", `${u.phone} · ${PERAN[u.role] || u.role}`));
+            const kanan = el("div", "row");
+            kanan.append(el("span", `badge ${u.isActive ? "badge--success" : "badge--expire"}`, u.isActive ? "Aktif" : "Nonaktif"));
+            if (u.role !== "CUSTOMER") {
+                const ubah = el("button", "btn btn-secondary btn-sm", "Ubah");
+                ubah.type = "button";
+                ubah.setAttribute("aria-label", `Ubah ${u.name}`);
+                ubah.onclick = () => bukaForm(u);
+                kanan.append(ubah);
+            }
+            const toggle = el("button", `btn btn-sm ${u.isActive ? "btn-danger" : "btn-secondary"}`, u.isActive ? "Nonaktifkan" : "Aktifkan");
+            toggle.type = "button";
+            toggle.setAttribute("aria-label", `${toggle.textContent} ${u.name}`);
+            toggle.onclick = async () => {
+                if (u.isActive && !confirm("Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.")) return;
+                toggle.disabled = true;
+                galat(null);
+                try { await api(`/admin/users/${u.id}`, { method: "PATCH", body: { isActive: !u.isActive } }); toast(u.isActive ? "Pengguna dinonaktifkan." : "Pengguna diaktifkan."); muat(); }
+                catch (error) { toggle.disabled = false; galat(error); }
+            };
+            kanan.append(toggle);
+            baris.append(kiri, kanan);
+            return baris;
+        }));
+        galat(null);
+    } catch (error) { if (ini !== ke) return; $("list").removeAttribute("aria-busy"); $("list").replaceChildren(); galat(error); }
 }
 
 function bukaForm(u) {
     sedangUbah = u || null;
-    $("judulForm").textContent = u ? `Ubah ${u.nama}` : "Tambah pengguna";
-    $("n").value = u ? u.nama : "";
-    $("hp").value = u ? u.hp : "";
-    $("r").value = u ? u.peran : "Admin";
+    $("judulForm").textContent = u ? `Ubah ${u.name}` : "Tambah pengguna";
+    $("n").value = u ? u.name : "";
+    $("hp").value = u ? u.phone : "";
+    $("r").value = u && ["ADMIN", "KITCHEN", "COURIER"].includes(u.role) ? u.role : "ADMIN";
     $("p").value = "";
-    $("p").required = !u;
     $("hintPw").textContent = u ? "Kosongkan jika password tidak diubah. Jika diisi: 8 sampai 72 karakter." : "8 sampai 72 karakter.";
     $("form").hidden = false;
     $("n").focus();
 }
-
 function periksa(daftar) {
     let pertama = null;
     daftar.forEach(([input, valid]) => {
-        const field = input.closest(".field");
-        field.classList.toggle("is-error", !valid);
-        const pesan = field.querySelector(".error-msg");
+        const f = input.closest(".field");
+        f.classList.toggle("is-error", !valid);
+        const pesan = f.querySelector(".error-msg");
         if (pesan) pesan.hidden = valid;
         input.setAttribute("aria-invalid", String(!valid));
         if (!valid && !pertama) pertama = input;
@@ -77,26 +86,28 @@ function periksa(daftar) {
     if (pertama) pertama.focus();
     return !pertama;
 }
-
 $("tambah").onclick = () => bukaForm(null);
 $("batal").onclick = () => { $("form").hidden = true; };
-$("form").onsubmit = event => {
+let tunda;
+$("cari").addEventListener("input", () => { clearTimeout(tunda); tunda = setTimeout(muat, 350); });
+$("form").onsubmit = async event => {
     event.preventDefault();
     const pw = $("p").value;
     const pwValid = sedangUbah && pw === "" ? true : pw.length >= 8 && pw.length <= 72;
     const hp = $("hp").value.replace(/[\s-]/g, "");
-    if (!periksa([
-        [$("n"), $("n").value.trim() !== ""],
-        [$("hp"), /^(\+?62|0)8\d{8,12}$/.test(hp)],
-        [$("p"), pwValid],
-    ])) return;
-    const data = { nama: $("n").value.trim(), hp: $("hp").value.trim(), peran: $("r").value };
-    if (sedangUbah) Object.assign(sedangUbah, data);
-    else pengguna.push({ ...data, aktif: true });
-    gambar();
-    $("form").hidden = true;
-    event.target.reset();
-    toast("Pengguna disimpan (demo).");
+    if (!periksa([[$("n"), $("n").value.trim() !== ""], [$("hp"), /^(\+?62|0)8\d{8,12}$/.test(hp)], [$("p"), pwValid]])) return;
+    const body = { name: $("n").value.trim(), phone: hp, role: $("r").value };
+    if (pw) body.password = pw;
+    $("simpan").disabled = true;
+    galat(null);
+    try {
+        if (sedangUbah) await api(`/admin/users/${sedangUbah.id}`, { method: "PATCH", body });
+        else await api("/admin/users", { method: "POST", body });
+        toast("Pengguna disimpan.");
+        $("form").hidden = true;
+        muat();
+    } catch (error) { galat(error); }
+    finally { $("simpan").disabled = false; }
 };
-gambar();
+muat();
 </script></body></html>
