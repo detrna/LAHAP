@@ -2,18 +2,18 @@ import "../layout/boot.js";
 import { api, ApiError } from "../core/api.js";
 import { errorMessage } from "../core/errors.js";
 import { currentUser } from "../core/session.js";
-import { muatBisnis } from "../features/bisnis.js";
 import { bayarSnap } from "../features/pelanggan.js";
 import { pasangPeta } from "../features/peta.js";
-import { $, el } from "../ui/dom.js";
-import { formatTanggal, hariIni, rp, tambahHari } from "../ui/format.js";
+import { $ } from "../ui/dom.js";
+import { formatTanggal, hariIni, tambahHari } from "../ui/format.js";
 import { pesanForm, showIssues, tampilGalat } from "../ui/forms.js";
 import { toast } from "../ui/toast.js";
+import { tampilHarga, waktu } from "./checkout/rincian.js";
+import { tampilSukses } from "./checkout/sukses.js";
 
 const idPaket = new URLSearchParams(location.search).get("paket");
 const senin = tanggal => tambahHari(tanggal, -((new Date(`${tanggal}T00:00:00Z`).getUTCDay() + 6) % 7));
 const awalBulan = tanggal => `${tanggal.slice(0, 8)}01`;
-const waktu = item => item.time ?? item;
 
 let paket = null;
 let pin = null;
@@ -119,75 +119,6 @@ function kurang(body) {
         if (!pin) daftar.push("titik lokasi di peta");
     }
     return daftar;
-}
-
-function tampilJadwal(p) {
-    $("#jadwalBox").hidden = false;
-    $("#jadwalRingkas").textContent =
-        `${p.slotCount} slot, ${formatTanggal(p.startDate)} – ${formatTanggal(p.endDate)}.`;
-    const bentrok = p.slots.filter(x => x.clashingAllergies.length);
-    $("#bentrok").hidden = !bentrok.length;
-    $("#bentrok").textContent = bentrok.length
-        ? `${bentrok.length} slot mengandung alergenmu. Pesanan tetap bisa dibuat.`
-        : "";
-    $("#jadwalDaftar").replaceChildren(
-        ...p.slots.map(x => {
-            const row = el("div", "slot");
-            const kiri = el("div");
-            kiri.append(
-                el("p", "t-h3", `${formatTanggal(x.date, "hari")} · ${waktu(x.deliveryTime)}`),
-                el("p", "t-small t-muted", x.menu ? x.menu.name : ""),
-            );
-            row.append(kiri);
-            if (x.clashingAllergies.length) {
-                const nama = x.clashingAllergies.map(a => a.name).join(", ");
-                row.append(
-                    el(
-                        "p",
-                        "t-small",
-                        `Mengandung ${nama} (alergimu). ${x.hasAlternative ? "Dapur bisa memberi menu alternatif." : "Belum ada menu alternatif untuk hari ini."}`,
-                    ),
-                );
-            }
-            return row;
-        }),
-    );
-}
-
-function tampilHarga(p, antar) {
-    tampilJadwal(p);
-    const luar = antar && p.delivery && !p.delivery.available;
-    $("#luarJangkau").hidden = !luar;
-    $("#luarJangkau").textContent = luar
-        ? `Titik ini ${p.delivery.distanceKm} km dari dapur, di luar jangkauan antar (maksimal ${p.delivery.maxDistanceKm} km). Pindahkan titik atau pilih Ambil Sendiri.`
-        : "";
-    const info = antar && p.delivery && p.delivery.available && p.delivery.distanceKm != null;
-    $("#infoJarak").textContent = info
-        ? `Jarak ${p.delivery.distanceKm} km · ${p.delivery.feePerSlot > 0 ? `ongkir ${rp(p.delivery.feePerSlot)}/slot` : "gratis ongkir"}`
-        : "";
-    if (luar) {
-        $("#rincian").hidden = true;
-        $("#kosongHarga").hidden = false;
-        $("#kosongHarga").textContent = "Pilih titik dalam jangkauan atau ambil sendiri untuk melihat harga.";
-        return false;
-    }
-    $("#kosongHarga").hidden = true;
-    $("#rincian").hidden = false;
-    $("#rMakan").textContent = `${p.slotCount} slot × ${rp(p.pricePerPortion)}`;
-    $("#vMakan").textContent = rp(p.foodSubtotal);
-    $("#rTier").hidden = !p.tierDiscount;
-    $("#vTier").textContent = `−${rp(p.tierDiscount)}`;
-    $("#rKode").hidden = !p.promoDiscount;
-    $("#vKode").textContent = `−${rp(p.promoDiscount)}`;
-    $("#rOngkir").hidden = !p.deliveryFeeTotal;
-    $("#tOngkir").textContent = `Ongkir ${p.slotCount} slot × ${rp(p.deliveryFeePerSlot)}`;
-    $("#vOngkir").textContent = rp(p.deliveryFeeTotal);
-    $("#vTotal").textContent = rp(p.totalPrice);
-    $("#batas").textContent = p.cutoffAt ? `Batas pesan: ${formatTanggal(p.cutoffAt, "waktu")} WIB.` : "";
-    const alasan = p.promo && p.promo.reason;
-    $("#promoErr").hidden = !alasan;
-    $("#promoErr .msg").textContent = alasan || "";
-    return true;
 }
 
 async function hitung() {
@@ -338,29 +269,5 @@ $("#form").addEventListener("submit", async event => {
         }
     }
 });
-
-async function tampilSukses(data, ke) {
-    const b = await muatBisnis();
-    const alamat = b && b.address ? ` (${b.address})` : "";
-    const lihat = el("a", "btn btn-primary", "Lihat Pesanan");
-    lihat.href = ke;
-    const kembali = el("a", "btn btn-secondary", "Kembali ke Paket");
-    kembali.href = "index.html";
-    const aksi = el("div", "row");
-    aksi.append(lihat, kembali);
-    $("#sukses").replaceChildren(
-        el("h2", "t-h2", "Pesanan dibuat"),
-        el("p", "", `Bayar ${rp(data.subscription.totalPrice)} tunai di kasir${alamat} secepatnya.`),
-        el(
-            "p",
-            "t-small t-muted",
-            "Pesanan yang belum dibayar batal otomatis. Admin memverifikasi pembayaranmu di kasir.",
-        ),
-        aksi,
-    );
-    $("#form").hidden = true;
-    $("#sukses").hidden = false;
-    $("#sukses").scrollIntoView({ block: "nearest", behavior: "smooth" });
-}
 
 muat();
