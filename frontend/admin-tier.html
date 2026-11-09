@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Tier · LAHAP</title>
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+    <body data-roles="admin">
+        <header class="app-header">
+            <div class="container">
+                <a class="brand" href="admin.html">LAHAP</a>
+                <nav class="nav"></nav>
+            </div>
+        </header>
+        <main class="container stack-lg">
+            <div class="row-between">
+                <div>
+                    <h1 class="t-h1">Tier loyalitas</h1>
+                    <p class="t-muted">Diskon tier dihitung dari subtotal makanan, bukan ongkir.</p>
+                </div>
+                <button class="btn btn-primary" id="tambah" type="button">Tambah Tier</button>
+            </div>
+            <div class="alert alert--error" id="galat" hidden><span class="alert-title">Terjadi kesalahan</span><span class="msg"></span></div>
+
+            <form class="card stack" id="form" novalidate hidden>
+                <h2 class="t-h3" id="judulForm">Tambah tier</h2>
+                <div class="alert alert--error" id="errForm" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
+                <div class="field">
+                    <label for="nama">Nama tier</label>
+                    <input class="input" id="nama" />
+                </div>
+                <div class="field">
+                    <label for="deskripsi">Deskripsi</label>
+                    <textarea class="textarea" id="deskripsi"></textarea>
+                </div>
+                <div class="grid grid-2">
+                    <div class="field">
+                        <label for="syarat">Syarat hari layanan berbayar</label>
+                        <input class="input" id="syarat" type="number" min="0" step="1" />
+                        <p class="hint">Harus unik di antara tier. Isi 0 untuk tier awal.</p>
+                    </div>
+                    <div class="field">
+                        <label for="durasi">Masa berlaku tier (hari)</label>
+                        <input class="input" id="durasi" type="number" min="1" max="3650" step="1" value="30" />
+                    </div>
+                    <div class="field">
+                        <label for="diskon">Diskon (%)</label>
+                        <input class="input" id="diskon" type="number" min="0" max="100" step="1" value="0" />
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="berkas">Foto tier</label>
+                    <input class="input" id="berkas" type="file" accept="image/jpeg,image/png,image/webp" />
+                    <div class="pkg-photo" id="pratinjau" style="margin-top: 12px" hidden>
+                        <img id="gambar" alt="Pratinjau foto tier" />
+                    </div>
+                </div>
+                <div class="row">
+                    <button class="btn btn-primary" type="submit">Simpan</button>
+                    <button class="btn btn-ghost" type="button" id="batal">Batal</button>
+                </div>
+            </form>
+
+            <section class="card" id="daftar" aria-busy="true"><p class="t-muted">Memuat tier...</p></section>
+        </main>
+        <script src="js/auth.js"></script>
+        <script>
+            const $ = selector => document.querySelector(selector);
+            const rupiah = value => `Rp${Number(value).toLocaleString("id-ID")}`;
+            let dipilih = null;
+            let fotoKey = null;
+
+            function el(tag, className, text) {
+                const node = document.createElement(tag);
+                if (className) node.className = className;
+                if (text !== undefined) node.textContent = text;
+                return node;
+            }
+
+            function tampil(box, message) {
+                box.hidden = !message;
+                box.querySelector(".msg").textContent = message || "";
+            }
+
+            function pesanError(error) {
+                const dariServer = error instanceof ApiError && ["CONFLICT", "INVALID_STATE", "VALIDATION_ERROR"].includes(error.code);
+                return dariServer ? error.message : errorMessage(error);
+            }
+
+            function pratinjau(url) {
+                $("#pratinjau").hidden = !url;
+                if (url) $("#gambar").src = url;
+            }
+
+            function bukaForm(tier) {
+                dipilih = tier;
+                $("#judulForm").textContent = tier ? "Ubah tier" : "Tambah tier";
+                $("#nama").value = tier ? tier.name : "";
+                $("#deskripsi").value = tier && tier.description ? tier.description : "";
+                $("#syarat").value = tier ? tier.requiredSubscriptionDays : "";
+                $("#durasi").value = tier ? tier.durationDays : 30;
+                $("#diskon").value = tier ? tier.discountPercent : 0;
+                fotoKey = tier ? tier.photoKey : null;
+                $("#berkas").value = "";
+                pratinjau(tier ? tier.photoUrl : null);
+                tampil($("#errForm"), "");
+                $("#form").hidden = false;
+                $("#form").scrollIntoView();
+            }
+
+            function barisTier(tier) {
+                const baris = el("div", "invoice");
+                const kiri = el("div", "row");
+                if (tier.photoUrl) {
+                    const foto = document.createElement("img");
+                    foto.src = tier.photoUrl;
+                    foto.alt = `Foto tier ${tier.name}`;
+                    foto.style.cssText = "width:64px;height:64px;object-fit:cover;border-radius:8px";
+                    kiri.append(foto);
+                } else {
+                    kiri.append(el("div", "avatar", tier.name.charAt(0).toUpperCase()));
+                }
+                const teks = el("div");
+                teks.append(
+                    el("p", "t-h3", tier.name),
+                    el("p", "t-small t-muted", `Mulai ${tier.requiredSubscriptionDays} hari layanan · diskon ${tier.discountPercent}% · berlaku ${tier.durationDays} hari`),
+                    el("p", "t-small t-muted", `${tier.memberCount} anggota · total diskon ${rupiah(tier.totalDiscountGiven)}`),
+                );
+                kiri.append(teks);
+
+                const kanan = el("div", "row");
+                const ubah = el("button", "btn btn-secondary btn-sm", "Ubah");
+                ubah.type = "button";
+                ubah.onclick = () => bukaForm(tier);
+                const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
+                hapus.type = "button";
+                hapus.onclick = async () => {
+                    if (!confirm(`Hapus tier ${tier.name}? Anggotanya dipindahkan ke tier yang sesuai.`)) return;
+                    tampil($("#galat"), "");
+                    try {
+                        await api(`/admin/tiers/${tier.id}`, { method: "DELETE" });
+                        await muat();
+                    } catch (error) {
+                        tampil($("#galat"), pesanError(error));
+                    }
+                };
+                kanan.append(ubah, hapus);
+                baris.append(kiri, kanan);
+                return baris;
+            }
+
+            async function muat() {
+                try {
+                    const { data } = await api("/admin/tiers");
+                    const urut = [...data].sort((a, b) => a.requiredSubscriptionDays - b.requiredSubscriptionDays);
+                    $("#daftar").replaceChildren(...(urut.length ? urut.map(barisTier) : [el("p", "empty", "Belum ada tier.")]));
+                } catch (error) {
+                    $("#daftar").replaceChildren();
+                    tampil($("#galat"), pesanError(error));
+                } finally {
+                    $("#daftar").removeAttribute("aria-busy");
+                }
+            }
+
+            $("#tambah").onclick = () => bukaForm(null);
+            $("#batal").onclick = () => {
+                $("#form").hidden = true;
+            };
+            $("#berkas").addEventListener("change", event => {
+                const berkas = event.target.files[0];
+                if (berkas) pratinjau(URL.createObjectURL(berkas));
+            });
+
+            $("#form").addEventListener("submit", async event => {
+                event.preventDefault();
+                const tombol = event.target.querySelector("button[type=submit]");
+                const syarat = Number($("#syarat").value);
+                const durasi = Number($("#durasi").value);
+                const diskon = Number($("#diskon").value);
+                const valid =
+                    $("#nama").value.trim() &&
+                    $("#syarat").value !== "" &&
+                    Number.isInteger(syarat) && syarat >= 0 &&
+                    Number.isInteger(durasi) && durasi >= 1 && durasi <= 3650 &&
+                    diskon >= 0 && diskon <= 100;
+                if (!valid) {
+                    tampil($("#errForm"), "Isi nama, syarat hari (0 atau lebih), masa berlaku 1 sampai 3650 hari, dan diskon 0 sampai 100 persen.");
+                    return;
+                }
+                tombol.disabled = true;
+                tampil($("#errForm"), "");
+                try {
+                    const berkas = $("#berkas").files[0];
+                    if (berkas) fotoKey = (await upload("tiers", berkas)).key;
+                    const body = {
+                        name: $("#nama").value.trim(),
+                        requiredSubscriptionDays: syarat,
+                        durationDays: durasi,
+                        discountPercent: diskon,
+                    };
+                    if ($("#deskripsi").value.trim()) body.description = $("#deskripsi").value.trim();
+                    if (fotoKey) body.photoKey = fotoKey;
+                    await api(dipilih ? `/admin/tiers/${dipilih.id}` : "/admin/tiers", {
+                        method: dipilih ? "PATCH" : "POST",
+                        body,
+                    });
+                    $("#form").hidden = true;
+                    await muat();
+                } catch (error) {
+                    tampil($("#errForm"), pesanError(error));
+                } finally {
+                    tombol.disabled = false;
+                }
+            });
+
+            muat();
+        </script>
+    </body>
+</html>

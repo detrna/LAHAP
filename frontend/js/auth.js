@@ -17,6 +17,7 @@ const MENU = {
         ["Menu", "admin-menu.html"],
         ["Paket", "admin-paket.html"],
         ["Promo", "admin-promo.html"],
+        ["Tier", "admin-tier.html"],
         ["Pembayaran", "admin-pembayaran.html"],
         ["Bahan", "admin-bahan.html"],
         ["Pesanan", "admin-pesanan.html"],
