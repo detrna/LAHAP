@@ -17,7 +17,7 @@ const allIds = [
     BUSINESS.id,
     ...Object.values(ALLERGIES).map(a => a.id),
     ...USERS.map(u => u.id),
-    ...TIERS.map(t => t.id),
+    ...Object.values(TIERS).map(t => t.id),
     ...Object.values(INGREDIENTS).map(i => i.id),
     ...Object.values(MENUS).map(m => m.id),
     ...Object.values(PACKAGES).map(p => p.id),
@@ -65,10 +65,10 @@ describe("seed data (unit)", () => {
     });
 
     it("keeps tier thresholds unique and discounts within 0–100%", () => {
-        const days = TIERS.map(t => t.requiredSubscriptionDays);
+        const days = Object.values(TIERS).map(t => t.requiredSubscriptionDays);
         expect(new Set(days).size).toBe(days.length);
-        for (const tier of TIERS) expect(Number(tier.discountPercent)).toBeGreaterThanOrEqual(0);
-        for (const tier of TIERS) expect(Number(tier.discountPercent)).toBeLessThanOrEqual(100);
+        for (const tier of Object.values(TIERS)) expect(Number(tier.discountPercent)).toBeGreaterThanOrEqual(0);
+        for (const tier of Object.values(TIERS)) expect(Number(tier.discountPercent)).toBeLessThanOrEqual(100);
     });
 
     describe("menu components", () => {

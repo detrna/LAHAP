@@ -1,31 +1,30 @@
 import { seedId } from "../../shared/seed-id.js";
 
-export const TIERS = [
-    {
+export const TIERS = {
+    biasa: {
         id: seedId("tier", 1),
         name: "Biasa",
         description: "Tier awal untuk semua pelanggan.",
         requiredSubscriptionDays: 0,
         durationDays: 30,
         discountPercent: "0.00",
-        photoKey: null,
     },
-    {
+    silver: {
         id: seedId("tier", 2),
         name: "Silver",
         description: "Diskon 5% setelah 30 hari layanan.",
         requiredSubscriptionDays: 30,
         durationDays: 30,
         discountPercent: "5.00",
-        photoKey: null,
     },
-    {
+    gold: {
         id: seedId("tier", 3),
         name: "Gold",
         description: "Diskon 10% setelah 60 hari layanan.",
         requiredSubscriptionDays: 60,
         durationDays: 30,
         discountPercent: "10.00",
-        photoKey: null,
     },
-] as const;
+} as const;
+
+export const tierPhotoKey = (id: string) => `tiers/seed/${id}.webp`;

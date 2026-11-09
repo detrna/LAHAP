@@ -15,7 +15,7 @@ export const SEED_IDS = {
     business: [BUSINESS.id],
     allergies: Object.values(ALLERGIES).map(a => a.id),
     users: USERS.map(u => u.id),
-    tiers: TIERS.map(t => t.id),
+    tiers: Object.values(TIERS).map(t => t.id),
     ingredients: Object.values(INGREDIENTS).map(i => i.id),
     menus: Object.values(MENUS).map(m => m.id),
     packages: Object.values(PACKAGES).map(p => p.id),

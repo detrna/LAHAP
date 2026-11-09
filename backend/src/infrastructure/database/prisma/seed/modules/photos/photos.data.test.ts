@@ -4,19 +4,21 @@ import { describe, expect, it } from "vitest";
 import { INGREDIENTS, ingredientPhotoKey } from "../ingredients/ingredients.data.js";
 import { MENUS, menuPhotoKey } from "../menus/menus.data.js";
 import { PACKAGES, packagePhotoKey } from "../packages/packages.data.js";
+import { TIERS, tierPhotoKey } from "../tiers/tiers.data.js";
 import { SEED_ASSETS_DIR, SEED_PHOTOS } from "./photos.data.js";
 
 const expectedKeys = [
     ...Object.values(PACKAGES).map(p => packagePhotoKey(p.id)),
     ...Object.values(MENUS).map(m => menuPhotoKey(m.id)),
     ...Object.values(INGREDIENTS).map(i => ingredientPhotoKey(i.id)),
+    ...Object.values(TIERS).map(t => tierPhotoKey(t.id)),
 ];
 
 const isWebp = (bytes: Buffer): boolean =>
     bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
 
 describe("seed photos (unit)", () => {
-    it("has one photo for every seeded package, menu and ingredient key", () => {
+    it("has one photo for every seeded package, menu, ingredient and tier key", () => {
         expect(SEED_PHOTOS.map(photo => photo.key).sort()).toEqual([...expectedKeys].sort());
     });
 

@@ -1,10 +1,12 @@
 import type { SeedContext } from "../../seed-context.js";
-import { TIERS } from "./tiers.data.js";
+import { TIERS, tierPhotoKey } from "./tiers.data.js";
 
 export async function seedTiers({ tx, logger }: SeedContext): Promise<number> {
-    for (const tier of TIERS) {
+    const tiers = Object.values(TIERS);
+    for (const tier of tiers) {
         const { id, ...fields } = tier;
-        await tx.orm.public.Tier.upsert({ create: tier, update: fields });
+        const row = { ...fields, photoKey: tierPhotoKey(id) };
+        await tx.orm.public.Tier.upsert({ create: { id, ...row }, update: row });
         logger.info(
             {
                 id,
@@ -15,5 +17,5 @@ export async function seedTiers({ tx, logger }: SeedContext): Promise<number> {
             "upserted tier",
         );
     }
-    return TIERS.length;
+    return tiers.length;
 }

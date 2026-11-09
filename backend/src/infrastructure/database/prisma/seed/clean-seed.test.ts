@@ -105,7 +105,7 @@ describe("cleanSeed (unit)", () => {
         expect(SEED_IDS.business).toEqual([BUSINESS.id]);
         expect(SEED_IDS.allergies).toEqual(Object.values(ALLERGIES).map(a => a.id));
         expect(SEED_IDS.users).toEqual(USERS.map(u => u.id));
-        expect(SEED_IDS.tiers).toEqual(TIERS.map(t => t.id));
+        expect(SEED_IDS.tiers).toEqual(Object.values(TIERS).map(t => t.id));
         expect(SEED_IDS.ingredients).toEqual(Object.values(INGREDIENTS).map(i => i.id));
         expect(SEED_IDS.menus).toEqual(Object.values(MENUS).map(m => m.id));
         expect(SEED_IDS.packages).toEqual(Object.values(PACKAGES).map(p => p.id));
