@@ -10,12 +10,17 @@ function el(tag, className, text) {
     return node;
 }
 
+function tautan(href, className, text) {
+    const a = el("a", className, text);
+    a.href = href;
+    return a;
+}
+
 function isiFoto(wadah, url, alt, teksKosong) {
     wadah.textContent = teksKosong;
     if (!url) return;
     const img = el("img");
     img.alt = alt;
-    img.loading = "lazy";
     img.onload = () => wadah.replaceChildren(img);
     img.onerror = () => (wadah.textContent = teksKosong);
     img.src = url;
@@ -56,21 +61,86 @@ function alergiBentrok(menu, alergiUser) {
     return (menu.allergies || []).filter(a => alergiUser.has(a.id));
 }
 
-async function muatPaket() {
-    const { data } = await api("/packages?limit=100", { auth: false });
-    return data.filter(p => p.isAvailable);
+function teksAlergen(menu) {
+    const alergen = (menu.allergies || []).map(a => a.name.toLowerCase());
+    return alergen.length ? `Mengandung: ${alergen.join(", ")}` : "Tidak ada alergen terdaftar";
 }
 
-async function muatMenu(daftarPaket) {
-    const dari = tanggalWib(RENTANG_MENU.dariHari);
-    const sampai = tanggalWib(RENTANG_MENU.sampaiHari);
+function hrefPaket(paket) {
+    return `paket.html?id=${encodeURIComponent(paket.id)}`;
+}
+
+function bisaPesan() {
+    const user = currentUser();
+    return !user || user.role === "CUSTOMER";
+}
+
+function tombolPesan(paket, label = "Pesan Paket", kelas = "btn btn-primary") {
+    if (bisaPesan()) return tautan(`checkout.html?paket=${encodeURIComponent(paket.id)}`, kelas, label);
+    const tombol = el("button", kelas, "Masuk sebagai pelanggan untuk memesan");
+    tombol.type = "button";
+    tombol.disabled = true;
+    return tombol;
+}
+
+let bisnisDimuat = null;
+
+function muatBisnis() {
+    if (!bisnisDimuat)
+        bisnisDimuat = api("/business", { auth: false })
+            .then(({ data }) => data)
+            .catch(() => null);
+    return bisnisDimuat;
+}
+
+function formatWhatsapp(nomor) {
+    const sisa = nomor.slice(2);
+    const kelompok = [sisa.slice(0, 3), ...(sisa.slice(3).match(/.{1,4}/g) || [])];
+    return `+${nomor.slice(0, 2)} ${kelompok.join("-")}`;
+}
+
+function hrefLokasi(bisnis) {
+    const { latitude: lat, longitude: lng } = bisnis;
+    return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+}
+
+function tautanLuar(href, text) {
+    const a = tautan(href, "", text);
+    a.target = "_blank";
+    a.rel = "noopener";
+    return a;
+}
+
+async function pasangFooter(footer) {
+    const bisnis = await muatBisnis();
+    if (!bisnis) return;
+    const judul = el("p");
+    judul.append(el("strong", "", bisnis.name), " · Katering langganan harian, mingguan, dan bulanan.");
+    const alamat = el("p");
+    alamat.append(`Ambil pesanan di ${bisnis.address} · `, tautanLuar(hrefLokasi(bisnis), "Lihat lokasi"));
+    const kontak = el("p");
+    kontak.append(
+        `Butuh bantuan pesanan? WhatsApp ${formatWhatsapp(bisnis.whatsappNumber)} · `,
+        tautanLuar(`https://wa.me/${bisnis.whatsappNumber}`, "Chat sekarang"),
+    );
+    footer.replaceChildren(judul, alamat, kontak);
+}
+
+async function muatPaket() {
+    const { data } = await api("/packages?limit=100", { auth: false });
+    return data;
+}
+
+async function muatMenu(daftarPaket, rentang = RENTANG_MENU) {
+    const dari = tanggalWib(rentang.dariHari);
+    const sampai = tanggalWib(rentang.sampaiHari);
     const hasil = await Promise.allSettled(
         daftarPaket.map(async paket => {
             const { data } = await api(
                 `/packages/${encodeURIComponent(paket.id)}/schedules?from=${dari}&to=${sampai}`,
                 { auth: false },
             );
-            return data.filter(jadwal => jadwal.isPublished && menuUtama(jadwal)).map(jadwal => ({ paket, jadwal }));
+            return data.filter(menuUtama).map(jadwal => ({ paket, jadwal }));
         }),
     );
     const daftar = hasil
@@ -86,15 +156,16 @@ async function muatMenu(daftarPaket) {
 
 function kartuPaket(paket) {
     const card = el("article", "card card-flush");
-    const foto = el("div", "pkg-photo");
+    const foto = tautan(hrefPaket(paket), "pkg-photo");
+    foto.setAttribute("aria-label", `Lihat detail ${paket.name}`);
     isiFoto(foto, paket.photoUrl, paket.name, "Foto paket");
     const body = el("div", "pkg-body stack");
+    const judul = el("h3", "t-h3");
+    judul.append(tautan(hrefPaket(paket), "", paket.name));
     const harga = el("p");
     harga.append(el("span", "price-big", rp(paket.basePrice)), el("span", "t-small t-muted", " per porsi"));
     const waktu = (paket.deliveryTimes || []).map(labelWaktu).join(" · ");
-    const aksi = el("a", "btn btn-primary btn-block", "Pilih Paket");
-    aksi.href = `checkout.html?paket=${encodeURIComponent(paket.id)}`;
-    body.append(el("h3", "t-h3", paket.name));
+    body.append(judul);
     if (paket.description) body.append(el("p", "t-muted", paket.description));
     body.append(harga, el("p", "t-small t-muted", `Periode: ${(paket.periods || []).join(", ")}`));
     if (waktu) body.append(el("p", "t-small t-muted", `Waktu makan: ${waktu}`));
@@ -106,12 +177,15 @@ function kartuPaket(paket) {
                 `Bisa dipesan sampai ${formatTanggal(paket.endAt, { day: "numeric", month: "short", year: "numeric" })}`,
             ),
         );
+    const aksi = el("div", "row");
+    aksi.append(tombolPesan(paket), tautan(hrefPaket(paket), "btn btn-secondary", "Lihat Menu"));
     body.append(aksi);
     card.append(foto, body);
     return card;
 }
 
-function kartuMenu(item, alergiUser) {
+function kartuMenu(item, alergiUser, opsi = {}) {
+    const { tampilPaket = true, tampilAksi = true, rinci = false } = opsi;
     const utama = menuUtama(item.jadwal);
     const alternatif = menuAlternatif(item.jadwal);
     const card = el("article", "card menu-card");
@@ -119,41 +193,43 @@ function kartuMenu(item, alergiUser) {
     isiFoto(foto, utama.photoUrl, utama.name, "Foto menu");
     const info = el("div", "menu-info stack");
     const waktu = labelWaktu(item.jadwal.deliveryTime);
-    info.append(
-        el("p", "label", waktu ? `${waktu} · ${item.paket.name}` : item.paket.name),
-        el("h3", "t-h2", utama.name),
-    );
+    const label = [waktu, tampilPaket ? item.paket.name : ""].filter(Boolean).join(" · ");
+    if (label) info.append(el("p", "label", label));
+    info.append(el("h3", "t-h2", utama.name));
     if (utama.description) info.append(el("p", "t-muted", utama.description));
-    const alergen = (utama.allergies || []).map(a => a.name.toLowerCase());
-    info.append(
-        el(
-            "p",
-            "t-small t-muted",
-            alergen.length ? `Mengandung: ${alergen.join(", ")}` : "Tidak ada alergen terdaftar",
-        ),
-    );
+    if (rinci && (utama.tags || []).length) {
+        const tags = el("div", "row");
+        tags.append(...utama.tags.map(tag => el("span", "badge badge--expire", tag)));
+        info.append(tags);
+    }
+    if (rinci && (utama.components || []).length)
+        info.append(el("p", "t-small", `Isi: ${utama.components.map(c => c.name).join(", ")}`));
+    info.append(el("p", "t-small t-muted", teksAlergen(utama)));
     const bentrok = alergiBentrok(utama, alergiUser).map(a => a.name.toLowerCase());
     if (bentrok.length) {
         const peringatan = el("div", "alert alert--warning");
-        peringatan.append(
-            el("span", "alert-title", "Cek alergimu"),
-            `Menu ini mengandung ${bentrok.join(", ")}, yang ada di daftar alergimu.`,
-        );
+        let teks = `Menu ini mengandung ${bentrok.join(", ")}, yang ada di daftar alergimu.`;
+        if (alternatif && alergiBentrok(alternatif, alergiUser).length === 0)
+            teks += ` Menu alternatif (${alternatif.name}) tidak mengandung alergen dari daftarmu.`;
+        peringatan.append(el("span", "alert-title", "Cek alergimu"), teks);
         info.append(peringatan);
     }
-    if (alternatif) info.append(el("p", "t-small t-muted", `Menu alternatif: ${alternatif.name}`));
-    const aksi = el("a", "btn btn-primary", `Pesan ${item.paket.name}`);
-    aksi.href = `checkout.html?paket=${encodeURIComponent(item.paket.id)}`;
-    info.append(aksi);
+    if (alternatif)
+        info.append(el("p", "t-small t-muted", `Menu alternatif: ${alternatif.name} · ${teksAlergen(alternatif)}`));
+    if (tampilAksi) {
+        const aksi = el("div", "row");
+        aksi.append(tombolPesan(item.paket, `Pesan ${item.paket.name}`));
+        info.append(aksi);
+    }
     card.append(foto, info);
     return card;
 }
 
-function pasangMenu({ box, tabs, isi }, daftar, alergiUser) {
+function pasangMenu({ box, tabs, isi }, daftar, alergiUser, opsi = {}) {
     const semuaTanggal = [...new Set(daftar.map(item => item.jadwal.date))].sort();
     const tampil = tanggal => {
         isi.replaceChildren(
-            ...daftar.filter(item => item.jadwal.date === tanggal).map(item => kartuMenu(item, alergiUser)),
+            ...daftar.filter(item => item.jadwal.date === tanggal).map(item => kartuMenu(item, alergiUser, opsi)),
         );
         tabs.querySelectorAll(".tab").forEach(tab =>
             tab.setAttribute("aria-pressed", String(tab.dataset.tanggal === tanggal)),
@@ -175,4 +251,5 @@ function pasangMenu({ box, tabs, isi }, daftar, alergiUser) {
     );
     if (semuaTanggal.length) tampil(semuaTanggal[0]);
     box.hidden = semuaTanggal.length === 0;
+    return semuaTanggal.length;
 }

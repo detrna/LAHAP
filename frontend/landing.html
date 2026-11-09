@@ -55,7 +55,7 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
  </div>
 </section>
 
-<section class="stack">
+<section class="stack" id="faq">
  <h2 class="t-h2">Frequently Asked Questions</h2>
  <details><summary>Apa itu LAHAP?</summary><p>LAHAP merupakan platform digital yang membantu pelanggan berlangganan layanan katering sekaligus memudahkan pemilik usaha dalam mengelola pesanan dan operasional katering.</p></details>
  <details><summary>Bagaimana cara berlangganan melalui LAHAP?</summary><p>Pelanggan dapat memilih paket katering yang tersedia, menentukan periode langganan, mengisi informasi pemesanan, lalu menyelesaikan pembayaran sesuai metode yang tersedia.</p></details>
@@ -64,7 +64,7 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
  <details><summary>Bagaimana jika saya memiliki alergi atau pantangan makanan?</summary><p>Pelanggan dapat mencatat alergi atau pantangan makanan melalui profil akun LAHAP. Informasi tersebut akan ditampilkan kepada bagian dapur sebagai bahan pertimbangan dalam menyiapkan pesanan dan menentukan alternatif menu yang sesuai.</p></details>
 </section>
 
-<footer class="footer t-small"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM. Butuh bantuan pesanan? Hubungi admin lewat WhatsApp.</p></footer>
+<footer class="footer t-small" id="footer"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM.</p></footer>
 </main>
 <script src="js/auth.js"></script>
 <script src="js/katalog.js"></script>
@@ -104,5 +104,6 @@ if (user) {
     $("#masuk").textContent = "Buka Dashboard";
 }
 $("#ulang").onclick = muat;
+pasangFooter($("#footer"));
 muat();
 </script></body></html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Detail paket · LAHAP</title>
+<meta name="description" content="Harga, periode, waktu makan, dan menu dua minggu ke depan untuk paket katering LAHAP.">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.detail{display:grid;gap:var(--sp-5);align-items:start}
+.detail .pkg-photo{border-radius:var(--radius-card)}
+@media(min-width:720px){.detail{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<p><a href="index.html">← Semua paket</a></p>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal memuat</span><span class="msg"></span> <button class="btn btn-secondary btn-sm" id="ulang" type="button">Coba lagi</button></div>
+<div class="stack" id="tidakAda" hidden>
+ <p class="empty">Paket ini tidak ditemukan atau sudah tidak dijual.</p>
+ <p><a class="btn btn-primary" href="index.html">Lihat paket lain</a></p>
+</div>
+<div class="skeleton" id="muatan" aria-busy="true"></div>
+
+<section class="detail" id="detail" hidden>
+ <div class="pkg-photo" id="foto">Foto paket</div>
+ <div class="stack">
+  <h1 class="t-h1" id="nama"></h1>
+  <p class="t-muted" id="deskripsi"></p>
+  <p><span class="price-big" id="harga"></span><span class="t-small t-muted"> per porsi</span></p>
+  <div class="stack"><p class="label">Periode</p><div class="row" id="periode"></div></div>
+  <div class="stack"><p class="label">Waktu makan</p><div class="row" id="waktu"></div></div>
+  <p class="t-small t-muted" id="masaJual" hidden></p>
+  <div class="row" id="aksi"></div>
+ </div>
+</section>
+
+<section class="grid grid-2" id="info" hidden>
+ <div class="card stack"><h2 class="t-h3">Antar atau ambil sendiri</h2><p class="t-muted" id="teksAntar">Pesanan bisa diantar ke alamatmu atau diambil sendiri. Ongkir dihitung dari jarak titik antar dan tampil sebelum kamu membayar.</p></div>
+ <div class="card stack"><h2 class="t-h3">Batas pemesanan</h2><p class="t-muted">Pesan paling lambat pukul 23.59 WIB sehari sebelum hari makan pertama.</p></div>
+</section>
+
+<section class="stack" id="boxMenu" hidden>
+ <div><p class="label">Menu</p><h2 class="t-h2">Menu dua minggu ke depan</h2></div>
+ <div class="tabs" id="tabs" role="group" aria-label="Pilih tanggal"></div>
+ <div class="stack" id="isiMenu" aria-live="polite"></div>
+</section>
+<p class="empty" id="kosongMenu" hidden>Menu untuk dua minggu ke depan belum diterbitkan.</p>
+<div class="alert alert--warning" id="galatMenu" role="status" hidden>Menu belum bisa dimuat. Muat ulang halaman untuk mencoba lagi.</div>
+
+<footer class="footer t-small" id="footer"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM.</p></footer>
+</main>
+<script src="js/auth.js"></script>
+<script src="js/katalog.js"></script>
+<script>
+const $ = selector => document.querySelector(selector);
+const idPaket = new URLSearchParams(location.search).get("id");
+const RENTANG_DETAIL = { dariHari: 1, sampaiHari: 14 };
+
+function tidakAda() {
+    $("#muatan").hidden = true;
+    $("#tidakAda").hidden = false;
+    document.title = "Paket tidak ditemukan · LAHAP";
+}
+
+function tampilPaket(paket) {
+    document.title = `${paket.name} · LAHAP`;
+    isiFoto($("#foto"), paket.photoUrl, paket.name, "Foto paket");
+    $("#nama").textContent = paket.name;
+    $("#deskripsi").textContent = paket.description || "";
+    $("#deskripsi").hidden = !paket.description;
+    $("#harga").textContent = rp(paket.basePrice);
+    $("#periode").replaceChildren(...(paket.periods || []).map(p => el("span", "chip chip-static", p)));
+    $("#waktu").replaceChildren(...(paket.deliveryTimes || []).map(t => el("span", "chip chip-static", labelWaktu(t))));
+    $("#masaJual").hidden = !paket.endAt;
+    if (paket.endAt)
+        $("#masaJual").textContent = `Bisa dipesan sampai ${formatTanggal(paket.endAt, { day: "numeric", month: "long", year: "numeric" })}`;
+    $("#aksi").replaceChildren(tombolPesan(paket, "Pesan Paket Ini"));
+    $("#muatan").hidden = true;
+    $("#detail").hidden = false;
+    $("#info").hidden = false;
+}
+
+async function tampilAlamat() {
+    const bisnis = await muatBisnis();
+    if (bisnis)
+        $("#teksAntar").textContent = `Pesanan bisa diantar ke alamatmu atau diambil sendiri di ${bisnis.address}. Ongkir dihitung dari jarak titik antar dan tampil sebelum kamu membayar.`;
+}
+
+async function muat() {
+    $("#err").hidden = true;
+    $("#muatan").hidden = false;
+    if (!idPaket) return tidakAda();
+    let paket;
+    try {
+        ({ data: paket } = await api(`/packages/${encodeURIComponent(idPaket)}`, { auth: false }));
+    } catch (error) {
+        if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return tidakAda();
+        $("#muatan").hidden = true;
+        $("#err .msg").textContent = errorMessage(error);
+        $("#err").hidden = false;
+        return;
+    }
+    tampilPaket(paket);
+    tampilAlamat();
+    const { daftar, gagal } = await muatMenu([paket], RENTANG_DETAIL);
+    $("#galatMenu").hidden = !gagal;
+    const jumlah = pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya(), {
+        tampilPaket: false,
+        tampilAksi: false,
+        rinci: true,
+    });
+    $("#kosongMenu").hidden = gagal || jumlah > 0;
+}
+
+$("#ulang").onclick = muat;
+pasangFooter($("#footer"));
+muat();
+</script></body></html>

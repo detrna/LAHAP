@@ -1,83 +1,84 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pilih paket · LAHAP</title><link rel="stylesheet" href="css/style.css">
-<style>.paket-foto{aspect-ratio:16/9;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden}.paket-foto img{width:100%;height:100%;object-fit:cover}</style></head><body>
+<title>Pilih paket · LAHAP</title>
+<meta name="description" content="Daftar paket katering langganan LAHAP beserta menu tujuh hari ke depan.">
+<link rel="stylesheet" href="css/style.css"></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<h1 class="t-h1">Pilih paket langgananmu</h1>
+<div class="stack">
+ <h1 class="t-h1">Pilih paket langgananmu</h1>
+ <div class="field"><label for="cari">Cari paket</label><input class="input" id="cari" type="search" placeholder="Nama paket" autocomplete="off"></div>
+</div>
 <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal memuat</span><span class="msg"></span> <button class="btn btn-secondary btn-sm" id="ulang" type="button">Coba lagi</button></div>
-<p class="empty" id="kosongPaket" hidden>Belum ada paket yang tersedia. Silakan cek lagi nanti.</p>
-<section class="grid grid-2" id="paket" aria-label="Daftar paket" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></section>
-<section class="stack" id="boxMenu" hidden><h2 class="t-h2">Menu yang sudah terbit</h2><div class="stack" id="menu"></div></section>
-</main><script src="js/auth.js"></script>
+<p class="empty" id="kosongPaket" hidden></p>
+<section class="grid grid-3" id="paket" aria-label="Daftar paket" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
+<div id="pager" hidden></div>
+<section class="stack" id="boxMenu" hidden>
+ <div><p class="label">Menu</p><h2 class="t-h2">Menu 7 hari ke depan</h2></div>
+ <div class="alert alert--warning" id="galatMenu" role="status" hidden>Sebagian menu belum bisa dimuat. Muat ulang halaman untuk mencoba lagi.</div>
+ <div class="tabs" id="tabs" role="group" aria-label="Pilih tanggal"></div>
+ <div class="stack" id="isiMenu" aria-live="polite"></div>
+</section>
+<footer class="footer t-small" id="footer"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM.</p></footer>
+</main>
+<script src="js/auth.js"></script>
+<script src="js/katalog.js"></script>
 <script>
-const $ = s => document.querySelector(s);
-const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
-const WIB = { timeZone: "Asia/Jakarta" };
-const hariIni = () => new Date().toLocaleDateString("sv-SE", WIB);
-const tglPendek = s => new Date(s).toLocaleDateString("id-ID", { ...WIB, day: "numeric", month: "short", year: "numeric" });
-const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
-
-function kartuPaket(p) {
-    const card = el("article", "card card-flush");
-    const foto = el("div", "paket-foto");
-    if (p.photoUrl) { const img = el("img"); img.src = p.photoUrl; img.alt = p.name; img.loading = "lazy"; foto.append(img); }
-    else foto.textContent = "Foto paket";
-    const body = el("div", "pkg-body stack");
-    const kepala = el("div", "row-between");
-    kepala.append(el("h2", "t-h3", p.name), el("span", "badge badge--success", "Aktif"));
-    const harga = el("p");
-    harga.append(el("span", "price-big", rp(p.basePrice)), el("span", "t-small t-muted", " per porsi"));
-    const berlaku = `Berlaku ${tglPendek(p.startAt)}${p.endAt ? ` – ${tglPendek(p.endAt)}` : ""}`;
-    const aksi = el("a", "btn btn-primary btn-block", "Pilih Paket");
-    aksi.href = `checkout.html?paket=${encodeURIComponent(p.id)}`;
-    body.append(kepala, el("p", "t-muted", p.description || ""), harga, el("p", "t-small t-muted", `Periode: ${(p.periods || []).join(", ")}`), el("p", "t-small t-muted", berlaku), aksi);
-    card.append(foto, body);
-    return card;
-}
-
-function kartuMenu({ paket, jadwal }) {
-    const menus = jadwal.menus || [];
-    const utama = menus.find(m => !m.isAlternative) || menus[0];
-    const card = el("div", "card");
-    const hari = new Date(`${jadwal.date}T00:00:00+07:00`).toLocaleDateString("id-ID", { ...WIB, weekday: "long", day: "numeric", month: "short" });
-    const alergen = utama ? (utama.allergies || []).map(a => a.name ?? a) : [];
-    card.append(
-        el("p", "label", `${hari}${jadwal.deliveryTime ? ` · ${jadwal.deliveryTime.range} ${jadwal.deliveryTime.time}` : ""} · ${paket.name}`),
-        el("p", "t-h3", utama ? utama.name : "Menu belum diisi"),
-        el("p", "t-small t-muted", alergen.length ? `Mengandung: ${alergen.join(", ").toLowerCase()}` : "Tidak ada alergen terdaftar"),
-    );
-    return card;
-}
+const $ = selector => document.querySelector(selector);
+const BATAS = 12;
+let halaman = 1;
+let urutan = 0;
+let jeda = null;
 
 async function muat() {
+    const nomor = ++urutan;
+    const cari = $("#cari").value.trim();
     $("#err").hidden = true;
     $("#kosongPaket").hidden = true;
     $("#paket").setAttribute("aria-busy", "true");
-    let tersedia;
+    const query = new URLSearchParams({ page: String(halaman), limit: String(BATAS) });
+    if (cari) query.set("search", cari);
+    let hasil;
     try {
-        const { data } = await api("/packages", { auth: false });
-        tersedia = data.filter(p => p.isAvailable);
+        hasil = await api(`/packages?${query}`, { auth: false });
     } catch (error) {
+        if (nomor !== urutan) return;
         $("#paket").replaceChildren();
         $("#paket").removeAttribute("aria-busy");
+        $("#pager").hidden = true;
+        $("#boxMenu").hidden = true;
         $("#err .msg").textContent = errorMessage(error);
         $("#err").hidden = false;
         return;
     }
+    if (nomor !== urutan) return;
+    const { data: daftar, meta } = hasil;
     $("#paket").removeAttribute("aria-busy");
-    $("#paket").replaceChildren(...tersedia.map(kartuPaket));
-    $("#kosongPaket").hidden = tersedia.length > 0;
-    const hasil = await Promise.allSettled(tersedia.map(async paket => {
-        const { data } = await api(`/packages/${paket.id}/schedules`, { auth: false });
-        return data.filter(j => j.isPublished && j.date >= hariIni()).map(jadwal => ({ paket, jadwal }));
-    }));
-    const daftar = hasil.flatMap(h => (h.status === "fulfilled" ? h.value : []))
-        .sort((a, b) => a.jadwal.date.localeCompare(b.jadwal.date) || (a.jadwal.deliveryTime?.time || "").localeCompare(b.jadwal.deliveryTime?.time || ""))
-        .slice(0, 12);
-    $("#menu").replaceChildren(...daftar.map(kartuMenu));
-    $("#boxMenu").hidden = daftar.length === 0;
+    $("#paket").replaceChildren(...daftar.map(kartuPaket));
+    $("#kosongPaket").textContent = cari
+        ? "Tidak ada paket yang cocok dengan pencarian."
+        : "Belum ada paket yang tersedia. Silakan cek lagi nanti.";
+    $("#kosongPaket").hidden = daftar.length > 0;
+    renderPager($("#pager"), meta, ke => {
+        halaman = ke;
+        muat();
+        $("#paket").scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    const { daftar: menu, gagal } = await muatMenu(daftar);
+    if (nomor !== urutan) return;
+    $("#galatMenu").hidden = !gagal;
+    pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, menu, alergiSaya());
+    if (gagal) $("#boxMenu").hidden = false;
 }
+
+$("#cari").addEventListener("input", () => {
+    clearTimeout(jeda);
+    jeda = setTimeout(() => {
+        halaman = 1;
+        muat();
+    }, 300);
+});
 $("#ulang").onclick = muat;
+pasangFooter($("#footer"));
 muat();
 </script></body></html>

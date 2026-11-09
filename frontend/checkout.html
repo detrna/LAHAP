@@ -214,9 +214,14 @@ function mulaiPeta(titik) {
 
 async function muat() {
     try {
-        const { data: daftar } = await api("/packages", { auth: false });
-        paket = daftar.find(p => p.id === idPaket);
-        if (!paket) return galat("Paket tidak ditemukan. Pilih paket dari halaman utama.");
+        if (!idPaket) return galat("Paket tidak tersedia. Pilih paket lain dari halaman Paket.");
+        try {
+            ({ data: paket } = await api(`/packages/${encodeURIComponent(idPaket)}`, { auth: false }));
+        } catch (error) {
+            if (error instanceof ApiError && (error.status === 404 || error.status === 400))
+                return galat("Paket tidak tersedia. Pilih paket lain dari halaman Paket.");
+            throw error;
+        }
         $("#namaPaket").textContent = paket.name;
         document.title = `Pesan ${paket.name} · LAHAP`;
         $("#periode").replaceChildren(...paket.periods.map((p, i) => chip("periode", p, p, i === 0)));
