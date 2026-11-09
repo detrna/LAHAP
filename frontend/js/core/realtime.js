@@ -1,4 +1,4 @@
-import { API_BASE } from "./config.js";
+import { REALTIME_STREAM_URL } from "./config.js";
 import { ensureToken, refreshSession, store } from "./api.js";
 
 const REALTIME_EVENTS = ["slot.status", "slot.obstacle", "slot.menu", "notification", "announcement"];
@@ -47,7 +47,7 @@ async function bukaRealtime() {
     try {
         if (!(await ensureToken())) return;
         if (tokenSegeraHabis() && !(await refreshSession())) return jadwalkanRealtime();
-        const stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
+        const stream = new EventSource(`${REALTIME_STREAM_URL}?accessToken=${encodeURIComponent(store.token)}`);
         realtime.stream = stream;
         REALTIME_EVENTS.forEach(nama =>
             stream.addEventListener(nama, event => {
