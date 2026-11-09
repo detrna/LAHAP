@@ -1,4 +1,6 @@
 import { Buffer } from "node:buffer";
+import http, { type IncomingHttpHeaders } from "node:http";
+import https from "node:https";
 import {
     CreateBucketCommand,
     DeleteObjectCommand,
@@ -15,7 +17,12 @@ import {
     ObjectNotFoundError,
     StorageFailureError,
 } from "../../../shared/ports/object-storage/errors.js";
-import type { ObjectStorage, UploadObjectInput } from "../../../shared/ports/object-storage/object-storage.js";
+import type {
+    ObjectStorage,
+    SignedReadRequest,
+    SignedReadResponse,
+    UploadObjectInput,
+} from "../../../shared/ports/object-storage/object-storage.js";
 
 function isNotFoundError(err: unknown): boolean {
     if (typeof err !== "object" || err === null) return false;
@@ -49,13 +56,55 @@ export function normalizeKey(rawKey: string): string {
     return trimmed;
 }
 
+function parseOrigin(value: string, envVar: string): URL {
+    let url: URL;
+    try {
+        url = new URL(value);
+    } catch {
+        throw new Error(`${envVar} must be a URL`);
+    }
+    if (url.pathname !== "/" || url.search !== "" || url.hash !== "") {
+        throw new Error(`${envVar} must be a URL without a path`);
+    }
+    return url;
+}
+
+function createClient(config: ObjectStorageConfig, endpoint: string): S3Client {
+    return new S3Client({
+        endpoint,
+        region: config.REGION,
+        forcePathStyle: true,
+        maxAttempts: config.MAX_RETRIES + 1,
+        requestChecksumCalculation: "WHEN_REQUIRED",
+        responseChecksumValidation: "WHEN_REQUIRED",
+        credentials: {
+            accessKeyId: config.ACCESS_KEY,
+            secretAccessKey: config.SECRET_KEY,
+        },
+    });
+}
+
+function flattenHeaders(headers: IncomingHttpHeaders): Record<string, string> {
+    const flat: Record<string, string> = {};
+    for (const [name, value] of Object.entries(headers)) {
+        if (value === undefined) continue;
+        flat[name] = Array.isArray(value) ? value.join(", ") : value;
+    }
+    return flat;
+}
+
 export interface SeaweedFsObjectStorageOptions {
     client?: S3Client | undefined;
+    signingClient?: S3Client | undefined;
     autoCreateBucket?: boolean | undefined;
 }
 
 export class SeaweedFsObjectStorage implements ObjectStorage {
+    readonly signedUrlPathPrefix: string;
     private readonly client: S3Client;
+    private readonly signingClient: S3Client;
+    private readonly endpoint: URL;
+    private readonly publicHost: string;
     private readonly bucket: string;
     private readonly defaultExpiresIn: number;
     private readonly timeoutMs: number;
@@ -74,23 +123,16 @@ export class SeaweedFsObjectStorage implements ObjectStorage {
             throw new Error("S3_ENDPOINT is not set");
         }
 
+        this.endpoint = parseOrigin(config.ENDPOINT, "S3_ENDPOINT");
+        this.publicHost = parseOrigin(config.PUBLIC_ENDPOINT, "S3_PUBLIC_ENDPOINT").host;
         this.bucket = config.BUCKET;
+        this.signedUrlPathPrefix = `/${config.BUCKET}`;
         this.defaultExpiresIn = config.SIGNED_URL_EXPIRES_IN;
         this.timeoutMs = config.TIMEOUT_MS;
-        this.client =
-            options.client ??
-            new S3Client({
-                endpoint: config.ENDPOINT,
-                region: config.REGION,
-                forcePathStyle: true,
-                maxAttempts: config.MAX_RETRIES + 1,
-                requestChecksumCalculation: "WHEN_REQUIRED",
-                responseChecksumValidation: "WHEN_REQUIRED",
-                credentials: {
-                    accessKeyId: config.ACCESS_KEY,
-                    secretAccessKey: config.SECRET_KEY,
-                },
-            });
+        this.client = options.client ?? createClient(config, config.ENDPOINT);
+        this.signingClient =
+            options.signingClient ??
+            (config.PUBLIC_ENDPOINT === config.ENDPOINT ? this.client : createClient(config, config.PUBLIC_ENDPOINT));
     }
 
     private requestOptions() {
@@ -183,12 +225,41 @@ export class SeaweedFsObjectStorage implements ObjectStorage {
                 Bucket: this.bucket,
                 Key: normalizedKey,
             });
-            return await createPresignedUrl(this.client, command, {
+            return await createPresignedUrl(this.signingClient, command, {
                 expiresIn: expiresInSeconds ?? this.defaultExpiresIn,
             });
         } catch (cause) {
             throw new StorageFailureError("getSignedUrl", cause);
         }
+    }
+
+    async forwardSignedRead(request: SignedReadRequest): Promise<SignedReadResponse> {
+        if (!request.pathWithQuery.startsWith(`${this.signedUrlPathPrefix}/`)) {
+            throw new InvalidObjectKeyError(request.pathWithQuery, "path is outside the bucket");
+        }
+        const transport = this.endpoint.protocol === "https:" ? https : http;
+        return new Promise((resolve, reject) => {
+            const upstream = transport.request(
+                {
+                    protocol: this.endpoint.protocol,
+                    hostname: this.endpoint.hostname,
+                    port: this.endpoint.port,
+                    method: request.method,
+                    path: request.pathWithQuery,
+                    headers: { ...request.headers, host: this.publicHost },
+                    timeout: this.timeoutMs,
+                },
+                response =>
+                    resolve({
+                        status: response.statusCode ?? 502,
+                        headers: flattenHeaders(response.headers),
+                        body: response,
+                    }),
+            );
+            upstream.on("timeout", () => upstream.destroy(new Error("storage did not respond in time")));
+            upstream.on("error", cause => reject(new StorageFailureError("forwardSignedRead", cause)));
+            upstream.end();
+        });
     }
 
     async delete(key: string): Promise<void> {

@@ -20,6 +20,7 @@ import { loadObjectStorage, SeaweedFsObjectStorage } from "./seaweedfs.js";
 
 const dummyConfig: ObjectStorageConfig = {
     ENDPOINT: "http://localhost:8333",
+    PUBLIC_ENDPOINT: "http://localhost:8333",
     REGION: "us-east-1",
     ACCESS_KEY: "dummy-access-key",
     SECRET_KEY: "dummy-secret-key",
@@ -48,6 +49,21 @@ describe("SeaweedFsObjectStorage (unit)", () => {
         it("throws when S3_SECRET_KEY is missing", () => {
             expect(() => new SeaweedFsObjectStorage({ ...dummyConfig, SECRET_KEY: "" })).toThrow(
                 "S3_SECRET_KEY is not set",
+            );
+        });
+
+        it.each(["not a url", "https://lahap.test/storage", "https://lahap.test/?a=1"])(
+            "throws when S3_PUBLIC_ENDPOINT is %j",
+            value => {
+                expect(() => new SeaweedFsObjectStorage({ ...dummyConfig, PUBLIC_ENDPOINT: value })).toThrow(
+                    /S3_PUBLIC_ENDPOINT must be a URL/,
+                );
+            },
+        );
+
+        it("throws when S3_ENDPOINT is not a URL", () => {
+            expect(() => new SeaweedFsObjectStorage({ ...dummyConfig, ENDPOINT: "seaweedfs:8333" })).toThrow(
+                "S3_ENDPOINT must be a URL",
             );
         });
 
@@ -305,6 +321,42 @@ describe("SeaweedFsObjectStorage (unit)", () => {
             expect(parsed.origin).toBe("http://localhost:8333");
             expect(parsed.pathname).toBe("/receipts/folder/receipt.jpg");
             expect(parsed.searchParams.get("X-Amz-Expires")).toBe("600");
+        });
+
+        it("signs with the public endpoint when one is configured", async () => {
+            const storage = new SeaweedFsObjectStorage({
+                ...dummyConfig,
+                ENDPOINT: "http://seaweedfs:8333",
+                PUBLIC_ENDPOINT: "https://lahap.test",
+            });
+
+            const url = new URL(await storage.getSignedUrl("menus/2026/11/a.webp"));
+
+            expect(url.origin).toBe("https://lahap.test");
+            expect(url.pathname).toBe("/receipts/menus/2026/11/a.webp");
+            expect(url.searchParams.get("X-Amz-SignedHeaders")).toBe("host");
+            expect(url.searchParams.get("X-Amz-Signature")).toMatch(/^[0-9a-f]{64}$/);
+        });
+
+        it("exposes the bucket path every signed URL starts with", () => {
+            expect(new SeaweedFsObjectStorage(dummyConfig).signedUrlPathPrefix).toBe("/receipts");
+        });
+    });
+
+    describe("forwardSignedRead", () => {
+        it("refuses a path outside the bucket", async () => {
+            const storage = new SeaweedFsObjectStorage(dummyConfig);
+
+            await expect(
+                storage.forwardSignedRead({
+                    method: "GET",
+                    pathWithQuery: "/other/a.webp?X-Amz-Signature=x",
+                    headers: {},
+                }),
+            ).rejects.toThrow(InvalidObjectKeyError);
+            await expect(
+                storage.forwardSignedRead({ method: "GET", pathWithQuery: "/receipts?list-type=2", headers: {} }),
+            ).rejects.toThrow(InvalidObjectKeyError);
         });
     });
 

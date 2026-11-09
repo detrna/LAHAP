@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export interface ObjectStorageConfig {
     readonly ENDPOINT: string;
+    readonly PUBLIC_ENDPOINT: string;
     readonly REGION: string;
     readonly ACCESS_KEY: string;
     readonly SECRET_KEY: string;
@@ -13,6 +14,7 @@ export interface ObjectStorageConfig {
 
 export const objectStorageEnvSchema = z.object({
     S3_ENDPOINT: z.string().default("http://localhost:8333"),
+    S3_PUBLIC_ENDPOINT: z.string().trim().default(""),
     S3_REGION: z.string().default("us-east-1"),
     S3_ACCESS_KEY: z.string().default(""),
     S3_SECRET_KEY: z.string().default(""),
@@ -26,6 +28,7 @@ export type ObjectStorageEnv = z.output<typeof objectStorageEnvSchema>;
 
 export const toObjectStorageConfig = (env: ObjectStorageEnv): ObjectStorageConfig => ({
     ENDPOINT: env.S3_ENDPOINT,
+    PUBLIC_ENDPOINT: env.S3_PUBLIC_ENDPOINT || env.S3_ENDPOINT,
     REGION: env.S3_REGION,
     ACCESS_KEY: env.S3_ACCESS_KEY,
     SECRET_KEY: env.S3_SECRET_KEY,

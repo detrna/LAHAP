@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../config/index.js";
 import { ObjectNotFoundError } from "../../../shared/ports/object-storage/object-storage.js";
-import { loadObjectStorage, type SeaweedFsObjectStorage } from "./seaweedfs.js";
+import { loadObjectStorage, SeaweedFsObjectStorage } from "./seaweedfs.js";
 
 const config = loadConfig();
 
@@ -61,6 +61,39 @@ describe("SeaweedFsObjectStorage (integration)", () => {
 
         await expect(storage.exists(deleteKey)).resolves.toBe(false);
         await expect(storage.download(deleteKey)).rejects.toThrow(ObjectNotFoundError);
+    });
+
+    it("forwards a URL signed for the public host to the internal endpoint", async () => {
+        const proxied = new SeaweedFsObjectStorage({ ...config.OBJECT_STORAGE, PUBLIC_ENDPOINT: "https://lahap.test" });
+        const key = `integration-test/${Date.now()}-proxied.txt`;
+        await storage.upload({ key, body: testPayload, contentType: "text/plain" });
+
+        try {
+            const signed = new URL(await proxied.getSignedUrl(key, 300));
+            expect(signed.origin).toBe("https://lahap.test");
+
+            const ok = await proxied.forwardSignedRead({
+                method: "GET",
+                pathWithQuery: signed.pathname + signed.search,
+                headers: {},
+            });
+            const chunks: Buffer[] = [];
+            for await (const chunk of ok.body) chunks.push(Buffer.from(chunk as Uint8Array));
+            expect(ok.status).toBe(200);
+            expect(ok.headers["content-type"]).toBe("text/plain");
+            expect(Buffer.concat(chunks)).toEqual(testPayload);
+
+            signed.searchParams.set("X-Amz-Signature", "0".repeat(64));
+            const tampered = await proxied.forwardSignedRead({
+                method: "GET",
+                pathWithQuery: signed.pathname + signed.search,
+                headers: {},
+            });
+            tampered.body.resume();
+            expect(tampered.status).toBe(403);
+        } finally {
+            await storage.delete(key).catch(() => undefined);
+        }
     });
 
     it("deleting a non-existent key does not throw", async () => {
