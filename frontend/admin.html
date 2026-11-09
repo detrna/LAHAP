@@ -45,7 +45,7 @@ document.querySelectorAll('.verif').forEach(function (b) {
 });
 function isiWa() { // tautan wa.me dengan pesan terisi dan di-encode
   document.querySelectorAll('.wa').forEach(function (a) {
-    var pesan = document.getElementById('tpl').value.replace('{nama}', a.dataset.nama);
+    var pesan = document.getElementById('tpl').value.replaceAll('{nama}', a.dataset.nama);
     a.href = 'https://wa.me/' + a.dataset.hp + '?text=' + encodeURIComponent(pesan);
   });
 }

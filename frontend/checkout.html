@@ -2,13 +2,14 @@
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pesan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="pelanggan">
 <header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
-<nav class="nav" aria-label="Menu utama"><a href="index.html" aria-current="page">Paket</a><a href="langganan.html">Langganan Saya</a><a href="kurir.html">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
+<nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pesan paket <span id="namaPaket">Hemat</span></h1>
 <form class="stack-lg" onsubmit="return false">
  <div class="field"><span class="field-label">Jenis pembelian</span><div class="chip-group">
-  <label class="chip"><input type="radio" name="jenis" checked>Online</label><label class="chip"><input type="radio" name="jenis">Offline</label></div>
+  <label class="chip"><input type="radio" name="jenis" value="online" checked>Online</label><label class="chip"><input type="radio" name="jenis" value="offline">Offline</label></div>
   <p class="hint">Online bayar non-tunai. Offline bisa tunai, diverifikasi admin.</p></div>
+ <div class="field" id="boxBayar" hidden><span class="field-label">Metode bayar</span><div class="chip-group"><label class="chip"><input type="radio" name="bayar" value="MIDTRANS" checked>Non-tunai</label><label class="chip"><input type="radio" name="bayar" value="CASH">Tunai</label></div></div>
  <div class="field"><span class="field-label">Periode</span><div class="chip-group">
   <label class="chip"><input type="radio" name="periode" value="1">Harian</label><label class="chip"><input type="radio" name="periode" value="7" checked>Mingguan</label><label class="chip"><input type="radio" name="periode" value="30">Bulanan</label></div></div>
  <div class="field"><span class="field-label">Waktu makan</span><div class="chip-group" id="slots">
@@ -19,6 +20,8 @@
   <p class="hint" id="hintJarak">Metode berlaku untuk seluruh pesanan.</p></div>
  <div class="field" id="boxJarak"><label for="jarak">Jarak dari pin lokasi (km, demo)</label><input class="input" id="jarak" type="number" min="0" step="0.1" value="3.2">
   <div class="map-box" style="margin-top:12px">Peta pin (Leaflet + OpenStreetMap)</div></div>
+ <div class="field"><label for="penerima">Nama penerima</label><input class="input" id="penerima" autocomplete="name"></div>
+ <div class="field" id="boxAlamat"><label for="alamat">Alamat pengantaran</label><textarea class="textarea" id="alamat" autocomplete="street-address"></textarea></div>
  <div class="field"><label for="catatan">Catatan (opsional)</label><textarea class="textarea" id="catatan" placeholder="Mis. tanpa sambal"></textarea><p class="hint">Untuk permintaan non-alergi. Alergi diisi di profil.</p></div>
  <div class="field" id="boxPromo"><label for="promo">Kode promo</label><div class="row"><input class="input" id="promo" style="flex:1" placeholder="MERDEKA"><button class="btn btn-secondary" id="pakai" type="button">Pakai</button></div><div class="alert alert--error" id="promoErr" hidden style="margin-top:8px"><span class="alert-title">Kode promo tidak berlaku</span>Cek kembali kode atau masa berlakunya.</div></div>
  <section class="card" aria-label="Rincian harga">
@@ -33,7 +36,7 @@
 // Estimasi tampilan saja. Backend adalah sumber total akhir (BR-17).
 const PRM={radius:1,max:10,perKm:5000},HARGA={hemat:15000,reguler:20000},TIER=.1,KODE=.1;
 const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n).toLocaleString('id-ID');
-const paket=new URLSearchParams(location.search).get('paket')||'hemat';let kode=false;
+const paket0=new URLSearchParams(location.search).get('paket'),paket=HARGA[paket0]?paket0:'hemat';let kode=false;
 $('#namaPaket').textContent=paket[0].toUpperCase()+paket.slice(1);
 function hitung(){
  const hari=+document.querySelector('[name=periode]:checked').value,
@@ -43,14 +46,15 @@ function hitung(){
  document.querySelector('[value=antar]').disabled=luar;
  $('#hintJarak').textContent=luar?'Di luar jarak maksimum '+PRM.max+' km. Hanya Ambil Sendiri.':'Metode berlaku untuk seluruh pesanan.';
  const antar=document.querySelector('[name=metode]:checked').value==='antar';
- $('#boxJarak').hidden=!antar;
+ $('#boxJarak').hidden=!antar;$('#boxAlamat').hidden=!antar;
  const perSlot=!antar||km<=PRM.radius?0:(km-PRM.radius)*PRM.perKm,
-  makan=slot*HARGA[paket],tier=makan*TIER,kd=kode?(makan-tier)*KODE:0,ongkir=perSlot*(antar?slot:0);
+  makan=slot*HARGA[paket],tier=Math.floor(makan*TIER),kd=kode?Math.floor((makan-tier)*KODE):0,ongkir=perSlot*(antar?slot:0);
  $('#rMakan').textContent=slot+' slot × '+rp(HARGA[paket]);$('#vMakan').textContent=rp(makan);
  $('#vTier').textContent='−'+rp(tier);$('#rKode').hidden=!kode;$('#vKode').textContent='−'+rp(kd);
  $('#rOngkir').textContent=antar?slot+' slot × '+rp(perSlot)+' (jarak '+km+' km)':'Ongkir (Ambil Sendiri)';
  $('#vOngkir').textContent=rp(ongkir);$('#vTotal').textContent=rp(makan-tier-kd+ongkir);
 }
 $('#pakai').onclick=()=>{kode=$('#promo').value.trim().toUpperCase()==='MERDEKA';$('#promoErr').hidden=kode;hitung()};
+document.querySelectorAll('[name=jenis]').forEach(r=>r.addEventListener('change',()=>{$('#boxBayar').hidden=document.querySelector('[name=jenis]:checked').value!=='offline'}));
 document.querySelector('form').addEventListener('input',hitung);hitung();
 </script></main><script src="js/auth.js"></script></body></html>

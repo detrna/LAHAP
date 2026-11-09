@@ -1,16 +1,107 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>To-do kurir · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="kurir">
-<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
-<nav class="nav" aria-label="Menu utama"><a href="index.html">Paket</a><a href="langganan.html">Langganan Saya</a><a href="kurir.html" aria-current="page">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
+<header class="app-header"><div class="container"><a class="brand" href="kurir.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pengantaran hari ini</h1>
-<article class="card task"><p class="label">Siang · 12:00</p>
- <div class="row-between"><h2 class="t-h3">Budi Santoso</h2><span class="badge badge--delivering">Diantar</span></div>
- <p>Jl. Veteran 12, Malang · 2 porsi</p><p class="t-muted">Ayam goreng + sayur asem. Catatan: tanpa sambal.</p>
- <div class="task-actions"><button class="btn btn-primary">Selesai</button><button class="btn btn-secondary">Tulis Kendala</button></div></article>
-<article class="card task"><p class="label">Malam · 17:00</p>
- <div class="row-between"><h2 class="t-h3">Sari Wulandari</h2><span class="badge badge--prepared">Disiapkan</span></div>
- <p>Jl. Soekarno Hatta 8, Malang · 1 porsi</p><p class="t-muted">Menunggu dapur menandai makanan siap.</p>
- <div class="task-actions"><button class="btn btn-primary" disabled>Selesai</button><button class="btn btn-secondary">Tulis Kendala</button></div></article>
-</main><script src="js/auth.js"></script></body></html>
+<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<p class="t-muted" id="kosong" hidden>Tidak ada pengantaran untuk kamu hari ini.</p>
+<div class="stack-lg" id="daftar"></div>
+</main>
+<script src="js/auth.js"></script>
+<script>
+const $ = selector => document.querySelector(selector);
+const BADGE = { Diantar: "badge--delivering", Disiapkan: "badge--prepared", Selesai: "badge--success" };
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+
+function galat(message) {
+    $("#err").hidden = !message;
+    $("#err .msg").textContent = message || "";
+}
+
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+
+function kartu(item) {
+    const card = el("article", "card task");
+    const kepala = el("div", "row-between");
+    kepala.append(el("h2", "t-h3", item.recipientName), el("span", `badge ${BADGE[item.status] || "badge--pending"}`, item.status));
+    const catatan = [item.menu.name, item.notes ? `Catatan: ${item.notes}` : ""].filter(Boolean).join(". ");
+    card.append(
+        el("p", "label", `${item.deliveryTime.range} · ${item.deliveryTime.time}`),
+        kepala,
+        el("p", "", item.deliveryAddress),
+        el("p", "t-muted", catatan),
+    );
+    item.obstacles.forEach(o => {
+        const box = el("div", "alert alert--warning");
+        box.append(el("span", "alert-title", "Kendala tercatat"), o.note);
+        card.append(box);
+    });
+
+    const aksi = el("div", "task-actions");
+    const selesai = el("button", "btn btn-primary", "Selesai");
+    selesai.disabled = item.status !== "Diantar";
+    const kendala = el("button", "btn btn-secondary", "Tulis Kendala");
+    aksi.append(selesai, kendala);
+
+    const form = el("form", "stack");
+    form.hidden = true;
+    const field = el("div", "field");
+    const area = el("textarea", "textarea");
+    area.maxLength = 1000;
+    area.setAttribute("aria-label", "Catatan kendala");
+    field.append(area, el("p", "hint", "Maksimal 1000 karakter."));
+    const kirim = el("button", "btn btn-primary", "Kirim Kendala");
+    kirim.type = "submit";
+    form.append(field, kirim);
+    card.append(aksi, form);
+
+    kendala.onclick = () => {
+        form.hidden = !form.hidden;
+    };
+    selesai.onclick = async () => {
+        if (!confirm("Tandai pengantaran ini selesai?")) return;
+        selesai.disabled = true;
+        galat("");
+        try {
+            await api(`/courier/orders/${item.orderId}/complete`, { method: "POST" });
+            muat();
+        } catch (error) {
+            selesai.disabled = false;
+            galat(errorMessage(error));
+        }
+    };
+    form.onsubmit = async event => {
+        event.preventDefault();
+        const note = area.value.trim();
+        if (!note) return galat("Catatan kendala wajib diisi.");
+        kirim.disabled = true;
+        galat("");
+        try {
+            await api(`/courier/orders/${item.orderId}/obstacles`, { method: "POST", body: { note } });
+            muat();
+        } catch (error) {
+            kirim.disabled = false;
+            galat(errorMessage(error));
+        }
+    };
+    return card;
+}
+
+async function muat() {
+    try {
+        const { data } = await api(`/courier/orders?date=${hariIni()}`);
+        $("#daftar").replaceChildren(...data.map(kartu));
+        $("#kosong").hidden = data.length > 0;
+    } catch (error) {
+        galat(errorMessage(error));
+    }
+}
+
+muat();
+</script></body></html>
