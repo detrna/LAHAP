@@ -1,44 +1,139 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stok bahan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="dapur,admin">
-<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a><nav class="nav"></nav></div></header>
+<header class="app-header"><div class="container"><a class="brand" href="dapur.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div><h1 class="t-h1">Stok bahan</h1><p class="t-muted">Perbarui stok manual atau perkirakan dari foto.</p></div>
-<section class="card">
-<div class="invoice"><div><p class="t-h3">Ayam</p><p class="t-small t-muted">Stok 3,2 kg</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" value="3.2" aria-label="Stok ayam (kg)"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button><button class="btn btn-ghost btn-sm riwayat" type="button">Riwayat</button></div></div>
-<div class="invoice"><div><p class="t-h3">Minyak goreng</p><p class="t-small t-muted">Stok 6 liter</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" value="6" aria-label="Stok minyak (liter)"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button><button class="btn btn-ghost btn-sm riwayat" type="button">Riwayat</button></div></div>
-</section>
-<section class="card stack" id="riwayat" hidden>
-<h2 class="t-h3">Riwayat perubahan stok</h2>
-<div class="slot"><div><p class="t-h3">Ayam: 5,0 kg menjadi 3,2 kg</p><p class="t-small t-muted">Selisih −1,8 kg · Siti · 11 Nov 2026 07:10</p></div></div>
-</section>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<div class="field"><label for="cari">Cari bahan</label><input class="input" id="cari" type="search" autocomplete="off"></div>
+<section class="card" id="daftar" aria-busy="true"><div class="skeleton"></div></section>
+<p class="empty" id="kosong" hidden>Tidak ada bahan yang cocok.</p>
+<section class="card stack" id="riwayat" hidden><h2 class="t-h3" id="judulRiwayat">Riwayat perubahan stok</h2><div id="isiRiwayat"></div></section>
 <section class="card stack">
 <h2 class="t-h3">Perkiraan dari foto</h2>
+<div class="field"><label for="pilih">Bahan</label><select class="select input" id="pilih"></select></div>
 <div class="field"><label for="foto">Foto wadah bahan</label><input class="input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">JPEG, PNG, atau WebP.</p></div>
-<div class="alert alert--info" id="hasil" hidden><span class="alert-title">Perkiraan sisa</span>2 jerigen. Cek lalu simpan manual jika sesuai.</div>
+<div class="alert alert--info" id="hasil" hidden><span class="alert-title">Perkiraan sisa</span><span class="msg"></span> <button class="btn btn-secondary btn-sm" id="pakai" type="button">Pakai angka ini</button></div>
 <button class="btn btn-secondary" id="estimasi" type="button">Perkirakan Stok</button>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
-document.querySelectorAll(".simpan").forEach(b => {
-    b.onclick = () => {
-        const input = b.parentElement.querySelector("input");
-        if (!Number.isFinite(parseFloat(input.value)) || parseFloat(input.value) < 0) {
+const $ = s => document.querySelector(s);
+const angka = n => Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 });
+const waktu = s => new Date(s).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+function galat(error) { $("#err").hidden = !error; if (error) $("#err .msg").textContent = errorMessage(error); }
+
+let bahan = [];
+let hasilEstimasi = null;
+
+async function riwayat(b) {
+    try {
+        const { data } = await api(`/kitchen/ingredients/${b.id}/stock-history?limit=10`);
+        $("#judulRiwayat").textContent = `Riwayat stok ${b.name}`;
+        $("#isiRiwayat").replaceChildren(...(data.length ? data.map(h => {
+            const slot = el("div", "slot");
+            const kiri = el("div");
+            kiri.append(
+                el("p", "t-h3", `${angka(h.previousStock)} ${b.unit} menjadi ${angka(h.newStock)} ${b.unit}`),
+                el("p", "t-small t-muted", `Selisih ${h.delta > 0 ? "+" : ""}${angka(h.delta)} · ${h.changedBy ? h.changedBy.name : "-"} · ${waktu(h.changedAt)}`),
+            );
+            slot.append(kiri);
+            return slot;
+        }) : [el("p", "t-muted", "Belum ada riwayat.")]));
+        $("#riwayat").hidden = false;
+        $("#riwayat").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } catch (error) { galat(error); }
+}
+
+function baris(b) {
+    const row = el("div", "invoice");
+    const kiri = el("div");
+    const info = el("p", "t-small t-muted", `Stok ${angka(b.stock)} ${b.unit} · batas minimum ${angka(b.minimumThreshold)} ${b.unit}`);
+    kiri.append(el("p", "t-h3", b.name), info);
+    const kanan = el("div", "row");
+    const badge = el("span", `badge ${b.isLowStock ? "badge--pending" : "badge--success"}`, b.isLowStock ? "Menipis" : "Cukup");
+    const input = el("input", "input w-num");
+    Object.assign(input, { type: "number", min: "0", step: "0.1", value: b.stock });
+    input.id = `stok-${b.id}`;
+    input.setAttribute("aria-label", `Stok ${b.name} (${b.unit})`);
+    input.inputMode = "decimal";
+    const simpan = el("button", "btn btn-secondary btn-sm", "Simpan");
+    simpan.type = "button";
+    simpan.onclick = async () => {
+        const nilai = parseFloat(input.value);
+        if (!Number.isFinite(nilai) || nilai < 0) {
             input.setAttribute("aria-invalid", "true");
             input.focus();
             return toast("Isi stok dengan angka 0 atau lebih.", "error");
         }
         input.removeAttribute("aria-invalid");
-        toast("Stok disimpan (demo).");
+        simpan.disabled = true;
+        galat(null);
+        try {
+            const { data } = await api(`/kitchen/ingredients/${b.id}/stock`, { method: "PUT", body: { stock: nilai } });
+            Object.assign(b, data);
+            toast(`Stok ${b.name.toLowerCase()} disimpan.`);
+            gambar();
+        } catch (error) { galat(error); simpan.disabled = false; }
     };
-});
-document.querySelectorAll(".riwayat").forEach(b => {
-    b.onclick = () => {
-        document.getElementById("riwayat").hidden = false;
-    };
-});
-document.getElementById("estimasi").onclick = () => {
-    if (!document.getElementById("foto").files.length) return toast("Pilih foto dulu.", "error");
-    document.getElementById("hasil").hidden = false;
+    const lihat = el("button", "btn btn-ghost btn-sm", "Riwayat");
+    lihat.type = "button";
+    lihat.onclick = () => riwayat(b);
+    kanan.append(badge, input, simpan, lihat);
+    row.append(kiri, kanan);
+    return row;
+}
+
+function gambar() {
+    const kata = $("#cari").value.trim().toLowerCase();
+    const tampil = bahan.filter(b => b.name.toLowerCase().includes(kata));
+    $("#daftar").replaceChildren(...tampil.map(baris));
+    $("#daftar").hidden = tampil.length === 0;
+    $("#kosong").hidden = tampil.length > 0;
+}
+
+async function muat() {
+    try {
+        const { data } = await api("/kitchen/ingredients?limit=100");
+        bahan = data;
+        $("#pilih").replaceChildren(...bahan.map(b => { const o = el("option", "", `${b.name} (${b.unit})`); o.value = b.id; return o; }));
+        gambar();
+        galat(null);
+    } catch (error) {
+        $("#daftar").replaceChildren();
+        galat(error);
+    } finally {
+        $("#daftar").removeAttribute("aria-busy");
+    }
+}
+
+$("#cari").addEventListener("input", gambar);
+$("#estimasi").onclick = async () => {
+    const file = $("#foto").files[0];
+    if (!file) return toast("Pilih foto dulu.", "error");
+    const id = $("#pilih").value;
+    if (!id) return toast("Pilih bahan dulu.", "error");
+    $("#estimasi").disabled = true;
+    $("#estimasi").textContent = "Memperkirakan...";
+    galat(null);
+    try {
+        const body = new FormData();
+        body.append("image", file);
+        const { data } = await api(`/kitchen/ingredients/${id}/photo-estimate`, { method: "POST", body });
+        hasilEstimasi = data;
+        const yakin = data.confidence != null ? ` (keyakinan ${Math.round(data.confidence * 100)}%)` : "";
+        $("#hasil .msg").textContent = `${angka(data.estimatedQuantity)} ${data.unit}${yakin}. Cek lalu simpan jika sesuai.`;
+        $("#hasil").hidden = false;
+    } catch (error) { galat(error); }
+    finally { $("#estimasi").disabled = false; $("#estimasi").textContent = "Perkirakan Stok"; }
 };
+$("#pakai").onclick = () => {
+    if (!hasilEstimasi) return;
+    const input = document.getElementById(`stok-${hasilEstimasi.ingredientId}`);
+    if (input) { $("#cari").value = ""; gambar(); }
+    const target = document.getElementById(`stok-${hasilEstimasi.ingredientId}`);
+    if (target) { target.value = hasilEstimasi.estimatedQuantity; target.focus(); toast("Angka dimasukkan. Tekan Simpan untuk menyimpan."); }
+};
+muat();
 </script></body></html>

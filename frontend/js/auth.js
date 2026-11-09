@@ -246,7 +246,10 @@ function toast(message, type = "info") {
             return;
         }
         if (!roles.split(",").includes(key)) {
-            location.replace(HOME[key]);
+            // Jangan arahkan ke halaman yang sama (bisa loop tanpa henti).
+            const tujuan = HOME[key];
+            const sekarang = location.pathname.split("/").pop() || "index.html";
+            location.replace(tujuan && tujuan !== sekarang ? tujuan : "login.html");
             return;
         }
     }
