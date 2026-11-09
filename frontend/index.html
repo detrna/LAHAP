@@ -1,120 +1,25 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>To-do kurir · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="kurir">
-<header class="app-header"><div class="container"><a class="brand" href="kurir.html">LAHAP</a><nav class="nav"></nav></div></header>
+<title>Pilih paket · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body>
+<header class="app-header"><div class="container"><a class="brand" href="index.html">LAHAP</a>
+<nav class="nav" aria-label="Menu utama"><a href="index.html" aria-current="page">Paket</a><a href="langganan.html">Langganan Saya</a><a href="kurir.html">Kurir</a><a href="dapur.html">Dapur</a></nav></div></header>
 <main class="container stack-lg">
-<h1 class="t-h1">Pengantaran hari ini</h1>
-<div class="alert alert--error" id="err" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
-<p class="t-muted" id="kosong" hidden>Tidak ada pengantaran untuk kamu hari ini.</p>
-<div class="stack-lg" id="daftar"></div>
-</main>
-<script src="js/auth.js"></script>
-<script>
-const $ = selector => document.querySelector(selector);
-const BADGE = { Diantar: "badge--delivering", Disiapkan: "badge--prepared", Selesai: "badge--success" };
-const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
-
-function galat(message) {
-    $("#err").hidden = !message;
-    $("#err .msg").textContent = message || "";
-}
-
-function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
-
-function kartu(item) {
-    const card = el("article", "card task");
-    const kepala = el("div", "row-between");
-    kepala.append(el("h2", "t-h3", item.recipientName), el("span", `badge ${BADGE[item.status] || "badge--pending"}`, item.status));
-    const catatan = [item.menu.name, item.notes ? `Catatan: ${item.notes}` : ""].filter(Boolean).join(". ");
-    card.append(
-        el("p", "label", `${item.deliveryTime.range} · ${item.deliveryTime.time}`),
-        kepala,
-        el("p", "", item.deliveryAddress),
-        el("p", "t-muted", catatan),
-    );
-    item.obstacles.forEach(o => {
-        const box = el("div", "alert alert--warning");
-        box.append(el("span", "alert-title", "Kendala tercatat"), o.note);
-        if (o.photoUrl) {
-            const link = el("a", "", " Lihat foto");
-            link.href = o.photoUrl;
-            link.target = "_blank";
-            link.rel = "noopener";
-            box.append(link);
-        }
-        card.append(box);
-    });
-
-    const aksi = el("div", "task-actions");
-    const selesai = el("button", "btn btn-primary", "Selesai");
-    selesai.disabled = item.status !== "Diantar";
-    const kendala = el("button", "btn btn-secondary", "Tulis Kendala");
-    aksi.append(selesai, kendala);
-
-    const form = el("form", "stack");
-    form.hidden = true;
-    const field = el("div", "field");
-    const area = el("textarea", "textarea");
-    area.maxLength = 1000;
-    area.setAttribute("aria-label", "Catatan kendala");
-    const foto = el("input", "input");
-    foto.type = "file";
-    foto.accept = "image/jpeg,image/png,image/webp";
-    foto.setAttribute("aria-label", "Foto kendala (opsional)");
-    field.append(area, el("p", "hint", "Maksimal 1000 karakter."), foto, el("p", "hint", "Foto opsional: JPEG, PNG, atau WebP."));
-    const kirim = el("button", "btn btn-primary", "Kirim Kendala");
-    kirim.type = "submit";
-    form.append(field, kirim);
-    card.append(aksi, form);
-
-    kendala.onclick = () => {
-        form.hidden = !form.hidden;
-    };
-    selesai.onclick = async () => {
-        if (!confirm("Tandai pengantaran ini selesai?")) return;
-        selesai.disabled = true;
-        galat("");
-        try {
-            await api(`/courier/orders/${item.orderId}/complete`, { method: "POST" });
-            muat();
-        } catch (error) {
-            selesai.disabled = false;
-            galat(errorMessage(error));
-        }
-    };
-    form.onsubmit = async event => {
-        event.preventDefault();
-        const note = area.value.trim();
-        if (!note) return galat("Catatan kendala wajib diisi.");
-        kirim.disabled = true;
-        galat("");
-        try {
-            const body = { note };
-            if (foto.files.length) body.photoKey = (await upload("obstacles", foto.files[0])).key;
-            await api(`/courier/orders/${item.orderId}/obstacles`, { method: "POST", body });
-            muat();
-        } catch (error) {
-            kirim.disabled = false;
-            galat(errorMessage(error));
-        }
-    };
-    return card;
-}
-
-async function muat() {
-    try {
-        const { data } = await api(`/courier/orders?date=${hariIni()}`);
-        $("#daftar").replaceChildren(...data.map(kartu));
-        $("#kosong").hidden = data.length > 0;
-    } catch (error) {
-        galat(errorMessage(error));
-    }
-}
-
-muat();
-</script></body></html>
+<h1 class="t-h1">Pilih paket langgananmu</h1>
+<section class="grid grid-2" aria-label="Daftar paket">
+ <article class="card card-flush"><div class="pkg-photo">Foto paket</div><div class="pkg-body stack">
+  <div class="row-between"><h2 class="t-h3">Paket Hemat</h2><span class="badge badge--success">Aktif</span></div>
+  <p class="t-muted">Lauk dan sayur sederhana, porsi standar. Cocok untuk anak kos.</p>
+  <p><span class="price-big">Rp15.000</span> <span class="t-small t-muted">per porsi</span></p>
+  <p class="t-small t-muted">Berlaku 1 Nov – 31 Des 2026</p>
+  <a class="btn btn-primary btn-block" href="checkout.html?paket=hemat">Pilih Paket</a></div></article>
+ <article class="card card-flush"><div class="pkg-photo">Foto paket</div><div class="pkg-body stack">
+  <div class="row-between"><h2 class="t-h3">Paket Reguler</h2><span class="badge badge--success">Aktif</span></div>
+  <p class="t-muted">Pilihan lauk dan variasi menu lebih luas. Cocok untuk pekerja dan keluarga.</p>
+  <p><span class="price-big">Rp20.000</span> <span class="t-small t-muted">per porsi</span></p>
+  <p class="t-small t-muted">Berlaku 1 Nov – 31 Des 2026</p>
+  <a class="btn btn-primary btn-block" href="checkout.html?paket=reguler">Pilih Paket</a></div></article>
+</section>
+<section class="stack"><h2 class="t-h2">Menu yang sudah terbit</h2>
+ <div class="card"><p class="label">Senin · Pagi 07:00</p><p class="t-h3">Nasi uduk + telur balado</p><p class="t-small t-muted">Mengandung: telur</p></div>
+ <div class="card"><p class="label">Senin · Siang 12:00</p><p class="t-h3">Ayam goreng + sayur asem</p><p class="t-small t-muted">Tidak ada alergen terdaftar</p></div></section>
+</main><script src="js/auth.js"></script></body></html>
