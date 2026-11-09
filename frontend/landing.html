@@ -16,6 +16,8 @@
 details{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-3) var(--sp-4)}
 summary{cursor:pointer;font-weight:600;min-height:32px}
 details p{margin-top:var(--sp-2);color:var(--muted)}
+.tier-foto{width:72px;height:72px;border-radius:50%;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden;font:600 12px/1 'Poppins',sans-serif;flex:none}
+.tier-foto img{width:100%;height:100%;object-fit:cover}
 @media(min-width:720px){.hero{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
@@ -53,6 +55,12 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
   <div class="card"><h3 class="t-h3">Antar atau ambil</h3><p class="t-muted">Ongkir dihitung dari jarak pin lokasimu dan muncul di rincian sebelum kamu membayar.</p></div>
   <div class="card"><h3 class="t-h3">Jeda fleksibel</h3><p class="t-muted">Tidak bisa makan hari itu? Skip sendiri sebelum makanan disiapkan. Slot yang dilewati tidak dikembalikan dananya.</p></div>
  </div>
+</section>
+
+<section class="stack" id="boxTier" hidden>
+ <div><p class="label">Member</p><h2 class="t-h2">Makin sering langganan, makin hemat</h2></div>
+ <div class="grid grid-3" id="tier"></div>
+ <p class="t-small t-muted">Level naik otomatis dari jumlah hari langganan yang sudah dibayar. Diskon berlaku untuk harga makanan, tidak untuk ongkir.</p>
 </section>
 
 <section class="stack" id="faq">
@@ -98,6 +106,32 @@ async function muat() {
     pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya());
 }
 
+function kartuTier(tier) {
+    const card = el("article", "card row");
+    const foto = el("div", "tier-foto");
+    isiFoto(foto, tier.photoUrl, tier.name, tier.name);
+    const info = el("div", "stack flex-1");
+    info.append(
+        el("h3", "t-h3", tier.name),
+        el("p", "", `Diskon ${tier.discountPercent.toLocaleString("id-ID")}% dari harga makanan`),
+        el("p", "t-small t-muted", `Dapat setelah ${tier.requiredSubscriptionDays} hari langganan, berlaku ${tier.durationDays} hari sejak pesanan terakhir dibayar.`),
+    );
+    if (tier.description) info.append(el("p", "t-small t-muted", tier.description));
+    card.append(foto, info);
+    return card;
+}
+
+async function muatTier() {
+    try {
+        const { data } = await api("/tiers", { auth: false });
+        const berdiskon = data.filter(tier => tier.discountPercent > 0);
+        $("#tier").replaceChildren(...berdiskon.map(kartuTier));
+        $("#boxTier").hidden = berdiskon.length === 0;
+    } catch {
+        $("#boxTier").hidden = true;
+    }
+}
+
 const user = currentUser();
 if (user) {
     $("#masuk").href = homeFor(user);
@@ -105,5 +139,6 @@ if (user) {
 }
 $("#ulang").onclick = muat;
 pasangFooter($("#footer"));
+muatTier();
 muat();
 </script></body></html>
