@@ -91,14 +91,24 @@
                 return node;
             }
 
+            const FIELD_FORM = { code: "kode", discountType: "jenis", discountValue: "nilai", minPurchase: "minimal", quota: "kuota", validUntil: "sampai" };
+            const KONFLIK_FORM = { "promo code is already used": "kode" };
+
+            function pesanIsianForm(error) {
+                const teks = pesanForm($("#form"), error, FIELD_FORM);
+                const id = error instanceof ApiError && error.code === "CONFLICT" && KONFLIK_FORM[error.message];
+                if (id) {
+                    tandaiField($(`#${id}`), teks);
+                    $(`#${id}`).focus();
+                }
+                return teks;
+            }
+
             function tampil(box, message) {
                 box.hidden = !message;
                 box.querySelector(".msg").textContent = message || "";
             }
 
-            function pesanError(error) {
-                return error instanceof ApiError && error.issues.length ? issuesText(error.issues) : errorMessage(error);
-            }
 
             function status(promo) {
                 if (!promo.isActive) return ["badge badge--expire", "Nonaktif"];
@@ -166,7 +176,7 @@
                     await api(path, { method, body });
                     await muat();
                 } catch (error) {
-                    tampil($("#galat"), pesanError(error));
+                    tampil($("#galat"), errorMessage(error));
                 }
             }
 
@@ -180,7 +190,7 @@
                     });
                 } catch (error) {
                     $("#daftar").replaceChildren();
-                    tampil($("#galat"), pesanError(error));
+                    tampil($("#galat"), errorMessage(error));
                 } finally {
                     $("#daftar").removeAttribute("aria-busy");
                 }
@@ -224,7 +234,7 @@
                     $("#form").hidden = true;
                     await muat();
                 } catch (error) {
-                    tampil($("#errForm"), pesanError(error));
+                    tampil($("#errForm"), pesanIsianForm(error));
                 } finally {
                     tombol.disabled = false;
                 }

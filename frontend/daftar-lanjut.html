@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Lengkapi Profil · LAHAP</title>
+        <link rel="stylesheet" href="css/style.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    </head>
+    <body data-roles="pelanggan">
+        <header class="app-header">
+            <div class="container">
+                <a class="brand" href="index.html">LAHAP</a>
+                <nav class="nav"></nav>
+            </div>
+        </header>
+        <main class="container stack-lg" style="max-width: 640px">
+            <div>
+                <p class="label">Langkah 2 dari 2 · Data opsional</p>
+                <h1 class="t-h1">Lengkapi profilmu</h1>
+                <p class="t-muted">Akunmu sudah jadi. Semua isian di bawah boleh dilewati dan bisa diubah nanti di halaman Profil.</p>
+            </div>
+
+            <form class="card stack" id="form" novalidate>
+                <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
+                <div class="field">
+                    <label for="nama">Nama</label>
+                    <input class="input" id="nama" autocomplete="name" maxlength="100" />
+                    <p class="hint">Dipakai sebagai nama penerima saat memesan.</p>
+                </div>
+                <div class="field" id="fEmail">
+                    <label for="email">Email</label>
+                    <input class="input" id="email" type="email" autocomplete="email" maxlength="100" />
+                    <p class="error-msg" hidden>Format email tidak valid.</p>
+                    <p class="hint">Bisa dipakai untuk masuk selain nomor HP.</p>
+                </div>
+                <div class="field">
+                    <label for="alamat">Alamat</label>
+                    <textarea class="textarea" id="alamat" autocomplete="street-address"></textarea>
+                </div>
+                <div class="field">
+                    <span class="field-label">Titik lokasi</span>
+                    <div id="peta"></div>
+                    <p class="hint">Alamat dan titik ini hanya mengisi otomatis form pesanan. Tiap pesanan tetap bisa memakai alamat lain.</p>
+                </div>
+                <div class="field" id="fAlergi" hidden>
+                    <span class="field-label">Alergi</span>
+                    <div class="chip-group" id="alergi"></div>
+                    <p class="hint">Dipakai untuk peringatan menu yang mengandung alergenmu.</p>
+                </div>
+                <div class="field">
+                    <label for="catAlergi">Catatan alergi lain</label>
+                    <input class="input" id="catAlergi" maxlength="500" placeholder="Mis. alergi kemiri" />
+                    <p class="hint">Untuk alergi yang tidak ada di daftar. Dapur akan memeriksa pesananmu secara khusus.</p>
+                </div>
+                <div class="row-between">
+                    <button class="btn btn-ghost" type="button" id="lewati">Lewati</button>
+                    <button class="btn btn-primary" type="submit" id="simpan">Simpan dan Lanjut</button>
+                </div>
+            </form>
+        </main>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+        <script src="js/auth.js"></script>
+        <script src="js/peta.js"></script>
+        <script>
+            const $ = selector => document.querySelector(selector);
+            const FIELD_LANJUT = {
+                name: "nama",
+                email: "email",
+                address: "alamat",
+                latitude: "peta",
+                longitude: "peta",
+                allergyIds: "alergi",
+                allergyNote: "catAlergi",
+            };
+
+            function tujuan() {
+                const minta = new URLSearchParams(location.search).get("redirect");
+                return minta && /^[\w-]+\.html(\?[\w%=&.-]*)?$/.test(minta) ? minta : homeFor(currentUser());
+            }
+
+            function tampil(message) {
+                $("#err").hidden = !message;
+                $("#err .msg").textContent = message || "";
+            }
+
+            const peta = pasangPeta($("#peta"), { label: "Peta lokasi rumah. Ketuk untuk menaruh pin." });
+
+            api("/allergies", { auth: false })
+                .then(({ data }) => {
+                    if (!data.length) return;
+                    $("#alergi").replaceChildren(
+                        ...data.map(item => {
+                            const label = document.createElement("label");
+                            label.className = "chip";
+                            const input = document.createElement("input");
+                            input.type = "checkbox";
+                            input.value = item.id;
+                            label.append(input, item.name);
+                            return label;
+                        }),
+                    );
+                    $("#fAlergi").hidden = false;
+                })
+                .catch(() => {});
+
+            $("#lewati").onclick = () => location.replace(tujuan());
+
+            $("#form").addEventListener("submit", async event => {
+                event.preventDefault();
+                const email = $("#email").value.trim();
+                const emailValid = email === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                $("#fEmail").classList.toggle("is-error", !emailValid);
+                $("#fEmail .error-msg").hidden = emailValid;
+                $("#email").setAttribute("aria-invalid", String(!emailValid));
+                if (!emailValid) return $("#email").focus();
+
+                const body = {};
+                if ($("#nama").value.trim()) body.name = $("#nama").value.trim();
+                if (email) body.email = email;
+                if ($("#alamat").value.trim()) body.address = $("#alamat").value.trim();
+                const titik = peta.ambilTitik();
+                if (titik) {
+                    body.latitude = titik.lat;
+                    body.longitude = titik.lng;
+                }
+                const alergi = [...document.querySelectorAll("#alergi input:checked")].map(input => input.value);
+                if (alergi.length) body.allergyIds = alergi;
+                if ($("#catAlergi").value.trim()) body.allergyNote = $("#catAlergi").value.trim();
+                if (!Object.keys(body).length) return location.replace(tujuan());
+
+                const tombol = $("#simpan");
+                tombol.disabled = true;
+                $("#lewati").disabled = true;
+                tampil("");
+                try {
+                    const { data } = await api("/me", { method: "PATCH", body });
+                    store.user = data;
+                    location.replace(tujuan());
+                } catch (error) {
+                    tampil(pesanForm(event.target, error, FIELD_LANJUT));
+                    if (error instanceof ApiError && error.code === "CONFLICT" && error.message === "email is already registered") {
+                        tandaiField($("#email"), "Email ini sudah dipakai akun lain.");
+                        $("#email").focus();
+                    }
+                    tombol.disabled = false;
+                    $("#lewati").disabled = false;
+                }
+            });
+        </script>
+    </body>

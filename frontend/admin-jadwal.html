@@ -160,9 +160,9 @@ async function muat() {
 
 async function awal() {
     try {
-        const [pk, mn] = await Promise.all([api("/admin/packages?limit=100"), api("/admin/menus?limit=100")]);
-        paket = pk.data;
-        menus = mn.data;
+        const [pk, mn] = await Promise.all([fetchAll("/admin/packages"), fetchAll("/admin/menus")]);
+        paket = pk;
+        menus = mn;
         $("#fPk").append(...paket.map(p => opsi(p.id, p.name)));
         $("#rPk").replaceChildren(...paket.map(p => opsi(p.id, p.name)));
         barisBaru();

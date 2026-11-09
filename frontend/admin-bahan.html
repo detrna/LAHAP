@@ -55,13 +55,6 @@ const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.clas
 const opsi = (value, label) => { const o = el("option", "", label); o.value = value; return o; };
 const SATUAN = ["kg", "gram", "liter", "ml", "butir", "ikat"];
 function galat(error, teks) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = teks || errorMessage(error); }
-const STRUK = {
-    INVALID_RECEIPT_IMAGE: "Foto ini tidak terbaca sebagai struk. Coba foto struk yang lebih jelas.",
-    LOW_CONFIDENCE_RECEIPT: "Struk kurang jelas untuk dibaca. Foto ulang dengan cahaya cukup dan tidak miring.",
-    NO_RECEIPT_ITEMS_FOUND: "Tidak ada barang di struk yang cocok dengan daftar bahan.",
-    RECEIPT_EXTRACTOR_PROVIDER_ERROR: "Layanan pembaca struk sedang bermasalah. Coba lagi beberapa saat lagi.",
-    RECEIPT_EXTRACTION_FAILED: "Struk gagal dibaca. Coba lagi.",
-};
 
 let alergi = [], halaman = 1, terpilih = new Set(), sedangUbah = null, nomor = 0;
 
@@ -253,9 +246,9 @@ $("formStruk").onsubmit = async event => {
     try {
         const [{ data }, semua] = await Promise.all([
             api("/admin/ingredients/extract", { method: "POST", body, timeout: 60000 }),
-            api("/admin/ingredients?limit=100"),
+            fetchAll("/admin/ingredients"),
         ]);
-        const stokSekarang = new Map(semua.data.map(b => [b.id, b.stock]));
+        const stokSekarang = new Map(semua.map(b => [b.id, b.stock]));
         hasilStruk = data.items;
         $("hasilStruk").replaceChildren(...hasilStruk.map(x => {
             const row = el("div", "invoice");
@@ -278,7 +271,7 @@ $("formStruk").onsubmit = async event => {
         }));
         $("tinjau").hidden = false;
     } catch (error) {
-        galat(error, error instanceof ApiError && STRUK[error.code] ? STRUK[error.code] : error && error.name === "AbortError" ? "Struk terlalu lama dibaca. Coba lagi." : undefined);
+        galat(error, error && error.name === "AbortError" ? "Struk terlalu lama dibaca. Coba lagi." : undefined);
     } finally { $("baca").disabled = false; $("baca").textContent = "Baca Struk"; }
 };
 $("batalStruk").onclick = () => { $("tinjau").hidden = true; $("struk").value = ""; };
@@ -342,7 +335,7 @@ function chipNama(a) {
 }
 async function muatAlergen() {
     try {
-        alergi = (await api("/admin/allergies?limit=100")).data;
+        alergi = await fetchAll("/admin/allergies");
         $("alergen").replaceChildren(...alergi.map(chipNama));
         document.querySelectorAll("#barisBahan [id^=ba-]").forEach(c => chipAlergen(c, c.id, alergenTerpilih(c)));
     } catch (error) { galat(error); }

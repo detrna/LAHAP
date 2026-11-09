@@ -96,6 +96,18 @@ function aturPeriode() {
     $("#kirim").textContent = nilai("jenis") === "Offline" && nilai("bayar") === "CASH" ? "Buat Pesanan" : "Bayar Sekarang";
 }
 
+const FIELD_CHECKOUT = {
+    recipientName: "penerima",
+    deliveryAddress: "alamat",
+    deliveryLatitude: "peta",
+    deliveryLongitude: "peta",
+    notes: "catatan",
+    promoCode: "promo",
+    menuScheduleIds: "hari",
+    periodStart: "mulai",
+    deliveryTimes: "waktu",
+};
+
 function badan() {
     const periode = nilai("periode");
     const antar = nilai("metode") === "antar";
@@ -185,14 +197,22 @@ async function hitung() {
         const { data } = await api("/subscriptions/preview", { method: "POST", body });
         if (ini !== nomor) return;
         galat("");
+        showIssues($("#form"), null, FIELD_CHECKOUT);
         tampilHarga(data);
         $("#kirim").disabled = false;
     } catch (error) {
         if (ini !== nomor) return;
         $("#rincian").hidden = true;
         $("#kosongHarga").hidden = false;
-        galat(errorMessage(error));
+        galat(pesanIsian(error));
     }
+}
+
+function pesanIsian(error) {
+    const aktif = document.activeElement;
+    const teks = pesanForm($("#form"), error, FIELD_CHECKOUT);
+    if (aktif && aktif !== document.body && document.contains(aktif)) aktif.focus();
+    return teks;
 }
 
 const tunda = () => {
@@ -284,7 +304,7 @@ $("#form").addEventListener("submit", async event => {
         location.href = sesi && sesi.redirectUrl ? sesi.redirectUrl : "langganan.html";
     } catch (error) {
         $("#kirim").disabled = false;
-        galat(errorMessage(error));
+        galat(pesanForm($("#form"), error, FIELD_CHECKOUT));
     }
 });
 

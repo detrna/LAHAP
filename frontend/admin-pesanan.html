@@ -6,7 +6,6 @@
 <h1 class="t-h1">Pesanan dan pengantaran</h1>
 <div class="field"><label for="tgl">Tanggal layanan</label><input class="input" id="tgl" type="date"></div>
 <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
-<div class="alert alert--warning" id="terpotong" hidden>Hanya 100 slot pertama yang dimuat untuk tanggal ini.</div>
 <section class="card stack" id="detail" hidden aria-live="polite">
  <div class="row-between"><h2 class="t-h2" id="dJudul">Detail slot</h2><button class="btn btn-ghost btn-sm" type="button" id="tutup">Tutup</button></div>
  <dl class="meta" id="dMeta"></dl>
@@ -250,15 +249,14 @@ async function muat() {
     const t = $("#tgl").value || hariIni();
     try {
         const [ord, usr, pak] = await Promise.all([
-            api(`/admin/orders?date=${t}&limit=100`),
-            api("/admin/users?role=COURIER&isActive=true&limit=100"),
-            api("/admin/packages?limit=100"),
+            fetchAll(`/admin/orders?date=${t}`),
+            fetchAll("/admin/users?role=COURIER&isActive=true"),
+            fetchAll("/admin/packages"),
         ]);
         if (ini !== ke) return;
-        pesanan = ord.data.sort((a, b) => (a.menuSchedule ? a.menuSchedule.deliveryTime.time : "").localeCompare(b.menuSchedule ? b.menuSchedule.deliveryTime.time : "") || penerima(a).localeCompare(penerima(b)));
-        kurir = usr.data;
-        namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
-        $("#terpotong").hidden = ord.meta.total <= ord.data.length;
+        pesanan = ord.sort((a, b) => (a.menuSchedule ? a.menuSchedule.deliveryTime.time : "").localeCompare(b.menuSchedule ? b.menuSchedule.deliveryTime.time : "") || penerima(a).localeCompare(penerima(b)));
+        kurir = usr;
+        namaPaket = new Map(pak.map(p => [p.id, p.name]));
         rekap(); papan(); ambil(); isiSlot();
         await tugas(t);
         galat(null);

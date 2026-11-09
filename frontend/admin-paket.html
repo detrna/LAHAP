@@ -73,7 +73,7 @@ function gambar() {
 }
 
 async function muat() {
-    try { paket = (await api("/admin/packages?limit=100")).data; gambar(); galat(null); }
+    try { paket = await fetchAll("/admin/packages"); gambar(); galat(null); }
     catch (error) { $("list").removeAttribute("aria-busy"); $("list").replaceChildren(); galat(error); }
 }
 

@@ -252,9 +252,9 @@ $("jenis").addEventListener("change", () => { halaman = 1; muat(); });
 
 (async () => {
     try {
-        const [b, k] = await Promise.all([api("/admin/ingredients?limit=100"), api("/admin/users?role=KITCHEN&isActive=true&limit=100")]);
-        bahan = b.data.sort((x, y) => x.name.localeCompare(y.name));
-        koki = k.data;
+        const [b, k] = await Promise.all([fetchAll("/admin/ingredients"), fetchAll("/admin/users?role=KITCHEN&isActive=true")]);
+        bahan = b.sort((x, y) => x.name.localeCompare(y.name));
+        koki = k;
     } catch (error) { galat(error); }
     muat();
 })();

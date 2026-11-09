@@ -101,8 +101,7 @@ $("tutup").onclick = () => { $("detail").hidden = true; };
 let templates = [], sedangUbah = null;
 function tampilTpl() { const t = templates.find(x => x.id === $("tpl").value); $("isiTpl").textContent = t ? t.body : "Belum ada template. Tambahkan di bagian Template pesan."; }
 async function muatTemplate() {
-    const { data } = await api("/admin/message-templates?limit=100");
-    templates = data;
+    templates = await fetchAll("/admin/message-templates");
     const sebelum = $("tpl").value;
     $("tpl").replaceChildren(...templates.map(x => { const o = el("option", "", x.name); o.value = x.id; return o; }));
     if (templates.some(t => t.id === sebelum)) $("tpl").value = sebelum;

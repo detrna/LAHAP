@@ -40,6 +40,7 @@
                 </form>
 
                 <form id="formDaftar" class="stack card" novalidate hidden>
+                    <p class="label">Langkah 1 dari 2 · Data wajib</p>
                     <div class="alert alert--error" id="errDaftar" role="alert" hidden>
                         <span class="alert-title">Gagal mendaftar</span><span class="msg"></span>
                     </div>
@@ -60,21 +61,8 @@
                         <p class="error-msg" hidden>Password tidak sama.</p>
                     </div>
                     <label class="row t-small"><input type="checkbox" class="lihat-pw" /> Tampilkan password</label>
-                    <div class="field">
-                        <label for="dNama">Nama (opsional)</label>
-                        <input class="input" id="dNama" autocomplete="name" />
-                    </div>
-                    <div class="field" id="fEmail">
-                        <label for="dEmail">Email (opsional)</label>
-                        <input class="input" id="dEmail" type="email" autocomplete="email" />
-                        <p class="error-msg" hidden>Format email tidak valid.</p>
-                    </div>
-                    <div class="field" id="fAlergi" hidden>
-                        <span class="field-label">Alergi (opsional)</span>
-                        <div class="chip-group" id="alergi"></div>
-                        <p class="hint">Dipakai untuk peringatan menu. Bisa diubah nanti di profil.</p>
-                    </div>
-                    <button class="btn btn-primary btn-block" type="submit">Daftar</button>
+                    <p class="hint">Nama, email, alamat, dan alergi bisa diisi di langkah berikutnya.</p>
+                    <button class="btn btn-primary btn-block" type="submit">Daftar dan Lanjut</button>
                     <button class="btn btn-ghost btn-block" type="button" id="keMasuk">Sudah punya akun? Masuk</button>
                 </form>
             </div>
@@ -127,38 +115,33 @@
                 box.querySelector(".msg").textContent = message || "";
             }
 
-            async function kirim(form, aksi, box) {
+            const FIELD_DAFTAR = { phone: "dHp", password: "dPw", confirmPassword: "dUlang" };
+
+            function tandaiTerdaftar(form, error) {
+                if (!(error instanceof ApiError) || error.code !== "CONFLICT" || error.message !== "phone is already registered") return;
+                const input = form.querySelector("#dHp");
+                tandaiField(input, "Nomor HP ini sudah terdaftar. Silakan masuk.");
+                input.focus();
+            }
+
+            async function kirim(form, aksi, box, fields, lanjut = tujuan) {
                 const tombol = form.querySelector("button[type=submit]");
                 tombol.disabled = true;
                 tampilError(box, "");
                 try {
                     const user = await aksi();
-                    location.href = tujuan(user);
+                    location.href = lanjut(user);
                 } catch (error) {
-                    tampilError(box, errorMessage(error));
+                    if (!fields) {
+                        tampilError(box, errorMessage(error));
+                        return;
+                    }
+                    tampilError(box, pesanForm(form, error, fields));
+                    tandaiTerdaftar(form, error);
                 } finally {
                     tombol.disabled = false;
                 }
             }
-
-            // Daftar alergi bersifat opsional: jika gagal dimuat, form tetap bisa dipakai tanpa itu.
-            api("/allergies", { auth: false })
-                .then(({ data }) => {
-                    if (!data.length) return;
-                    $("#alergi").replaceChildren(
-                        ...data.map(item => {
-                            const label = document.createElement("label");
-                            label.className = "chip";
-                            const input = document.createElement("input");
-                            input.type = "checkbox";
-                            input.value = item.id;
-                            label.append(input, item.name);
-                            return label;
-                        }),
-                    );
-                    $("#fAlergi").hidden = false;
-                })
-                .catch(() => {});
 
             $("#keDaftar").onclick = () => tampil(true);
             $("#keMasuk").onclick = () => tampil(false);
@@ -175,20 +158,15 @@
                 event.preventDefault();
                 const phone = $("#dHp").value.trim();
                 const password = $("#dPw").value;
-                const email = $("#dEmail").value.trim();
                 const valid = periksa([
                     ["#fHp", /^(\+?62|0)8\d{8,12}$/.test(phone.replace(/[\s-]/g, ""))],
                     ["#fPw", password.length >= 8 && password.length <= 72],
                     ["#fUlang", password === $("#dUlang").value],
-                    ["#fEmail", email === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)],
                 ]);
                 if (!valid) return;
                 const fields = { phone, password, confirmPassword: $("#dUlang").value };
-                const alergi = [...document.querySelectorAll("#alergi input:checked")].map(input => input.value);
-                if (alergi.length) fields.allergyIds = alergi; // nama field mengikuti PATCH /me; cek dengan openapi.json
-                if ($("#dNama").value.trim()) fields.name = $("#dNama").value.trim();
-                if ($("#dEmail").value.trim()) fields.email = $("#dEmail").value.trim();
-                kirim(event.target, () => register(fields), $("#errDaftar"));
+                const lanjut = user => `daftar-lanjut.html?redirect=${encodeURIComponent(tujuan(user))}`;
+                kirim(event.target, () => register(fields), $("#errDaftar"), FIELD_DAFTAR, lanjut);
             });
         </script>
     </body>

@@ -85,10 +85,12 @@ function kartu(item) {
     const field = el("div", "field");
     const area = el("textarea", "textarea");
     area.maxLength = 1000;
+    area.id = `kendala-${item.orderId}`;
     area.setAttribute("aria-label", "Catatan kendala");
     const foto = el("input", "input");
     foto.type = "file";
     foto.accept = "image/jpeg,image/png,image/webp";
+    foto.id = `foto-${item.orderId}`;
     foto.setAttribute("aria-label", "Foto kendala (opsional)");
     const sisa = el("p", "hint", "Maksimal 1000 karakter.");
     area.addEventListener("input", () => {
@@ -130,7 +132,7 @@ function kartu(item) {
             muat();
         } catch (error) {
             kirim.disabled = false;
-            galat(errorMessage(error));
+            galat(pesanForm(form, error, { note: area.id, photoKey: foto.id }));
         }
     };
     return card;
@@ -158,33 +160,11 @@ const muatTertunda = () => {
     tunda = setTimeout(muat, 300);
 };
 
-let stream = null;
-let menyambung = false;
-async function sambung() {
-    if (stream || menyambung) return;
-    menyambung = true;
-    try {
-        if (!(await ensureToken())) return;
-        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
-        ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muatTertunda));
-        stream.onerror = async () => {
-            stream.close();
-            stream = null;
-            await refreshSession();
-            setTimeout(async () => {
-                await sambung();
-                muatTertunda(); // ada kemungkinan event terlewat saat terputus
-            }, 5000);
-        };
-    } finally {
-        menyambung = false;
-    }
-}
+["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => onRealtime(nama, muatTertunda));
+onRealtimeReconnect(muatTertunda);
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) muatTertunda();
 });
-window.addEventListener("pagehide", () => stream && stream.close());
 
 muat();
-sambung();
 </script></body></html>

@@ -11,8 +11,8 @@
 <div class="dash">
 <div class="stack-lg">
  <section class="stack" id="boxHariIni" hidden><h2 class="t-h2">Hari ini</h2><div class="stack" id="hariIni" aria-live="polite"></div></section>
- <section class="stack"><h2 class="t-h2">Pesanan</h2><p class="t-muted" id="kosong" hidden>Belum ada pesanan. Pilih paket untuk mulai.</p><div class="stack-lg" id="pesanan" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div></section>
- <section class="card"><div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2></div><p class="t-muted" id="kosongBayar" hidden>Belum ada pembayaran.</p><div id="bayar"><div class="skeleton"></div></div></section>
+ <section class="stack"><h2 class="t-h2">Pesanan</h2><p class="t-muted" id="kosong" hidden>Belum ada pesanan. Pilih paket untuk mulai.</p><div class="stack-lg" id="pesanan" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div><div id="pagerPesanan" hidden></div></section>
+ <section class="card"><div class="section-head"><h2 class="t-h2">Riwayat pembayaran</h2></div><p class="t-muted" id="kosongBayar" hidden>Belum ada pembayaran.</p><div id="bayar"><div class="skeleton"></div></div><div id="pagerBayar" hidden></div></section>
 </div>
 <aside class="stack-lg">
  <section class="card stack">
@@ -192,6 +192,8 @@ function baris(p) {
 
 // Jika dua pemuatan berjalan bersamaan (mis. klik + event realtime), hanya yang terbaru yang ditampilkan.
 let muatKe = 0;
+let halamanPesanan = 1;
+let halamanBayar = 1;
 async function muat() {
     const ke = ++muatKe;
     try {
@@ -202,21 +204,35 @@ async function muat() {
             $("#avatar").textContent = (user.name || "?").split(" ").map(k => k[0]).slice(0, 2).join("").toUpperCase();
         }
         const [subs, hari, bayar, member] = await Promise.all([
-            api("/subscriptions"),
+            api(`/subscriptions?page=${halamanPesanan}&limit=10`),
             api(`/orders?date=${hariIni()}`),
-            api("/payments"),
+            api(`/payments?page=${halamanBayar}&limit=10`),
             api("/me/membership"),
         ]);
+        if (ke !== muatKe) return;
+        if ((!subs.data.length && halamanPesanan > 1) || (!bayar.data.length && halamanBayar > 1)) {
+            if (!subs.data.length && halamanPesanan > 1) halamanPesanan -= 1;
+            if (!bayar.data.length && halamanBayar > 1) halamanBayar -= 1;
+            return muat();
+        }
         const aktif = subs.data.filter(s => s.status === "Success" && s.displayStatus !== "Selesai").slice(0, 3);
         const detail = new Map(await Promise.all(aktif.map(async s => [s.id, (await api(`/subscriptions/${s.id}`)).data.orders || []])));
         if (ke !== muatKe) return;
         $("#pesanan").removeAttribute("aria-busy");
         $("#pesanan").replaceChildren(...subs.data.map(s => kartuPesanan(s, detail.get(s.id) || [])));
         $("#kosong").hidden = subs.data.length > 0;
+        renderPager($("#pagerPesanan"), subs.meta, p => {
+            halamanPesanan = p;
+            muat();
+        });
         $("#hariIni").replaceChildren(...hari.data.map(kartuHariIni));
         $("#boxHariIni").hidden = hari.data.length === 0;
         $("#bayar").replaceChildren(...bayar.data.map(baris));
         $("#kosongBayar").hidden = bayar.data.length > 0;
+        renderPager($("#pagerBayar"), bayar.meta, p => {
+            halamanBayar = p;
+            muat();
+        });
         tampilTier(member.data);
     } catch (error) {
         if (ke !== muatKe) return;
@@ -233,40 +249,11 @@ const muatTertunda = () => {
     tundaMuat = setTimeout(muat, 300);
 };
 
-let stream = null;
-let menyambung = false;
-async function sambung() {
-    if (stream || menyambung) return;
-    menyambung = true;
-    try {
-        if (!(await ensureToken())) return;
-        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
-        ["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => stream.addEventListener(nama, muatTertunda));
-        // Sudah tersambung kembali setelah putus: data mungkin terlewat, jadi muat ulang.
-        stream.onopen = () => {
-            if (stream.sudahPernahPutus) muatTertunda();
-        };
-        stream.onerror = async () => {
-            const lama = stream;
-            lama.close();
-            stream = null;
-            await refreshSession(); // token di URL sudah kedaluwarsa: ambil yang baru
-            setTimeout(async () => {
-                await sambung();
-                if (stream) stream.sudahPernahPutus = true;
-            }, 5000);
-        };
-    } finally {
-        menyambung = false;
-    }
-}
-
-// Saat tab kembali aktif, data mungkin sudah usang: muat ulang.
+["slot.status", "slot.menu", "slot.obstacle"].forEach(nama => onRealtime(nama, muatTertunda));
+onRealtimeReconnect(muatTertunda);
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) muatTertunda();
 });
-window.addEventListener("pagehide", () => stream && stream.close());
 
 muat();
-sambung();
 </script></body></html>

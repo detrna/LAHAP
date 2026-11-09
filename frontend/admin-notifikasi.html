@@ -95,10 +95,10 @@ async function muatDaftar() {
 
 async function muatPilihan() {
     try {
-        const [pk, jd] = await Promise.all([api("/admin/packages?limit=100"), api(`/admin/menu-schedules?from=${hariIni()}&limit=100`)]);
-        const nama = new Map(pk.data.map(p => [p.id, p.name]));
-        ["pk", "upk"].forEach(id => $(id).replaceChildren(...pk.data.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; })));
-        ["jd", "ujd"].forEach(id => $(id).replaceChildren(...jd.data.map(j => { const o = el("option", "", `${tgl(`${j.date}T00:00:00+07:00`)} · ${j.deliveryTime.range} · ${nama.get(j.packageId) || "Paket"}`); o.value = j.id; return o; })));
+        const [pk, jd] = await Promise.all([fetchAll("/admin/packages"), fetchAll(`/admin/menu-schedules?from=${hariIni()}`)]);
+        const nama = new Map(pk.map(p => [p.id, p.name]));
+        ["pk", "upk"].forEach(id => $(id).replaceChildren(...pk.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; })));
+        ["jd", "ujd"].forEach(id => $(id).replaceChildren(...jd.map(j => { const o = el("option", "", `${tgl(`${j.date}T00:00:00+07:00`)} · ${j.deliveryTime.range} · ${nama.get(j.packageId) || "Paket"}`); o.value = j.id; return o; })));
     } catch (error) { galat(error); }
 }
 $("c").addEventListener("change", () => { $("fPaket").hidden = $("c").value !== "PACKAGE"; $("fJadwal").hidden = $("c").value !== "SCHEDULE"; });

@@ -7,7 +7,7 @@
   <div class="field"><label for="periode">Periode</label><select class="select input" id="periode"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month">Bulan ini</option></select></div></div>
  <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
  <div class="alert alert--warning" id="peringatanMenu" role="status" hidden><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan jadwal menu supaya pelanggan bisa memesan. <a href="admin-jadwal.html">Buka halaman Jadwal</a></div>
- <div class="alert alert--info" id="belumDibaca" role="status" hidden><span id="belumDibacaTeks"></span> <a href="admin-kotak-masuk.html">Buka kotak masuk</a></div>
+ <div class="alert alert--info" id="belumDibaca" role="status" hidden><span id="belumDibacaTeks"></span> <a href="notifikasi.html">Buka kotak masuk</a></div>
 
  <section class="grid grid-4" aria-label="Ringkasan">
   <div class="card"><p class="t-small t-muted">Pemasukan</p><p class="price-big" id="kPemasukan">…</p></div>
@@ -97,10 +97,10 @@ async function menuMingguDepan() {
 }
 
 async function pembayaran() {
-    const [pay, subs, pak] = await Promise.all([api("/admin/payments?status=Pending&limit=20"), api("/admin/subscriptions?status=Pending&limit=100"), api("/admin/packages?limit=100")]);
-    const peta = new Map(subs.data.map(s => [s.id, s]));
-    const namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
+    const [pay, pak] = await Promise.all([api("/admin/payments?status=Pending&limit=20"), fetchAll("/admin/packages")]);
+    const namaPaket = new Map(pak.map(p => [p.id, p.name]));
     const tunai = pay.data.filter(p => p.method === "CASH");
+    const peta = new Map(await Promise.all([...new Set(tunai.map(p => p.subscriptionId))].map(id => api(`/admin/subscriptions/${id}`).then(({ data }) => [id, data]).catch(() => [id, null]))));
     $("#kosongBayar").hidden = tunai.length > 0;
     $("#bayar").replaceChildren(...tunai.map(p => {
         const s = peta.get(p.subscriptionId);

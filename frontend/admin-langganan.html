@@ -299,7 +299,7 @@ $("tutup").onclick =() => { $("detail").hidden = true; aktif = null; history.rep
 if (userId) { $("filterUser").hidden = false; $("filterUserTeks").textContent = "Langganan satu pelanggan"; }
 (async () => {
     try {
-        const { data } = await api("/admin/packages?limit=100");
+        const data = await fetchAll("/admin/packages");
         namaPaket = new Map(data.map(p => [p.id, p.name]));
         $("fPk").append(...data.map(p => opsi(p.id, p.name)));
     } catch (error) { galat(error); }

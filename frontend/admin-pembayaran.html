@@ -74,22 +74,22 @@ async function muat() {
     try {
         const [bayar, refund, ubah, subs, pak] = await Promise.all([
             api(`/admin/payments?page=${halaman}&limit=20${status ? `&status=${status}` : ""}`),
-            api("/admin/payments?needsRefund=true&limit=50"),
-            api("/admin/delivery-method-changes?needsRefund=true&limit=50"),
+            fetchAll("/admin/payments?needsRefund=true"),
+            fetchAll("/admin/delivery-method-changes?needsRefund=true"),
             peta.size ? null : api("/admin/subscriptions?limit=100"),
-            namaPaket.size ? null : api("/admin/packages?limit=100"),
+            namaPaket.size ? null : fetchAll("/admin/packages"),
         ]);
         if (subs) subs.data.forEach(s => peta.set(s.id, s));
-        if (pak) namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
-        await lengkapi([...bayar.data, ...refund.data, ...ubah.data].map(x => x.subscriptionId));
+        if (pak) namaPaket = new Map(pak.map(p => [p.id, p.name]));
+        await lengkapi([...bayar.data, ...refund, ...ubah].map(x => x.subscriptionId));
         if (ini !== ke) return;
         $("#isi").removeAttribute("aria-busy");
         $("#isi").replaceChildren(...bayar.data.map(p => baris(p, false)));
         $("#kosong").hidden = bayar.data.length > 0;
-        $("#refund").replaceChildren(...refund.data.filter(p => p.status !== "Refund").map(p => baris(p, true)));
-        $("#kosongRefund").hidden = refund.data.some(p => p.status !== "Refund");
-        $("#ubah").replaceChildren(...ubah.data.map(barisUbah));
-        $("#kosongUbah").hidden = ubah.data.length > 0;
+        $("#refund").replaceChildren(...refund.filter(p => p.status !== "Refund").map(p => baris(p, true)));
+        $("#kosongRefund").hidden = refund.some(p => p.status !== "Refund");
+        $("#ubah").replaceChildren(...ubah.map(barisUbah));
+        $("#kosongUbah").hidden = ubah.length > 0;
         renderPager($("#pager"), bayar.meta, p => { halaman = p; muat(); });
         galat(null);
     } catch (error) {

@@ -44,7 +44,7 @@ $("#fPw").addEventListener("submit", async event => {
         toast("Password diganti. Silakan masuk lagi.");
         setTimeout(() => location.replace("login.html"), 1200);
     } catch (error) {
-        tampil($("#errPw"), error.code === "INVALID_STATE" ? "Password lama salah." : errorMessage(error));
+        tampil($("#errPw"), pesanGantiPassword(event.target, error));
         tombol.disabled = false;
     }
 });

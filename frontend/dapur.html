@@ -24,10 +24,6 @@ const angka = n => Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 
 const tglPanjang = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long" });
 const jamMakan = t => `${t.range} · ${t.time}`;
 const ALASAN = { ALLERGY_CLASH: "Bentrok alergi", ALLERGY_NOTE: "Catatan alergi", NOTE: "Catatan pesanan" };
-const PESAN_SERVER = {
-    "schedule has no alternative menu": "Jadwal ini belum punya menu alternatif.",
-    "slot is past food preparation": "Makanan sudah ditandai siap, menu tidak bisa diganti lagi.",
-};
 const BELUM_DISIAPKAN = "Belum ada porsi berstatus Disiapkan. Porsi otomatis jadi Disiapkan 3 jam sebelum waktu makan, atau semuanya sudah ditandai siap.";
 
 class PesanHalaman extends Error {}
@@ -40,7 +36,6 @@ function el(tag, className, text) {
 }
 function pesanGalat(error) {
     if (error instanceof PesanHalaman) return error.message;
-    if (error instanceof ApiError && PESAN_SERVER[error.message]) return PESAN_SERVER[error.message];
     if (error instanceof ApiError && error.code === "ORDER_NOT_FOUND") return "Pesanan tidak ditemukan atau belum lunas. Muat ulang halaman.";
     return errorMessage(error);
 }
@@ -222,26 +217,8 @@ $("#tgl").value = hariIni();
 $("#tgl").addEventListener("change", muat);
 $("#rentang").addEventListener("change", muat);
 
-let stream = null, menyambung = false;
-async function sambung() {
-    if (stream || menyambung) return;
-    menyambung = true;
-    try {
-        if (!(await ensureToken())) return;
-        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
-        ["slot.status", "slot.menu"].forEach(n => stream.addEventListener(n, muatTertunda));
-        stream.onerror = async () => {
-            stream.close();
-            stream = null;
-            await refreshSession();
-            setTimeout(async () => { await sambung(); muatTertunda(); }, 5000);
-        };
-    } finally {
-        menyambung = false;
-    }
-}
+["slot.status", "slot.menu"].forEach(n => onRealtime(n, muatTertunda));
+onRealtimeReconnect(muatTertunda);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) muatTertunda(); });
-window.addEventListener("pagehide", () => stream && stream.close());
 muat();
-sambung();
 </script></body></html>

@@ -81,6 +81,8 @@
                 box.querySelector(".msg").textContent = message || "";
             }
 
+            const FIELD_PROFIL = { name: "nama", phone: "hp", email: "email", address: "alamat", allergyIds: "alergi", allergyNote: "catAlergi" };
+
             function isiForm(user) {
                 $("#nama").value = user.name || "";
                 $("#hp").value = user.phone || "";
@@ -140,7 +142,7 @@
                     tampil($("#okProfil"), "Perubahan profil sudah disimpan.");
                     scrollTo({ top: 0, behavior: "smooth" });
                 } catch (error) {
-                    tampil($("#errProfil"), errorMessage(error));
+                    tampil($("#errProfil"), pesanForm(event.target, error, FIELD_PROFIL));
                 } finally {
                     tombol.disabled = false;
                 }
@@ -173,7 +175,7 @@
                     toast("Password diganti. Silakan masuk lagi.");
                     setTimeout(() => location.replace("login.html"), 1200);
                 } catch (error) {
-                    tampil($("#errPw"), error.code === "INVALID_STATE" ? "Password lama salah." : errorMessage(error));
+                    tampil($("#errPw"), pesanGantiPassword(event.target, error));
                     tombol.disabled = false;
                 }
             });
