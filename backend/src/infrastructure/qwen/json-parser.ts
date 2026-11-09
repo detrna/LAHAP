@@ -16,7 +16,10 @@ export function stripCodeFences(text: string): string {
     if (embeddedBlock && embeddedBlock[1] !== undefined) {
         return embeddedBlock[1].trim();
     }
-    return trimmed;
+    return trimmed
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim();
 }
 
 /**

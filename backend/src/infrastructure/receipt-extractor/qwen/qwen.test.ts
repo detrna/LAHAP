@@ -20,23 +20,40 @@ const INGREDIENTS: readonly ReceiptIngredientInput[] = [
 const dummyConfig: ReceiptExtractorConfig = {
     API_KEY: "dummy-key-for-unit-tests",
     BASE_URL: "https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1",
-    MODEL: "qwen-vl-ocr-2025-11-20",
+    MODEL: "qwen3.8-flash",
     TIMEOUT_MS: 30_000,
     MAX_RETRIES: 1,
 };
 
+const [AYAM, MINYAK, GULA] = INGREDIENTS.map(ingredient => ingredient.id);
+
 describe("buildPrompt (unit)", () => {
-    it("embeds the known ingredients in the prompt", () => {
+    it("lists the known ingredients and asks for the printed quantity and unit without converting", () => {
         const prompt = buildPrompt(INGREDIENTS);
 
-        expect(prompt).toContain("00000000-0000-4000-8000-000000000001");
-        expect(prompt).toContain("Dada Ayam Fillet");
-        expect(prompt).toContain("Minyak Zaitun Extra Virgin");
+        for (const ingredient of INGREDIENTS) {
+            expect(prompt).toContain(ingredient.id);
+            expect(prompt).toContain(ingredient.name);
+        }
+        expect(prompt).toContain("Do not convert units");
+        expect(prompt).toContain("confidence");
     });
 });
 
 describe("QwenReceiptExtractor (unit)", () => {
     const makeExtractor = (options = {}) => new QwenReceiptExtractor(dummyConfig, options);
+    const mockCompletion = (extractor: QwenReceiptExtractor, output: unknown, usage?: unknown) => {
+        const create = vi.fn().mockResolvedValue({
+            choices: [{ message: { content: typeof output === "string" ? output : JSON.stringify(output) } }],
+            usage,
+        });
+        (
+            extractor as unknown as { client: { chat: { completions: { create: unknown } } } }
+        ).client.chat.completions.create = create;
+        return create;
+    };
+    const extractFrom = (extractor: QwenReceiptExtractor) =>
+        extractor.extract({ image: Buffer.from("receipt-image"), mimeType: "image/jpeg", ingredients: INGREDIENTS });
 
     it("throws InvalidReceiptImageError for unsupported mime type", async () => {
         const extractor = makeExtractor();
@@ -103,104 +120,71 @@ describe("QwenReceiptExtractor (unit)", () => {
         expect(() => new QwenReceiptExtractor({ ...dummyConfig, API_KEY: "" })).toThrow("DASHSCOPE_API_KEY is not set");
     });
 
-    it("extracts matched items, normalizes name and unit from known ingredients, and sums duplicate ids", async () => {
+    it("returns each matched line with the quantity and unit printed on the receipt", async () => {
         const onUsage = vi.fn();
         const extractor = makeExtractor({ onUsage });
-        const client = (extractor as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
-        client.chat.completions.create = vi.fn().mockResolvedValue({
-            choices: [
-                {
-                    message: {
-                        content: JSON.stringify({
-                            confidence: 92,
-                            items: [
-                                {
-                                    id: "00000000-0000-4000-8000-000000000001",
-                                    name: "Dada Ayam",
-                                    quantity: 10,
-                                    unit: "kg",
-                                },
-                                {
-                                    id: "00000000-0000-4000-8000-000000000001",
-                                    name: "Dada Ayam Fillet",
-                                    quantity: 2.5,
-                                    unit: "kg",
-                                },
-                                {
-                                    id: "00000000-0000-4000-8000-000000000002",
-                                    name: "Minyak Zaitun",
-                                    quantity: "5",
-                                    unit: "L",
-                                },
-                            ],
-                        }),
-                    },
-                },
-            ],
-            usage: { total_tokens: 120 },
-        });
+        const create = mockCompletion(
+            extractor,
+            {
+                confidence: 92,
+                items: [
+                    { id: AYAM, quantity: 10, unit: "kg" },
+                    { id: AYAM, quantity: 500, unit: "gr" },
+                    { id: MINYAK, quantity: "1,5", unit: "L" },
+                    { id: GULA, quantity: 2, unit: null },
+                    { id: GULA, quantity: 1 },
+                ],
+            },
+            { total_tokens: 120 },
+        );
 
-        const result = await extractor.extract({
-            image: Buffer.from("receipt-image"),
-            mimeType: "image/jpeg",
-            ingredients: INGREDIENTS,
-        });
+        const result = await extractFrom(extractor);
 
         expect(result).toEqual({
             items: [
-                {
-                    id: "00000000-0000-4000-8000-000000000001",
-                    name: "Dada Ayam Fillet",
-                    quantity: 12.5,
-                    unit: "kg",
-                },
-                {
-                    id: "00000000-0000-4000-8000-000000000002",
-                    name: "Minyak Zaitun Extra Virgin",
-                    quantity: 5,
-                    unit: "liter",
-                },
+                { id: AYAM, quantity: 10, printedUnit: "kg" },
+                { id: AYAM, quantity: 500, printedUnit: "gr" },
+                { id: MINYAK, quantity: 1.5, printedUnit: "L" },
+                { id: GULA, quantity: 2, printedUnit: "" },
+                { id: GULA, quantity: 1, printedUnit: "" },
             ],
         });
+        expect(create).toHaveBeenCalledOnce();
         expect(onUsage).toHaveBeenCalledWith({ total_tokens: 120 });
     });
 
-    it("drops unknown ingredient ids and stop-word lines, throwing NoReceiptItemsFoundError when none remain", async () => {
+    it("drops invalid lines and unknown ids without failing the receipt or calling the model again", async () => {
         const extractor = makeExtractor();
-        const client = (extractor as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
-        client.chat.completions.create = vi.fn().mockResolvedValue({
-            choices: [
-                {
-                    message: {
-                        content: JSON.stringify({
-                            confidence: 95,
-                            items: [
-                                {
-                                    id: "00000000-0000-4000-8000-000000000999",
-                                    name: "Kantong Plastik",
-                                    quantity: 1,
-                                    unit: "kg",
-                                },
-                                {
-                                    id: "00000000-0000-4000-8000-000000000001",
-                                    name: "Subtotal",
-                                    quantity: 1,
-                                    unit: "kg",
-                                },
-                            ],
-                        }),
-                    },
-                },
+        const create = mockCompletion(extractor, {
+            confidence: 90,
+            items: [
+                { id: AYAM, quantity: 2, unit: "kg" },
+                { id: "00000000-0000-4000-8000-000000000999", quantity: 1, unit: "kg" },
+                { id: MINYAK, quantity: 0, unit: "L" },
+                { id: MINYAK, quantity: null, unit: "L" },
+                { id: GULA, quantity: "2 x 500g", unit: "gr" },
+                { name: "Subtotal", quantity: 1 },
+                "Kantong Plastik",
             ],
         });
 
-        await expect(
-            extractor.extract({
-                image: Buffer.from("receipt-image"),
-                mimeType: "image/jpeg",
-                ingredients: INGREDIENTS,
-            }),
-        ).rejects.toMatchObject({
+        const result = await extractFrom(extractor);
+
+        expect(result).toEqual({ items: [{ id: AYAM, quantity: 2, printedUnit: "kg" }] });
+        expect(create).toHaveBeenCalledOnce();
+    });
+
+    it("throws NoReceiptItemsFoundError when no valid line matches a known ingredient", async () => {
+        const extractor = makeExtractor();
+        mockCompletion(extractor, {
+            confidence: 95,
+            items: [
+                { id: "00000000-0000-4000-8000-000000000999", quantity: 1, unit: "pcs" },
+                { id: AYAM, quantity: -1, unit: "kg" },
+            ],
+        });
+
+        await expect(extractFrom(extractor)).rejects.toMatchObject({
             constructor: NoReceiptItemsFoundError,
             code: "NO_RECEIPT_ITEMS_FOUND",
             statusCode: 400,
@@ -209,34 +193,9 @@ describe("QwenReceiptExtractor (unit)", () => {
 
     it("throws LowConfidenceReceiptError when confidence is below threshold", async () => {
         const extractor = makeExtractor();
-        const client = (extractor as unknown as { client: { chat: { completions: { create: unknown } } } }).client;
-        client.chat.completions.create = vi.fn().mockResolvedValue({
-            choices: [
-                {
-                    message: {
-                        content: JSON.stringify({
-                            confidence: 40,
-                            items: [
-                                {
-                                    id: "00000000-0000-4000-8000-000000000001",
-                                    name: "Dada Ayam Fillet",
-                                    quantity: 10,
-                                    unit: "kg",
-                                },
-                            ],
-                        }),
-                    },
-                },
-            ],
-        });
+        mockCompletion(extractor, { confidence: 40, items: [{ id: AYAM, quantity: 10, unit: "kg" }] });
 
-        await expect(
-            extractor.extract({
-                image: Buffer.from("receipt-image"),
-                mimeType: "image/jpeg",
-                ingredients: INGREDIENTS,
-            }),
-        ).rejects.toMatchObject({
+        await expect(extractFrom(extractor)).rejects.toMatchObject({
             constructor: LowConfidenceReceiptError,
             code: "LOW_CONFIDENCE_RECEIPT",
             statusCode: 400,

@@ -4667,7 +4667,7 @@
           "Admin · Ingredients"
         ],
         "summary": "Extract ingredient updates from a receipt photo",
-        "description": "**Roles:** `ADMIN`.\n\nReads a market shopping receipt photo with `ReceiptExtractor`, matches purchased items against existing ingredients, and returns `{ items: [{ id, name, unit, stock }] }` where `stock` is `currentStock + extractedQuantity` (ready to submit directly to `PATCH /admin/ingredients`). Nothing is saved.",
+        "description": "**Roles:** `ADMIN`.\n\nReads a market shopping receipt photo with `ReceiptExtractor`, matches purchased lines against existing ingredients, converts each quantity from the unit printed on the receipt to the ingredient's unit (kg↔gram, liter↔ml; a line without a printed unit counts in the ingredient's unit), and returns `{ items: [{ id, name, unit, stock }] }` where `stock` is `currentStock + convertedQuantity` (ready to submit directly to `PATCH /admin/ingredients`). Lines that match no ingredient, have no valid quantity, or carry a unit that can't be converted (e.g. `pcs` for an ingredient in kg) are left out. Reading a receipt takes about 20 seconds. Nothing is saved.",
         "x-roles": [
           "ADMIN"
         ],

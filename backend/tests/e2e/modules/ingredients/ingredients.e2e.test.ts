@@ -50,7 +50,7 @@ const stockLevelEstimator: StockLevelEstimator = {
 };
 
 const defaultExtract = async (input: ReceiptExtractInput): Promise<ReceiptData> => ({
-    items: input.ingredients.slice(0, 1).map(item => ({ ...item, quantity: 5 })),
+    items: input.ingredients.slice(0, 1).map(item => ({ id: item.id, quantity: 5, printedUnit: item.unit })),
 });
 let extractResult: (input: ReceiptExtractInput) => Promise<ReceiptData> = defaultExtract;
 const extractCalls: ReceiptExtractInput[] = [];
@@ -862,13 +862,13 @@ describe("ingredients routes (e2e)", () => {
             extractCalls.length = 0;
         });
 
-        it("extracts matched ingredients with new total stock ready for PATCH /api/admin/ingredients and saves nothing", async () => {
+        it("extracts matched ingredients, converted to their units, with new total stock ready for PATCH /api/admin/ingredients and saves nothing", async () => {
             const ayam = await createIngredient("Dada Ayam Extract", { unit: "kg", stock: 4.5 });
             const minyak = await createIngredient("Minyak Extract", { unit: "liter", stock: 2 });
             extractResult = async () => ({
                 items: [
-                    { id: ayam.id, name: ayam.name, quantity: 10, unit: "kg" },
-                    { id: minyak.id, name: minyak.name, quantity: 3.5, unit: "liter" },
+                    { id: ayam.id, quantity: 10, printedUnit: "kg" },
+                    { id: minyak.id, quantity: 3500, printedUnit: "ml" },
                 ],
             });
 

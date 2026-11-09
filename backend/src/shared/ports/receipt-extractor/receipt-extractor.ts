@@ -16,9 +16,8 @@ export interface ReceiptExtractInput {
 
 export interface ReceiptExtractedItem {
     readonly id: string;
-    readonly name: string;
     readonly quantity: number;
-    readonly unit: string;
+    readonly printedUnit: string;
 }
 
 export interface ReceiptData {

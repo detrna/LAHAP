@@ -29,8 +29,8 @@ export const toReceiptExtractorConfig = (env: ReceiptExtractorEnv): ReceiptExtra
         env.RECEIPT_EXTRACTOR_BASE_URL ||
         env.DASHSCOPE_BASE_URL ||
         "https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1",
-    MODEL: env.RECEIPT_EXTRACTOR_MODEL || env.DASHSCOPE_MODEL || "qwen-vl-ocr-2025-11-20",
-    TIMEOUT_MS: env.RECEIPT_EXTRACTOR_TIMEOUT_MS ?? env.DASHSCOPE_TIMEOUT_MS ?? 30_000,
+    MODEL: env.RECEIPT_EXTRACTOR_MODEL || env.DASHSCOPE_MODEL || "qwen3.8-flash",
+    TIMEOUT_MS: env.RECEIPT_EXTRACTOR_TIMEOUT_MS ?? env.DASHSCOPE_TIMEOUT_MS ?? 60_000,
     MAX_RETRIES: env.RECEIPT_EXTRACTOR_MAX_RETRIES ?? env.DASHSCOPE_MAX_RETRIES ?? 1,
 });
 

@@ -28,6 +28,21 @@ describe("stripCodeFences", () => {
             'Here is the estimation you requested:\n```json\n{"fills":[0.5],"confidence":"medium"}\n```\nHope that helps!';
         expect(stripCodeFences(input)).toBe('{"fills":[0.5],"confidence":"medium"}');
     });
+
+    it("strips an opening ```json fence that is never closed", () => {
+        const input = '```json\n{\n"items": [],\n"confidence": 90\n}';
+        expect(stripCodeFences(input)).toBe('{\n"items": [],\n"confidence": 90\n}');
+    });
+
+    it("strips an unclosed opening fence without a json tag and trailing whitespace", () => {
+        const input = '\n```\n{"fills":[1]}\n  ';
+        expect(stripCodeFences(input)).toBe('{"fills":[1]}');
+    });
+
+    it("strips a closing fence that has no opening fence", () => {
+        const input = '{"fills":[1]}\n```';
+        expect(stripCodeFences(input)).toBe('{"fills":[1]}');
+    });
 });
 
 describe("parseAndValidateJson", () => {
@@ -38,6 +53,12 @@ describe("parseAndValidateJson", () => {
 
     it("parses and validates JSON wrapped in code fences", () => {
         const input = '```json\n{"fills":[1, 0.5],"confidence":"high"}\n```';
+        const result = parseAndValidateJson(input, testSchema);
+        expect(result).toEqual({ fills: [1, 0.5], confidence: "high" });
+    });
+
+    it("parses JSON whose opening code fence is never closed", () => {
+        const input = '```json\n{\n"fills":[1, 0.5],\n"confidence":"high"\n}';
         const result = parseAndValidateJson(input, testSchema);
         expect(result).toEqual({ fills: [1, 0.5], confidence: "high" });
     });

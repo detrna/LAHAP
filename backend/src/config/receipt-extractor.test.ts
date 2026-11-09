@@ -39,8 +39,8 @@ describe("loadReceiptExtractorConfig", () => {
 
         expect(config.API_KEY).toBe("");
         expect(config.BASE_URL).toBe("https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1");
-        expect(config.MODEL).toBe("qwen-vl-ocr-2025-11-20");
-        expect(config.TIMEOUT_MS).toBe(30_000);
+        expect(config.MODEL).toBe("qwen3.8-flash");
+        expect(config.TIMEOUT_MS).toBe(60_000);
         expect(config.MAX_RETRIES).toBe(1);
     });
 });

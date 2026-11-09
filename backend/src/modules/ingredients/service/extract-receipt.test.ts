@@ -9,6 +9,7 @@ import { setupIngredientsService } from "../test-utils/setup/ingredients.setup.j
 
 const ID_1 = "00000000-0000-4000-8000-000000000001";
 const ID_2 = "00000000-0000-4000-8000-000000000002";
+const ID_3 = "00000000-0000-4000-8000-000000000003";
 const IMAGE = Buffer.from("receipt-photo");
 
 describe("IngredientsService.extractReceipt (unit)", () => {
@@ -20,8 +21,8 @@ describe("IngredientsService.extractReceipt (unit)", () => {
         ]);
         receiptExtractor.extract.mockResolvedValue({
             items: [
-                { id: ID_1, name: "Dada Ayam Fillet", quantity: 10, unit: "kg" },
-                { id: ID_2, name: "Minyak Zaitun", quantity: 5.25, unit: "liter" },
+                { id: ID_1, quantity: 10, printedUnit: "kg" },
+                { id: ID_2, quantity: 5.25, printedUnit: "L" },
             ],
         });
 
@@ -51,9 +52,9 @@ describe("IngredientsService.extractReceipt (unit)", () => {
         ]);
         receiptExtractor.extract.mockResolvedValue({
             items: [
-                { id: ID_1, name: "Dada Ayam", quantity: 2.15, unit: "kg" },
-                { id: ID_1, name: "Dada Ayam Fillet", quantity: 3.1, unit: "kg" },
-                { id: "00000000-0000-4000-8000-000000000999", name: "Unknown", quantity: 5, unit: "kg" },
+                { id: ID_1, quantity: 2.15, printedUnit: "kg" },
+                { id: ID_1, quantity: 3.1, printedUnit: "kg" },
+                { id: "00000000-0000-4000-8000-000000000999", quantity: 5, printedUnit: "kg" },
             ],
         });
 
@@ -64,11 +65,68 @@ describe("IngredientsService.extractReceipt (unit)", () => {
         });
     });
 
+    it("converts the printed unit to the ingredient's unit and reads a missing unit as the ingredient's own", async () => {
+        const { repository, receiptExtractor, service } = setupIngredientsService();
+        repository.findAll.mockResolvedValue([
+            buildIngredientRecord({ id: ID_1, name: "Udang", unit: "kg", stock: 1.5 }),
+            buildIngredientRecord({ id: ID_2, name: "Bawang Merah", unit: "gram", stock: 2000 }),
+            buildIngredientRecord({ id: ID_3, name: "Bayam", unit: "ikat", stock: 20 }),
+        ]);
+        receiptExtractor.extract.mockResolvedValue({
+            items: [
+                { id: ID_1, quantity: 500, printedUnit: "gr" },
+                { id: ID_2, quantity: 1, printedUnit: "kg" },
+                { id: ID_2, quantity: 250, printedUnit: "g" },
+                { id: ID_3, quantity: 3, printedUnit: "" },
+            ],
+        });
+
+        const result = await service.extractReceipt({ image: IMAGE, mimeType: "image/jpeg" });
+
+        expect(result).toEqual({
+            items: [
+                { id: ID_1, name: "Udang", unit: "kg", stock: 2 },
+                { id: ID_2, name: "Bawang Merah", unit: "gram", stock: 3250 },
+                { id: ID_3, name: "Bayam", unit: "ikat", stock: 23 },
+            ],
+        });
+    });
+
+    it("drops lines whose printed unit can't be converted to the ingredient's unit", async () => {
+        const { repository, receiptExtractor, service } = setupIngredientsService();
+        repository.findAll.mockResolvedValue([
+            buildIngredientRecord({ id: ID_1, name: "Gula Pasir", unit: "kg", stock: 5 }),
+            buildIngredientRecord({ id: ID_2, name: "Telur Ayam", unit: "butir", stock: 30 }),
+        ]);
+        receiptExtractor.extract.mockResolvedValue({
+            items: [
+                { id: ID_1, quantity: 2, printedUnit: "kg" },
+                { id: ID_1, quantity: 6, printedUnit: "L" },
+                { id: ID_2, quantity: 4, printedUnit: "peti" },
+                { id: ID_2, quantity: 1, printedUnit: "kg" },
+            ],
+        });
+
+        const result = await service.extractReceipt({ image: IMAGE, mimeType: "image/jpeg" });
+
+        expect(result).toEqual({ items: [{ id: ID_1, name: "Gula Pasir", unit: "kg", stock: 7 }] });
+    });
+
+    it("throws NoReceiptItemsFoundError when every line has a unit that can't be converted", async () => {
+        const { repository, receiptExtractor, service } = setupIngredientsService();
+        repository.findAll.mockResolvedValue([buildIngredientRecord({ id: ID_1, unit: "kg" })]);
+        receiptExtractor.extract.mockResolvedValue({ items: [{ id: ID_1, quantity: 3, printedUnit: "pcs" }] });
+
+        await expect(service.extractReceipt({ image: IMAGE, mimeType: "image/png" })).rejects.toBeInstanceOf(
+            NoReceiptItemsFoundError,
+        );
+    });
+
     it("throws NoReceiptItemsFoundError when no extracted item matches a known ingredient", async () => {
         const { repository, receiptExtractor, service } = setupIngredientsService();
         repository.findAll.mockResolvedValue([buildIngredientRecord({ id: ID_1 })]);
         receiptExtractor.extract.mockResolvedValue({
-            items: [{ id: "00000000-0000-4000-8000-000000000999", name: "Unknown", quantity: 2, unit: "kg" }],
+            items: [{ id: "00000000-0000-4000-8000-000000000999", quantity: 2, printedUnit: "kg" }],
         });
 
         await expect(service.extractReceipt({ image: IMAGE, mimeType: "image/png" })).rejects.toBeInstanceOf(
@@ -89,7 +147,7 @@ describe("IngredientsService.extractReceipt (unit)", () => {
         const { repository, receiptExtractor, service } = setupIngredientsService();
         repository.findAll.mockResolvedValue([buildIngredientRecord({ id: ID_1, stock: 5 })]);
         receiptExtractor.extract.mockResolvedValue({
-            items: [{ id: ID_1, name: "Dada Ayam", quantity: 2, unit: "kg" }],
+            items: [{ id: ID_1, quantity: 2, printedUnit: "kg" }],
         });
 
         await service.extractReceipt({ image: IMAGE, mimeType: "image/png" });

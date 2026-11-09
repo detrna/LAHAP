@@ -13,86 +13,72 @@ import {
     type ReceiptExtractor,
     type ReceiptIngredientInput,
 } from "../../../shared/ports/receipt-extractor/receipt-extractor.js";
-import { roundHalfUp } from "../../../shared/utils/decimal/decimal.js";
 import { createQwenClient, executeWithParseRetry } from "../../qwen/index.js";
 import { CONFIDENCE_THRESHOLD, MAX_IMAGE_BYTES, SUPPORTED_MIME_TYPES } from "./const.js";
 
-const STOP_WORDS = new Set([
-    "total",
-    "subtotal",
-    "sub total",
-    "grand total",
-    "diskon",
-    "discount",
-    "ppn",
-    "pajak",
-    "tax",
-    "kembalian",
-    "tunai",
-    "cash",
-    "bayar",
-    "payment",
-    "service",
-    "service charge",
-    "tip",
-]);
-
-const isStopWord = (name: string) => STOP_WORDS.has(name.toLowerCase().trim());
-
-const quantitySchema = z.preprocess(v => {
-    if (typeof v === "number") return v;
-    if (typeof v === "string") {
-        const m = v.match(/\d+(?:[.,]\d+)?/);
-        if (m) return parseFloat(m[0].replace(",", "."));
+const quantitySchema = z.preprocess(value => {
+    if (typeof value === "string" && /^\s*\d+(?:[.,]\d+)?\s*$/.test(value)) {
+        return Number(value.trim().replace(",", "."));
     }
-    return undefined;
-}, z.number().positive());
+    return value;
+}, z.number().positive().finite());
+
+const receiptLineSchema = z.object({
+    id: z.string(),
+    quantity: quantitySchema,
+    unit: z
+        .string()
+        .nullish()
+        .transform(unit => unit ?? ""),
+});
 
 const receiptOutputSchema = z.object({
     confidence: z.number().min(0).max(100),
-    items: z.array(
-        z.object({
-            id: z.string(),
-            name: z.string(),
-            quantity: quantitySchema,
-            unit: z.string(),
-        }),
-    ),
+    items: z.array(z.unknown()),
 });
 
 type ReceiptParsedOutput = z.infer<typeof receiptOutputSchema>;
 
 export function buildPrompt(ingredients: readonly ReceiptIngredientInput[]): string {
-    const knownList = ingredients.map(item => ({
-        id: item.id,
-        name: item.name,
-        unit: item.unit,
-    }));
-    const first = ingredients[0] ?? {
-        id: "00000000-0000-4000-8000-000000000001",
-        name: "Dada Ayam Fillet",
-        unit: "kg",
-    };
-
+    const knownList = ingredients.map(({ id, name, unit }) => ({ id, name, unit }));
     const example = {
         confidence: 90,
-        items: [{ id: first.id, name: first.name, quantity: 2, unit: first.unit }],
+        items: [
+            {
+                name: "BWG MRH",
+                id: ingredients[0]?.id ?? "00000000-0000-4000-8000-000000000001",
+                quantity: 500,
+                unit: "gr",
+            },
+        ],
     };
 
     return `
-Extract purchasable line items from the receipt image that match the following known catalog ingredients:
+Extract the purchased line items from the receipt image and match each one to one of these known ingredients:
 ${JSON.stringify(knownList, null, 2)}
 
-For each matched line item on the receipt, return its matched catalog "id", "name", purchased "quantity", and "unit".
-Skip any receipt line item that does not match one of the known catalog ingredients above.
-Skip totals, subtotals, taxes, discounts, and payment lines entirely.
-Do not include prices, price columns, or any monetary values in the output.
-If the quantity is not shown on a matched line, use 1.
-quantity must be a JSON number only (no unit, no text).
-Also include a confidence field (0–100) reflecting how clearly the receipt items could be read.
+For each purchased line on the receipt, in order, return:
+- "name": the item name exactly as printed on the receipt
+- "id": the id of the known ingredient that this printed name refers to, copied exactly from the list above, or null when it is none of them
+- "quantity": the purchased quantity as printed on the receipt, as a JSON number with a dot as the decimal separator and no thousands separators
+- "unit": the unit printed next to the quantity on the receipt, exactly as printed (e.g. "kg", "gr", "L", "ml", "ikat", "btr"), or "" when no unit is printed
+
+Decide the id from the printed name of that same line only. Match by meaning, including abbreviations and different wording (e.g. "BWG MRH" is "Bawang Merah"), but never pick an ingredient whose name means a different product.
+Do not convert units: report the quantity and unit printed on the receipt, even when the known ingredient uses another unit.
+Skip totals, subtotals, taxes, discounts, and payment lines. Do not include prices.
+If no quantity is shown on a matched line, use 1.
+Include a confidence field (0–100) reflecting how clearly the receipt items could be read.
 Return only valid JSON, with no explanation, in exactly this shape:
 ${JSON.stringify(example, null, 2)}
 `;
+}
+
+function toReceiptLines(data: ReceiptParsedOutput, knownIds: ReadonlySet<string>): ReceiptExtractedItem[] {
+    return data.items.flatMap(item => {
+        const parsed = receiptLineSchema.safeParse(item);
+        if (!parsed.success || !knownIds.has(parsed.data.id)) return [];
+        return [{ id: parsed.data.id, quantity: parsed.data.quantity, printedUnit: parsed.data.unit }];
+    });
 }
 
 type ImageUrl = OpenAI.Chat.Completions.ChatCompletionContentPartImage["image_url"];
@@ -183,35 +169,13 @@ export class QwenReceiptExtractor implements ReceiptExtractor {
             throw new ReceiptExtractionError("receipt extractor output was not valid receipt data", { cause });
         }
 
-        const { data } = result;
-
-        if (data.confidence < CONFIDENCE_THRESHOLD) {
+        if (result.data.confidence < CONFIDENCE_THRESHOLD) {
             throw new LowConfidenceReceiptError(
-                `low confidence extraction (${data.confidence}/100): image may be blurry or unreadable`,
+                `low confidence extraction (${result.data.confidence}/100): image may be blurry or unreadable`,
             );
         }
 
-        const knownById = new Map(ingredients.map(ingredient => [ingredient.id, ingredient]));
-        const quantityById = new Map<string, number>();
-
-        for (const item of data.items) {
-            if (isStopWord(item.name)) continue;
-            const known = knownById.get(item.id);
-            if (known === undefined) continue;
-            quantityById.set(known.id, roundHalfUp((quantityById.get(known.id) ?? 0) + item.quantity, 2));
-        }
-
-        const items: ReceiptExtractedItem[] = [];
-        for (const [id, quantity] of quantityById) {
-            const known = knownById.get(id);
-            if (known === undefined) continue;
-            items.push({
-                id: known.id,
-                name: known.name,
-                quantity,
-                unit: known.unit,
-            });
-        }
+        const items = toReceiptLines(result.data, new Set(ingredients.map(ingredient => ingredient.id)));
 
         if (items.length === 0) {
             throw new NoReceiptItemsFoundError("no matching receipt items found");

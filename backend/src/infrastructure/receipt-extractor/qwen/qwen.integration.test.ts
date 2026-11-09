@@ -22,7 +22,7 @@ const INGREDIENTS: readonly ReceiptIngredientInput[] = [
 ];
 const INGREDIENT_IDS = new Set(INGREDIENTS.map(ingredient => ingredient.id));
 
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 120_000;
 
 const makeExtractor = () =>
     new QwenReceiptExtractor(config.RECEIPT_EXTRACTOR, {
@@ -45,7 +45,7 @@ describe.skipIf(!config.RECEIPT_EXTRACTOR.API_KEY)("QwenReceiptExtractor (integr
             expect(result.items.length).toBeGreaterThan(0);
             for (const item of result.items) {
                 expect(INGREDIENT_IDS.has(item.id)).toBe(true);
-                expect(item.name.length).toBeGreaterThan(0);
+                expect(typeof item.printedUnit).toBe("string");
                 expect(Number.isFinite(item.quantity)).toBe(true);
                 expect(item.quantity).toBeGreaterThan(0);
             }
