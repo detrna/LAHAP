@@ -55,6 +55,35 @@ a{color:var(--orange-700)}
   .nav a{white-space:nowrap;flex:none}
 }
 
+/* Admin: sidebar + header */
+.sidebar-toggle{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:transparent;border-radius:var(--radius-control);color:var(--ink);cursor:pointer}
+.sidebar-toggle:hover{background:var(--orange-50)}
+.header-left{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.header-title{font-weight:600;color:var(--muted);padding-left:var(--sp-3);border-left:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav #lonceng{gap:var(--sp-1)}
+body.has-sidebar .app-header{position:sticky;top:0}
+body.has-sidebar .app-header .container{max-width:none;flex-direction:row;flex-wrap:nowrap;align-items:center;height:64px;padding-block:0}
+body.has-sidebar .nav{flex-wrap:nowrap;overflow:visible;margin-inline:0;padding-bottom:0}
+body.has-sidebar .nav a{white-space:nowrap}
+.sidebar{position:fixed;top:64px;bottom:0;left:0;width:240px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);padding:var(--sp-3);z-index:40;overscroll-behavior:contain}
+.sidebar a{display:flex;align-items:center;gap:var(--sp-3);min-height:40px;padding:0 var(--sp-3);border-radius:var(--radius-control);color:var(--ink);text-decoration:none}
+.nav-icon{flex:none;color:var(--muted)}
+.sidebar a:hover .nav-icon,.sidebar a[aria-current=page] .nav-icon{color:var(--orange-700)}
+.sidebar a:hover{background:var(--orange-50)}
+.sidebar a[aria-current=page]{background:var(--orange-50);color:var(--orange-900);font-weight:600}
+.sidebar-group+.sidebar-group{margin-top:var(--sp-4)}
+.sidebar-group .label{padding:0 var(--sp-3);margin-bottom:var(--sp-1)}
+.sidebar-backdrop{position:fixed;inset:64px 0 0 0;background:rgba(31,26,23,.4);z-index:39}
+@media(min-width:960px){body.has-sidebar{padding-left:240px}body.has-sidebar .app-header{margin-left:-240px}.sidebar-backdrop{display:none}}
+@media(max-width:959px){
+  .sidebar-toggle{display:inline-flex}
+  .sidebar{transform:translateX(-100%);transition:transform .2s ease;box-shadow:var(--shadow-pop);z-index:60;visibility:hidden}
+  .sidebar.is-open{transform:none;visibility:visible}
+  .sidebar-backdrop{z-index:55}
+  .header-title{display:none}
+}
+@media(max-width:480px){body.has-sidebar .nav a{padding:0 var(--sp-2)}}
+
 /* Kartu */
 .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:var(--sp-4)}
 .card-flush{padding:0;overflow:hidden}
