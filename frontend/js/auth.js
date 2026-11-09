@@ -1,5 +1,9 @@
 const API_BASE = "https://lahap.bccdev.id/api";
 const REQUEST_TIMEOUT_MS = 20000;
+const MIDTRANS_CLIENT_KEY = "Mid-client-fmKxo1pZHv54Xpa-";
+const MIDTRANS_SNAP_URL = MIDTRANS_CLIENT_KEY.startsWith("SB-")
+    ? "https://app.sandbox.midtrans.com/snap/snap.js"
+    : "https://app.midtrans.com/snap/snap.js";
 
 const ROLE_KEY = { CUSTOMER: "pelanggan", ADMIN: "admin", KITCHEN: "dapur", COURIER: "kurir" };
 const HOME = { pelanggan: "index.html", admin: "admin.html", dapur: "dapur.html", kurir: "kurir.html" };
@@ -717,6 +721,8 @@ function pesanForm(form, error, fields) {
 }
 
 const PESAN_ISSUE = [
+    ["must be after today", "Pilih tanggal setelah hari ini."],
+    ["must not be after the order's end date", "Tanggal tidak boleh melewati akhir pesanan."],
     ["must match password", "Password tidak sama."],
     ["must differ from the current password", "Password baru harus berbeda dari password lama."],
     ["must be at most 72 bytes", "Password terlalu panjang. Kurangi huruf khusus atau emoji."],
