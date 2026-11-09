@@ -23,7 +23,9 @@
         "db:seed": "tsx src/infrastructure/database/prisma/seed/main.ts",
         "db:seed:dist": "node dist/infrastructure/database/prisma/seed/main.js",
         "db:clean-seed": "tsx src/infrastructure/database/prisma/seed/clean.ts",
-        "db:clean-seed:dist": "node dist/infrastructure/database/prisma/seed/clean.js"
+        "db:clean-seed:dist": "node dist/infrastructure/database/prisma/seed/clean.js",
+        "db:clean-up": "tsx src/infrastructure/database/prisma/seed/clean-up.ts",
+        "db:clean-up:dist": "node dist/infrastructure/database/prisma/seed/clean-up.js"
     },
     "keywords": [],
     "type": "module",

@@ -17,6 +17,7 @@ import { seedMenus } from "./modules/menus/menus.seed.js";
 import { seedOrders } from "./modules/orders/orders.seed.js";
 import { seedMessageTemplates } from "./modules/message-templates/message-templates.seed.js";
 import { seedPackages } from "./modules/packages/packages.seed.js";
+import { seedPhotos } from "./modules/photos/photos.seed.js";
 import { seedPromoCodes } from "./modules/promo-codes/promo-codes.seed.js";
 import { seedSchedules } from "./modules/schedules/schedules.seed.js";
 import { seedTiers } from "./modules/tiers/tiers.seed.js";
@@ -24,6 +25,7 @@ import { USERS } from "./modules/users/users.data.js";
 import { seedUsers } from "./modules/users/users.seed.js";
 import { resetDatabase } from "./reset.js";
 import type { SeedModule } from "./seed-context.js";
+import { loadSeedObjectStorage } from "./shared/seed-storage.js";
 
 export const SEED_PASSWORD = "password123";
 
@@ -56,6 +58,8 @@ async function main(): Promise<void> {
 
     const totals: Record<string, number> = {};
     try {
+        totals["photos"] = await seedPhotos({ objectStorage: await loadSeedObjectStorage() });
+        logger.info({ module: "photos", count: totals["photos"] }, "module seeded");
         await db.transaction(async tx => {
             if (reset) {
                 await resetDatabase(tx);

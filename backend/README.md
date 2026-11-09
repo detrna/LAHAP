@@ -140,7 +140,7 @@ npx prisma migrate deploy
 
 ### Seed Demo Data
 
-The seed script populates business settings, allergies, users, membership tiers, ingredients, menus, packages, schedules, promo codes, message templates, and sample subscriptions/orders.
+The seed script populates business settings, allergies, users, membership tiers, ingredients, menus, packages, schedules, promo codes, message templates, and sample subscriptions/orders. It also uploads real photos for every package, menu, and ingredient (from `src/infrastructure/database/prisma/seed/assets/`, credited in `CREDITS.md` there) to object storage, so SeaweedFS must be running.
 
 > **Note:** Seeding and cleaning seed data are blocked when `IS_PRODUCTION="true"`.
 
@@ -151,8 +151,11 @@ npm run db:seed
 # Truncate all domain tables first, then seed fresh data
 npm run db:seed -- --reset
 
-# Remove only the deterministic seeded records
+# Remove only the deterministic seeded records and their photos
 npm run db:clean-seed
+
+# Empty every table in the database (keeps migrations; refused when IS_PRODUCTION="true")
+npm run db:clean-up
 ```
 
 ### Seeded User Accounts

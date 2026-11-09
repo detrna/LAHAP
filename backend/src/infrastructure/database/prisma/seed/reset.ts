@@ -15,3 +15,29 @@ export async function resetDatabase(tx: SeedTx): Promise<void> {
             .build(),
     );
 }
+
+export async function truncateAllTables(tx: SeedTx): Promise<readonly string[]> {
+    const rows = await tx.query(
+        tx.raw.sql`SELECT tablename::text AS name FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`
+            .returnsRow({ name: "pg/text@1" })
+            .build(),
+    );
+    if (rows.length === 0) return [];
+    await tx.execute(
+        tx.raw.sql`
+            DO $$
+            BEGIN
+                EXECUTE (
+                    SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ')
+                        || ' RESTART IDENTITY CASCADE'
+                    FROM pg_tables
+                    WHERE schemaname = 'public'
+                );
+            END
+            $$
+        `
+            .affectedCount()
+            .build(),
+    );
+    return rows.map(row => row.name);
+}

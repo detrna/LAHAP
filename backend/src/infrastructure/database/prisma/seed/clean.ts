@@ -7,6 +7,8 @@ import type { Logger } from "../../../../shared/ports/logger/logger.js";
 import { PinoLogger } from "../../../logger/pino/pino.js";
 import { loadDatabase } from "../db.js";
 import { cleanSeed } from "./clean-seed.js";
+import { deleteSeedPhotos } from "./modules/photos/photos.seed.js";
+import { loadSeedObjectStorage } from "./shared/seed-storage.js";
 
 let logger: Logger = new PinoLogger(DEFAULT_LOGGER_CONFIG, { destination: process.stdout });
 
@@ -20,7 +22,8 @@ async function main(): Promise<void> {
     const db = await loadDatabase(toDatabaseConfig(parseEnv(dbEnvSchema)));
     try {
         const totals = await db.transaction(tx => cleanSeed(tx, logger));
-        logger.info({ totals }, "seeded data cleaned successfully");
+        const photos = await deleteSeedPhotos(await loadSeedObjectStorage());
+        logger.info({ totals: { ...totals, photos } }, "seeded data cleaned successfully");
     } finally {
         await db.close();
     }
