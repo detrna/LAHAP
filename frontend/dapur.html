@@ -3,19 +3,34 @@
 <title>To-do dapur · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="dapur,admin">
 <header class="app-header"><div class="container"><a class="brand" href="dapur.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<div><h1 class="t-h1">To-do dapur</h1><p class="t-muted">Rekap produksi, bahan yang dibutuhkan, dan pesanan dengan alergi atau catatan khusus.</p></div>
+<div><h1 class="t-h1">To-do dapur</h1><p class="t-muted">Rekap produksi per waktu makan, bahan yang dibutuhkan, dan pesanan dengan alergi atau catatan khusus.</p></div>
+<div class="row">
 <div class="field"><label for="tgl">Tanggal layanan</label><input class="input" id="tgl" type="date"></div>
+<div class="field"><label for="rentang">Tampilkan</label><select class="select input" id="rentang"><option value="1">1 hari</option><option value="7">7 hari</option></select></div>
+</div>
 <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
-<p class="t-muted" id="kosong" hidden>Tidak ada yang perlu dimasak pada tanggal ini.</p>
 <div class="stack-lg" id="daftar" aria-live="polite" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>
 </main>
 <script src="js/auth.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tambahHari = (tanggal, n) => {
+    const d = new Date(`${tanggal}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+};
 const angka = n => Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 });
 const tglPanjang = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long" });
-const ALASAN = { ALLERGY_CLASH: "Bentrok alergi", ALLERGY_NOTE: "Catatan alergi", NOTE: "Catatan" };
+const jamMakan = t => `${t.range} · ${t.time}`;
+const ALASAN = { ALLERGY_CLASH: "Bentrok alergi", ALLERGY_NOTE: "Catatan alergi", NOTE: "Catatan pesanan" };
+const PESAN_SERVER = {
+    "schedule has no alternative menu": "Jadwal ini belum punya menu alternatif.",
+    "slot is past food preparation": "Makanan sudah ditandai siap, menu tidak bisa diganti lagi.",
+};
+const BELUM_DISIAPKAN = "Belum ada porsi berstatus Disiapkan. Porsi otomatis jadi Disiapkan 3 jam sebelum waktu makan, atau semuanya sudah ditandai siap.";
+
+class PesanHalaman extends Error {}
 
 function el(tag, className, text) {
     const n = document.createElement(tag);
@@ -23,27 +38,51 @@ function el(tag, className, text) {
     if (text !== undefined) n.textContent = text;
     return n;
 }
+function pesanGalat(error) {
+    if (error instanceof PesanHalaman) return error.message;
+    if (error instanceof ApiError && PESAN_SERVER[error.message]) return PESAN_SERVER[error.message];
+    if (error instanceof ApiError && error.code === "ORDER_NOT_FOUND") return "Pesanan tidak ditemukan atau belum lunas. Muat ulang halaman.";
+    return errorMessage(error);
+}
 function galat(error) {
     $("#err").hidden = !error;
-    if (error) $("#err .msg").textContent = typeof error === "string" ? error : errorMessage(error);
+    if (error) $("#err .msg").textContent = pesanGalat(error);
 }
 
-// Id jadwal tidak ada di data masak, jadi diambil dari jadwal terbit paket itu (cache per muat).
+const adalahAdmin = () => (currentUser() || {}).role === "ADMIN";
 let cacheJadwal = new Map();
-async function idJadwal(packageId, tanggal, jam) {
-    if (!cacheJadwal.has(packageId)) cacheJadwal.set(packageId, (await api(`/packages/${packageId}/schedules`, { auth: false })).data);
-    const j = cacheJadwal.get(packageId).find(x => x.date === tanggal && (!jam || x.deliveryTime.time === jam));
-    return j && j.id;
+async function jadwalPaket(packageId, tanggal) {
+    const kunci = `${packageId}|${tanggal}`;
+    if (!cacheJadwal.has(kunci)) {
+        let jadwal = [];
+        if (adalahAdmin()) {
+            jadwal = (await api(`/admin/menu-schedules?packageId=${packageId}&from=${tanggal}&to=${tanggal}&limit=100`)).data;
+        } else {
+            try {
+                jadwal = (await api(`/packages/${packageId}/schedules?from=${tanggal}&to=${tanggal}`, { auth: false })).data;
+            } catch (error) {
+                if (!(error instanceof ApiError) || error.status !== 404) throw error;
+            }
+        }
+        cacheJadwal.set(kunci, jadwal);
+    }
+    return cacheJadwal.get(kunci);
+}
+async function idJadwal(m, tanggal) {
+    const jadwal = await jadwalPaket(m.packageId, tanggal);
+    const cocok = jadwal.find(j => j.date === tanggal && j.deliveryTime.time === m.deliveryTime.time);
+    if (!cocok) throw new PesanHalaman(`Jadwal "${m.packageName}" ${jamMakan(m.deliveryTime)} tidak ditemukan karena paketnya sudah tidak dijual. Minta admin menandai siap dari halaman ini.`);
+    return cocok.id;
 }
 
 let sibuk = false;
-async function jalankan(aksi, tombol, pesan) {
+async function jalankan(aksi, tombol) {
     if (sibuk) return;
     sibuk = true;
     if (tombol) tombol.disabled = true;
     galat(null);
     try {
-        await aksi();
+        const pesan = await aksi();
         if (pesan) toast(pesan);
         await muat();
     } catch (error) {
@@ -54,84 +93,119 @@ async function jalankan(aksi, tombol, pesan) {
     }
 }
 
-function barisMenu(g, m) {
+async function tandaiSiap(body) {
+    const { data } = await api("/kitchen/food-ready", { method: "POST", body });
+    return data.updatedCount ? `${data.updatedCount} porsi ditandai siap.` : BELUM_DISIAPKAN;
+}
+
+function daftarKomponen(components) {
+    if (!components.length) return null;
+    const ul = el("ul", "t-small t-muted");
+    components.forEach(c => ul.append(el("li", "", `${c.name} · ${c.cook ? c.cook.name : "belum ditugaskan"}`)));
+    return ul;
+}
+
+function barisMenu(tanggal, m) {
     const row = el("div", "invoice");
-    const kiri = el("div");
-    kiri.append(
-        el("p", "label", `${m.packageName}${m.isAlternative ? " · menu alternatif" : ""}`),
-        el("p", "t-h3", m.name),
-        el("p", "t-small t-muted", (m.components || []).map(c => c.name + (c.cook ? ` (${c.cook.name})` : "")).join(" · ")),
-    );
+    const kiri = el("div", "stack");
+    const judul = el("p", "row");
+    judul.append(el("span", "t-h3", m.name));
+    if (m.isAlternative) judul.append(el("span", "badge badge--prepared", "Menu alternatif"));
+    kiri.append(el("p", "label", m.packageName), judul);
+    const komponen = daftarKomponen(m.components || []);
+    if (komponen) kiri.append(komponen);
     const kanan = el("div", "row");
     kanan.append(el("span", "t-h3", `${m.portions} porsi`));
     const siap = el("button", "btn btn-primary btn-sm", "Makanan Siap");
     siap.type = "button";
     siap.onclick = () => {
-        if (!confirm(`Tandai ${m.portions} porsi "${m.name}" siap? Slot Disiapkan jadi Diantar atau Siap Diambil.`)) return;
-        jalankan(async () => {
-            const id = await idJadwal(m.packageId, g.date, g.deliveryTime && g.deliveryTime.time);
-            if (!id) throw new Error("Jadwal untuk menu ini tidak ditemukan.");
-            const { data } = await api("/kitchen/food-ready", { method: "POST", body: { menuScheduleId: id, usesAlternativeMenu: m.isAlternative } });
-            toast(`${data.updatedCount} slot ditandai siap.`);
-        }, siap);
+        if (!confirm(`Tandai ${m.portions} porsi "${m.name}" (${jamMakan(m.deliveryTime)}) siap? Porsi antar masuk daftar kurir, porsi ambil sendiri jadi Siap Diambil.`)) return;
+        jalankan(async () => tandaiSiap({ menuScheduleId: await idJadwal(m, tanggal), usesAlternativeMenu: m.isAlternative }), siap);
     };
     kanan.append(siap);
     row.append(kiri, kanan);
     return row;
 }
 
-function kartuKhusus(s) {
+function kartuKhusus(s, menus) {
     const box = el("div", "alert alert--warning stack");
-    box.append(el("span", "alert-title", `${s.recipientName} · ${s.isDelivery ? "Diantar" : "Ambil sendiri"}${s.packageName ? ` · ${s.packageName}` : ""}`));
-    const info = [];
-    s.reasons.forEach(r => info.push(ALASAN[r] || r));
-    box.append(el("p", "t-small", info.join(", ")));
+    const bagian = [s.recipientName, s.isDelivery ? "Diantar" : "Ambil sendiri"];
+    if (s.packageName) bagian.push(s.packageName);
+    box.append(el("span", "alert-title", bagian.join(" · ")));
+    box.append(el("p", "t-small", s.reasons.map(r => ALASAN[r] || r).join(", ")));
+    const menuId = s.usesAlternativeMenu ? s.alternativeMenuId : s.primaryMenuId;
+    const menu = menus.find(m => m.menuId === menuId);
+    const baris = el("p", "row");
+    baris.append(el("span", "", `Menu: ${menu ? menu.name : "-"}`));
+    if (s.usesAlternativeMenu) baris.append(el("span", "badge badge--prepared", "Menu alternatif"));
+    box.append(baris);
     if ((s.conflictingAllergies || []).length) box.append(el("p", "", `Alergi bentrok: ${s.conflictingAllergies.map(a => a.name).join(", ")}`));
     if (s.allergyNote) box.append(el("p", "", `Catatan alergi: ${s.allergyNote}`));
-    if (s.note) box.append(el("p", "", `Catatan: ${s.note}`));
+    if (s.note) box.append(el("p", "", `Catatan pesanan: ${s.note}`));
     const aksi = el("div", "task-actions");
     if (s.reasons.includes("ALLERGY_CLASH")) {
-        if (!s.alternativeMenuId && !s.usesAlternativeMenu) aksi.append(el("p", "t-small", "Jadwal ini belum punya menu alternatif."));
+        if (!s.alternativeMenuId) aksi.append(el("p", "t-small", "Jadwal ini belum punya menu alternatif."));
         else {
-            const alt = el("button", "btn btn-secondary btn-sm", s.usesAlternativeMenu ? "Batalkan Menu Alternatif" : "Pakai Menu Alternatif");
+            const alt = el("button", "btn btn-secondary btn-sm", s.usesAlternativeMenu ? "Kembali ke Menu Utama" : "Pakai Menu Alternatif");
             alt.type = "button";
             alt.onclick = () =>
-                jalankan(() => api(`/kitchen/orders/${s.orderId}/alternative-menu`, { method: s.usesAlternativeMenu ? "DELETE" : "POST" }), alt, s.usesAlternativeMenu ? "Menu alternatif dibatalkan." : "Menu alternatif dipakai.");
+                jalankan(async () => {
+                    await api(`/kitchen/orders/${s.orderId}/alternative-menu`, { method: s.usesAlternativeMenu ? "DELETE" : "POST" });
+                    return s.usesAlternativeMenu ? "Kembali ke menu utama." : "Menu alternatif dipakai.";
+                }, alt);
             aksi.append(alt);
         }
     }
     const siap = el("button", "btn btn-primary btn-sm", "Siap");
     siap.type = "button";
-    siap.onclick = () => jalankan(() => api("/kitchen/food-ready", { method: "POST", body: { orderIds: [s.orderId] } }), siap, "Pesanan ditandai siap.");
+    siap.onclick = () => jalankan(() => tandaiSiap({ orderIds: [s.orderId] }), siap);
     aksi.append(siap);
     box.append(aksi);
     return box;
 }
 
-function kartuGrup(g) {
+function kartuLaporan(r) {
     const card = el("section", "card stack");
-    card.append(el("p", "label", `${tglPanjang(g.date)}${g.deliveryTime ? ` · ${g.deliveryTime.range} · ${g.deliveryTime.time}` : ""}`));
-    g.menus.forEach(m => card.append(barisMenu(g, m)));
-    if (g.ingredients.length) {
-        card.append(el("h3", "t-h3", "Bahan yang dibutuhkan"), el("p", "t-muted", g.ingredients.map(i => `${i.name} ${angka(i.totalQuantity)} ${i.unit}`).join(" · ")));
+    card.append(el("h2", "t-h2", tglPanjang(r.date)));
+    if (!r.menus.length && !r.specialCategory.length) {
+        card.append(el("p", "t-muted", "Tidak ada yang perlu dimasak pada tanggal ini."));
+        return card;
     }
-    if (g.specialCategory.length) {
-        card.append(el("h3", "t-h3", "Perlu perhatian khusus"));
-        g.specialCategory.forEach(s => card.append(kartuKhusus(s)));
+    if (r.ingredients.length) {
+        card.append(el("h3", "t-h3", "Bahan yang dibutuhkan hari ini"), el("p", "t-muted", r.ingredients.map(i => `${i.name} ${angka(i.totalQuantity)} ${i.unit}`).join(" · ")));
     }
+    const waktu = new Map();
+    const ambil = t => {
+        if (!waktu.has(t.time)) waktu.set(t.time, { deliveryTime: t, menus: [], khusus: [] });
+        return waktu.get(t.time);
+    };
+    r.menus.forEach(m => ambil(m.deliveryTime).menus.push(m));
+    r.specialCategory.forEach(s => ambil(s.deliveryTime).khusus.push(s));
+    [...waktu.values()]
+        .sort((a, b) => a.deliveryTime.time.localeCompare(b.deliveryTime.time))
+        .forEach(g => {
+            const blok = el("div", "stack");
+            blok.append(el("p", "label", jamMakan(g.deliveryTime)));
+            g.menus.forEach(m => blok.append(barisMenu(r.date, m)));
+            if (g.khusus.length) {
+                blok.append(el("h3", "t-h3", "Perlu perhatian khusus"));
+                g.khusus.forEach(s => blok.append(kartuKhusus(s, g.menus)));
+            }
+            card.append(blok);
+        });
     return card;
 }
 
 let ke = 0;
 async function muat() {
     const ini = ++ke;
-    const t = $("#tgl").value || hariIni();
+    const dari = $("#tgl").value || hariIni();
+    const sampai = tambahHari(dari, Number($("#rentang").value) - 1);
     cacheJadwal = new Map();
     try {
-        const { data } = await api(`/kitchen/to-cook?from=${t}&to=${t}`);
+        const { data } = await api(`/kitchen/to-cook?from=${dari}&to=${sampai}`);
         if (ini !== ke) return;
-        $("#daftar").replaceChildren(...data.map(kartuGrup));
-        $("#kosong").hidden = data.length > 0;
+        $("#daftar").replaceChildren(...data.map(kartuLaporan));
         galat(null);
     } catch (error) {
         if (ini !== ke) return;
@@ -146,6 +220,7 @@ let tunda;
 const muatTertunda = () => { clearTimeout(tunda); tunda = setTimeout(muat, 300); };
 $("#tgl").value = hariIni();
 $("#tgl").addEventListener("change", muat);
+$("#rentang").addEventListener("change", muat);
 
 let stream = null, menyambung = false;
 async function sambung() {
@@ -154,7 +229,7 @@ async function sambung() {
     try {
         if (!(await ensureToken())) return;
         stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
-        ["slot.status", "slot.menu", "slot.obstacle"].forEach(n => stream.addEventListener(n, muatTertunda));
+        ["slot.status", "slot.menu"].forEach(n => stream.addEventListener(n, muatTertunda));
         stream.onerror = async () => {
             stream.close();
             stream = null;
