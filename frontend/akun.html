@@ -12,40 +12,4 @@
  <div class="field" id="fUlang"><label for="pu">Ulangi password baru</label><input class="input" id="pu" type="password" autocomplete="new-password"><p class="error-msg" hidden>Password tidak sama.</p></div>
  <button class="btn btn-primary" type="submit">Ganti Password</button>
 </form>
-</main><script src="js/auth.js"></script>
-<script>
-const $ = s => document.querySelector(s);
-const PERAN = { ADMIN: "Admin", KITCHEN: "Dapur", COURIER: "Kurir" };
-function tampil(box, message) { box.hidden = !message; box.querySelector(".msg").textContent = message || ""; }
-const user = currentUser();
-if (user) {
-    $("#siapa").textContent = `${user.name} · ${PERAN[user.role] || user.role}`;
-    $("#beranda").href = homeFor(user);
-}
-$("#fPw").addEventListener("submit", async event => {
-    event.preventDefault();
-    const tombol = event.target.querySelector("button[type=submit]");
-    const baru = $("#pb").value;
-    const cek = [["#fLama", $("#pl").value !== ""], ["#fBaru", baru.length >= 8 && baru.length <= 72 && new TextEncoder().encode(baru).length <= 72], ["#fUlang", baru === $("#pu").value]];
-    let pertama = null;
-    cek.forEach(([selector, valid]) => {
-        $(selector).classList.toggle("is-error", !valid);
-        $(`${selector} .error-msg`).hidden = valid;
-        const input = $(`${selector} input`);
-        input.setAttribute("aria-invalid", String(!valid));
-        if (!valid && !pertama) pertama = input;
-    });
-    tampil($("#errPw"), "");
-    if (pertama) return pertama.focus();
-    tombol.disabled = true;
-    try {
-        await api("/me/password", { method: "PUT", body: { currentPassword: $("#pl").value, newPassword: baru } });
-        clearSession();
-        toast("Password diganti. Silakan masuk lagi.");
-        setTimeout(() => location.replace("login.html"), 1200);
-    } catch (error) {
-        tampil($("#errPw"), pesanGantiPassword(event.target, error));
-        tombol.disabled = false;
-    }
-});
-</script></body></html>
+</main><script type="module" src="js/pages/akun.js"></script></body></html>
