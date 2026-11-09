@@ -1,7 +1,8 @@
 const API_BASE = "https://lahap.bccdev.id/api";
 const REQUEST_TIMEOUT_MS = 20000;
 const MIDTRANS_CLIENT_KEY = "Mid-client-fmKxo1pZHv54Xpa-";
-const MIDTRANS_SNAP_URL = MIDTRANS_CLIENT_KEY.startsWith("SB-")
+const MIDTRANS_SANDBOX = true;
+const MIDTRANS_SNAP_URL = MIDTRANS_SANDBOX
     ? "https://app.sandbox.midtrans.com/snap/snap.js"
     : "https://app.midtrans.com/snap/snap.js";
 
