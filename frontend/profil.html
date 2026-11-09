@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Profil · LAHAP</title>
         <link rel="stylesheet" href="css/style.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     </head>
     <body data-roles="pelanggan">
         <header class="app-header">
@@ -40,6 +41,12 @@
                     <textarea class="textarea" id="alamat"></textarea>
                 </div>
                 <div class="field">
+                    <span class="field-label">Titik lokasi tersimpan</span>
+                    <div id="peta"></div>
+                    <p class="hint">Dipakai untuk mengisi otomatis saat checkout. Pesanan yang sudah dibuat tidak berubah.</p>
+                    <div><button class="btn btn-ghost btn-sm" type="button" id="hapusTitik">Hapus titik</button></div>
+                </div>
+                <div class="field">
                     <span class="field-label">Alergi</span>
                     <div class="chip-group" id="alergi" aria-busy="true"><div class="skeleton" style="width:100%"></div></div>
                 </div>
@@ -72,7 +79,9 @@
                 <button class="btn btn-secondary" type="submit">Ganti Password</button>
             </form>
         </main>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
         <script src="js/auth.js"></script>
+        <script src="js/peta.js"></script>
         <script>
             const $ = selector => document.querySelector(selector);
 
@@ -81,7 +90,18 @@
                 box.querySelector(".msg").textContent = message || "";
             }
 
-            const FIELD_PROFIL = { name: "nama", phone: "hp", email: "email", address: "alamat", allergyIds: "alergi", allergyNote: "catAlergi" };
+            const FIELD_PROFIL = {
+                name: "nama",
+                phone: "hp",
+                email: "email",
+                address: "alamat",
+                allergyIds: "alergi",
+                allergyNote: "catAlergi",
+                latitude: "peta",
+                longitude: "peta",
+            };
+            let petaProfil = null;
+            let pinProfil = null;
 
             function isiForm(user) {
                 $("#nama").value = user.name || "";
@@ -95,6 +115,19 @@
                 try {
                     const [profil, alergi] = await Promise.all([api("/me"), api("/allergies", { auth: false })]);
                     isiForm(profil.data);
+                    const lat = profil.data.latitude;
+                    const lng = profil.data.longitude;
+                    const titik = lat != null && lng != null ? { lat: Number(lat), lng: Number(lng) } : null;
+                    if (!petaProfil) {
+                        petaProfil = pasangPeta($("#peta"), {
+                            titik,
+                            label: "Peta titik lokasi tersimpan. Ketuk untuk menaruh pin.",
+                            onPilih: baru => {
+                                pinProfil = baru;
+                            },
+                        });
+                    } else petaProfil.setTitik(titik);
+                    pinProfil = petaProfil.ambilTitik();
                     const dipilih = new Set((profil.data.allergies || []).map(item => item.id));
                     $("#alergi").replaceChildren();
                     alergi.data.forEach(item => {
@@ -119,26 +152,35 @@
             $("#fProfil").addEventListener("submit", async event => {
                 event.preventDefault();
                 const tombol = event.target.querySelector("button[type=submit]");
-                const body = {
-                    allergyNote: $("#catAlergi").value.trim(),
-                    allergyIds: [...document.querySelectorAll("#alergi input:checked")].map(input => input.value),
-                };
-                [
-                    ["name", "#nama"],
-                    ["phone", "#hp"],
-                    ["email", "#email"],
-                    ["address", "#alamat"],
-                ].forEach(([key, selector]) => {
-                    const value = $(selector).value.trim();
-                    if (value) body[key] = value;
-                });
-                tombol.disabled = true;
                 tampil($("#errProfil"), "");
                 tampil($("#okProfil"), "");
+                event.target.querySelectorAll(".is-error").forEach(f => f.classList.remove("is-error"));
+                event.target.querySelectorAll(".error-msg[data-server]").forEach(p => p.remove());
+                const kosong = [
+                    ["#nama", "Nama wajib diisi."],
+                    ["#hp", "Nomor HP wajib diisi."],
+                ].filter(([selector]) => !$(selector).value.trim());
+                if (kosong.length) {
+                    kosong.forEach(([selector, teks]) => tandaiField($(selector), teks));
+                    return $(kosong[0][0]).focus();
+                }
+                const atauNull = selector => $(selector).value.trim() || null;
+                const body = {
+                    name: $("#nama").value.trim(),
+                    phone: $("#hp").value.trim(),
+                    email: atauNull("#email"),
+                    address: atauNull("#alamat"),
+                    allergyNote: atauNull("#catAlergi"),
+                    allergyIds: [...document.querySelectorAll("#alergi input:checked")].map(input => input.value),
+                    latitude: pinProfil ? pinProfil.lat : null,
+                    longitude: pinProfil ? pinProfil.lng : null,
+                };
+                tombol.disabled = true;
                 try {
                     const { data } = await api("/me", { method: "PATCH", body });
                     store.user = data;
                     isiForm(data);
+                    pinProfil = petaProfil.ambilTitik();
                     tampil($("#okProfil"), "Perubahan profil sudah disimpan.");
                     scrollTo({ top: 0, behavior: "smooth" });
                 } catch (error) {
@@ -146,6 +188,11 @@
                 } finally {
                     tombol.disabled = false;
                 }
+            });
+
+            $("#hapusTitik").addEventListener("click", () => {
+                if (petaProfil) petaProfil.setTitik(null);
+                pinProfil = null;
             });
 
             $("#fPw").addEventListener("submit", async event => {
