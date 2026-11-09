@@ -24,6 +24,7 @@ const acceptAnyPhoto: PhotoKeys = { assertPhotoKeyExists: async () => undefined 
 const noIngredients: IngredientLookup = {
     findMissingIngredientIds: async ids => [...ids],
     getIngredientsByIds: async () => [],
+    getAllergyIdsByIngredientIds: async () => [],
 };
 
 export function createCatalogContainer(deps: ModuleDeps, overrides: CatalogContainerOverrides = {}): CatalogContainer {

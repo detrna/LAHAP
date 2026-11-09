@@ -47,7 +47,7 @@ export async function getToCook(
     const userIds = new Set(served.map(({ slot }) => slot.userId));
 
     const [menus, packages, profiles] = await Promise.all([
-        this.catalog.getMenusByIds([...menuIds]),
+        this.catalog.getMenusByIds([...menuIds], { audience: "staff" }),
         this.catalog.getPackagesByIds([...packageIds]),
         this.customers.getAllergyProfiles([...userIds]),
     ]);

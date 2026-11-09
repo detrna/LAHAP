@@ -117,6 +117,7 @@ export function createMockIngredientLookup(): Mocked<IngredientLookup> {
     return {
         findMissingIngredientIds: vi.fn(async () => []),
         getIngredientsByIds: vi.fn(async () => []),
+        getAllergyIdsByIngredientIds: vi.fn(async () => []),
     } as Mocked<IngredientLookup>;
 }
 

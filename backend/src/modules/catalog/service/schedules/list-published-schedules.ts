@@ -17,5 +17,5 @@ export async function listPublishedSchedules(
         maxDays: PUBLIC_SCHEDULE_MAX_DAYS,
     });
     const records = await this.catalogRepository.findSchedules({ packageId, from, to, isPublished: true });
-    return this.presentSchedules(records);
+    return this.presentSchedules(records, "customer");
 }

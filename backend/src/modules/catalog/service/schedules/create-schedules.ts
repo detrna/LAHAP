@@ -49,5 +49,5 @@ export async function createSchedules(
             isPublished: item.isPublished ?? false,
         })),
     );
-    return this.presentSchedules(records);
+    return this.presentSchedules(records, "staff");
 }

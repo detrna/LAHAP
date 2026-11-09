@@ -40,7 +40,7 @@ export function buildMenuIngredient(overrides: Partial<MenuIngredient> = {}): Me
 }
 
 export function buildMenuComponent(overrides: Partial<MenuComponent> = {}): MenuComponent {
-    return { id: "00000000-0000-4000-8000-000000000001", name: "Nasi Putih", cookId: null, cook: null, ...overrides };
+    return { id: "00000000-0000-4000-8000-000000000001", name: "Nasi Putih", ...overrides };
 }
 
 export function buildMenuComponentRecord(overrides: Partial<MenuComponentRecord> = {}): MenuComponentRecord {

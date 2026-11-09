@@ -52,6 +52,7 @@ function catalogWithIngredients(deps: ModuleDeps): CatalogService {
         ingredients: {
             findMissingIngredientIds: ids => ingredients!.findMissingIngredientIds(ids),
             getIngredientsByIds: ids => ingredients!.getIngredientsByIds(ids),
+            getAllergyIdsByIngredientIds: ids => ingredients!.getAllergyIdsByIngredientIds(ids),
         },
     }).service;
     ingredients = createIngredientsContainer(deps, { allergies: catalog, menus: catalog }).service;

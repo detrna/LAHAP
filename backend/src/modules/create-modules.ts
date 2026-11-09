@@ -59,6 +59,7 @@ export function createModules(deps: ModuleDeps): Modules {
         ingredients: {
             findMissingIngredientIds: ids => ingredients.service.findMissingIngredientIds(ids),
             getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
+            getAllergyIdsByIngredientIds: ids => ingredients.service.getAllergyIdsByIngredientIds(ids),
         },
         announcer: notifications.service,
         adminNotifier: notifications.service,

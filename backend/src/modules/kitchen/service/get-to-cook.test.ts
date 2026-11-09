@@ -155,6 +155,7 @@ describe("KitchenService.getToCook (unit)", () => {
             expect(slots.listKitchenSlots).toHaveBeenCalledWith(["s-1", "s-empty"]);
             expect(catalog.getMenusByIds).toHaveBeenCalledTimes(1);
             expect([...(catalog.getMenusByIds.mock.calls[0]?.[0] as string[])].sort()).toEqual(["m-1", "m-2"]);
+            expect(catalog.getMenusByIds.mock.calls[0]?.[1]).toEqual({ audience: "staff" });
             expect(catalog.getPackagesByIds).toHaveBeenCalledTimes(1);
             expect(catalog.getPackagesByIds).toHaveBeenCalledWith(["p-1"]);
             expect(customers.getAllergyProfiles).toHaveBeenCalledTimes(1);

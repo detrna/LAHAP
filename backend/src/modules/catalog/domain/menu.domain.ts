@@ -1,5 +1,4 @@
 import type { Ingredient } from "../../ingredients/domain/ingredient.domain.js";
-import type { UserSummary } from "../../users/domain/user.domain.js";
 import type { Allergy } from "./allergy.domain.js";
 
 export interface MenuIngredient {
@@ -8,11 +7,17 @@ export interface MenuIngredient {
     readonly ingredient?: Ingredient | undefined;
 }
 
+export type MenuAudience = "staff" | "customer";
+
+export interface MenuCook {
+    readonly id: string;
+    readonly name: string;
+}
+
 export interface MenuComponent {
     readonly id: string;
     readonly name: string;
-    readonly cookId: string | null;
-    readonly cook: UserSummary | null;
+    readonly cook?: MenuCook | null | undefined;
 }
 
 export interface MenuComponentInput {

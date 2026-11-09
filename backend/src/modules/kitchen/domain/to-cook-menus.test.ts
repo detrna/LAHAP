@@ -6,9 +6,9 @@ import { buildToCookMenus } from "./to-cook-menus.js";
 const morning = { time: "07:00", range: "Pagi" } as const;
 const noon = { time: "12:00", range: "Siang" } as const;
 
-const cook = { id: "c-1", name: "Siti", phone: "628120000001", role: "KITCHEN" } as const;
-const grill = buildMenuComponent({ id: "k-1", name: "Ayam Bakar", cookId: "c-1", cook });
-const rice = buildMenuComponent({ id: "k-2", name: "Nasi Putih" });
+const cook = { id: "c-1", name: "Siti" } as const;
+const grill = buildMenuComponent({ id: "k-1", name: "Ayam Bakar", cook });
+const rice = buildMenuComponent({ id: "k-2", name: "Nasi Putih", cook: null });
 
 const menus = new Map([
     ["m-1", buildMenu({ id: "m-1", name: "Ayam Bakar", components: [grill, rice] })],

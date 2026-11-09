@@ -11,6 +11,6 @@ export interface KitchenScheduleFilter {
 
 export interface KitchenCatalog {
     findSchedules(filter: KitchenScheduleFilter): Promise<readonly ScheduleSummary[]>;
-    getMenusByIds(ids: readonly string[]): Promise<readonly Menu[]>;
+    getMenusByIds(ids: readonly string[], options: { readonly audience: "staff" }): Promise<readonly Menu[]>;
     getPackagesByIds(ids: readonly string[]): Promise<readonly Package[]>;
 }

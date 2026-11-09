@@ -629,7 +629,7 @@
           "Catalog"
         ],
         "summary": "List published schedules of a package",
-        "description": "**Public** (no token).\n\nOnly `isPublished` schedules (UC-02, UC-24); slots without a published menu are not orderable.",
+        "description": "**Public** (no token).\n\nOnly `isPublished` schedules (UC-02, UC-24); slots without a published menu are not orderable.\n\nMenus come in the customer view: components carry their names only (no cook) and there are no recipe lines.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Id"
@@ -11002,11 +11002,10 @@
       },
       "MenuComponent": {
         "type": "object",
-        "description": "Sub-dish component of a menu with an optional assigned kitchen cook (UC-34).",
+        "description": "Sub-dish component of a menu (UC-34). Staff responses add the assigned kitchen cook; everyone else sees the name only.",
         "required": [
           "id",
-          "name",
-          "cook"
+          "name"
         ],
         "properties": {
           "id": {
@@ -11025,14 +11024,37 @@
           "cook": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/UserSummary"
+                "$ref": "#/components/schemas/MenuCook"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Assigned `KITCHEN` cook, or `null` when unassigned.",
+            "description": "Assigned `KITCHEN` cook, or `null` when unassigned. Only on `/admin/menus*`, `/admin/menu-schedules*` and `GET /kitchen/to-cook`; public, customer, courier and admin order responses leave it out.",
             "readOnly": true
+          }
+        },
+        "x-apidog-folder": "Catalog"
+      },
+      "MenuCook": {
+        "type": "object",
+        "description": "The kitchen cook assigned to a menu component: only the id and name, never contact details.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User ID of the `KITCHEN` cook."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name (the phone when none was given).",
+            "examples": [
+              "Siti Aminah"
+            ]
           }
         },
         "x-apidog-folder": "Catalog"
@@ -11142,7 +11164,7 @@
             "items": {
               "$ref": "#/components/schemas/MenuIngredient"
             },
-            "description": "Recipe lines.",
+            "description": "Recipe lines. Only on admin menu responses (`/admin/menus*`); every other response leaves it out.",
             "readOnly": true
           },
           "allergies": {
@@ -11158,7 +11180,7 @@
             "items": {
               "$ref": "#/components/schemas/MenuComponent"
             },
-            "description": "Sub-dish components and their assigned kitchen cooks (UC-34).",
+            "description": "Sub-dish components (UC-34). The assigned cook is included only for staff (see `MenuComponent.cook`).",
             "readOnly": true
           }
         },

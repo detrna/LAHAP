@@ -8,6 +8,7 @@ import { estimateStock } from "./estimate-stock.js";
 import { extractReceipt } from "./extract-receipt.js";
 import { findMissingIngredientIds } from "./find-missing-ingredient-ids.js";
 import { getIngredient } from "./get-ingredient.js";
+import { getAllergyIdsByIngredientIds } from "./get-allergy-ids-by-ingredient-ids.js";
 import { getIngredientsByIds } from "./get-ingredients-by-ids.js";
 import { getShoppingList } from "./get-shopping-list.js";
 import type { AllergyLookup } from "./interfaces/allergy-lookup.js";
@@ -72,6 +73,7 @@ export class IngredientsService {
     updateStock = updateStock;
     deleteIngredients = deleteIngredients;
     getIngredientsByIds = getIngredientsByIds;
+    getAllergyIdsByIngredientIds = getAllergyIdsByIngredientIds;
     findMissingIngredientIds = findMissingIngredientIds;
     getShoppingList = getShoppingList;
     estimateStock = estimateStock;

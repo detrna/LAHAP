@@ -1,5 +1,6 @@
 import type { Menu } from "../../domain/menu.domain.js";
 import type { CatalogService } from "../catalog.service.js";
+import { MENU_VIEWS } from "./present-menus.js";
 
 export interface ListMenusInput {
     readonly search?: string | undefined;
@@ -15,5 +16,5 @@ export interface MenuPage {
 
 export async function listMenus(this: CatalogService, input: ListMenusInput): Promise<MenuPage> {
     const { items, total } = await this.catalogRepository.listMenus(input);
-    return { items: await this.presentMenus(items, { withIngredients: true }), total };
+    return { items: await this.presentMenus(items, MENU_VIEWS.staff), total };
 }

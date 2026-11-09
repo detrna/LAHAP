@@ -99,6 +99,7 @@ describe("catalog routes (e2e)", () => {
                     ingredients: {
                         findMissingIngredientIds: ids => ingredients.service.findMissingIngredientIds(ids),
                         getIngredientsByIds: ids => ingredients.service.getIngredientsByIds(ids),
+                        getAllergyIdsByIngredientIds: ids => ingredients.service.getAllergyIdsByIngredientIds(ids),
                     },
                     orderActivity: activity,
                     cooks: {
@@ -819,6 +820,57 @@ describe("catalog routes (e2e)", () => {
                 .get(`/api/packages/${packageId}/schedules`)
                 .query({ from: "2099-01-01", to: "2099-12-31" });
             expect(tooLong.status).toBe(400);
+        });
+
+        it("shows staff each cook's id and name, and the public only component names and allergies", async () => {
+            const cookId = await createTestUser(db, rows, { name: `Zz E2E ${tag} Schedule Cook`, role: "KITCHEN" });
+            const allergy = await db.orm.public.Allergy.create({ name: `Zz E2E ${tag} Schedule Kacang` });
+            rows.track("Allergy", allergy.id);
+            const link = await db.orm.public.IngredientAllergy.create({ ingredientId, allergyId: allergy.id });
+            rows.track("IngredientAllergy", link.id);
+            const menu = await request(app)
+                .post("/api/admin/menus")
+                .set(admin())
+                .send({
+                    name: `Zz E2E ${tag} Schedule Cooked`,
+                    description: "",
+                    isAlternative: false,
+                    photoKey: "menus/2026/11/e2e.webp",
+                    ingredients: [{ ingredientId, quantityPerPortion: 1 }],
+                    components: [{ name: "Ayam Bakar", cookId }, { name: "Sambal" }],
+                });
+            expect(menu.status).toBe(201);
+            const menuId = rows.track("Menu", menu.body.data.id);
+            const [scheduleId] = await createSchedules([
+                { date: "2099-04-10", primaryMenuId: menuId, isPublished: true },
+            ]);
+
+            const staff = await request(app).get(`/api/admin/menu-schedules/${scheduleId}`).set(admin());
+            expect(staff.status).toBe(200);
+            expect(staff.body.data.menus[0].menu.components).toEqual([
+                {
+                    id: expect.any(String),
+                    name: "Ayam Bakar",
+                    cook: { id: cookId, name: `Zz E2E ${tag} Schedule Cook` },
+                },
+                { id: expect.any(String), name: "Sambal", cook: null },
+            ]);
+
+            const publicList = await request(app)
+                .get(`/api/packages/${packageId}/schedules`)
+                .query({ from: "2099-04-10", to: "2099-04-10" });
+            expect(publicList.status).toBe(200);
+            const publicMenu = publicList.body.data[0].menus[0].menu;
+            expect(publicMenu.components).toEqual([
+                { id: expect.any(String), name: "Ayam Bakar" },
+                { id: expect.any(String), name: "Sambal" },
+            ]);
+            expect(publicMenu.allergies).toEqual([expect.objectContaining({ id: allergy.id })]);
+            expect(publicMenu).not.toHaveProperty("ingredients");
+            const raw = JSON.stringify(publicList.body);
+            expect(raw).not.toContain(cookId);
+            expect(raw).not.toContain('"phone"');
+            expect(raw).not.toContain('"cook"');
         });
 
         it("updates schedules in a batch and alone", async () => {

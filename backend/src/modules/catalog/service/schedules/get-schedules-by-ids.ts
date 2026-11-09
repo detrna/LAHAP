@@ -7,5 +7,5 @@ export async function getSchedulesByIds(
 ): Promise<readonly MenuSchedule[]> {
     if (ids.length === 0) return [];
     const records = await this.catalogRepository.findSchedules({ ids: [...new Set(ids)] });
-    return this.presentSchedules(records);
+    return this.presentSchedules(records, "customer");
 }

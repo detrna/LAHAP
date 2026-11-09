@@ -174,5 +174,5 @@ export async function applyScheduleUpdates(
         items.map(item => ({ id: item.id, changes: toChanges(item) })),
     );
     await announceScheduleChanges(service, announcements);
-    return service.presentSchedules(records);
+    return service.presentSchedules(records, "staff");
 }

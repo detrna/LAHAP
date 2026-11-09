@@ -17,5 +17,5 @@ export interface SchedulePage {
 
 export async function listSchedules(this: CatalogService, input: ListSchedulesInput): Promise<SchedulePage> {
     const { items, total } = await this.catalogRepository.listSchedules(input);
-    return { items: await this.presentSchedules(items), total };
+    return { items: await this.presentSchedules(items, "staff"), total };
 }
