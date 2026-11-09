@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Langganan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div><h1 class="t-h1">Langganan pelanggan</h1><p class="t-muted">Semua pesanan paket, rincian harga, slot, dan pembayarannya.</p></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+
+<section class="card stack" id="detail" hidden aria-live="polite">
+ <div class="row-between"><h2 class="t-h2" id="dJudul">Detail</h2><button class="btn btn-ghost btn-sm" type="button" id="tutup">Tutup</button></div>
+ <dl class="meta" id="dMeta"></dl>
+ <div class="grid grid-2">
+  <div class="stack"><h3 class="t-h3">Rincian harga</h3><div id="dHarga"></div></div>
+  <div class="stack"><h3 class="t-h3">Pembayaran</h3><p class="t-muted" id="dKosongBayar" hidden>Belum ada pembayaran.</p><div id="dBayar"></div></div>
+ </div>
+ <div class="stack"><h3 class="t-h3">Slot</h3><div id="dSlot"></div></div>
+ <div class="stack" id="dBoxUbah" hidden><h3 class="t-h3">Riwayat ubah metode</h3><div id="dUbah"></div></div>
+ <form class="card stack" id="ubah" hidden novalidate>
+  <h3 class="t-h3" id="uJudul">Ubah metode pengantaran</h3>
+  <div class="stack" id="uAlamat">
+   <div class="field"><label for="uAddr">Alamat pengantaran</label><textarea class="textarea" id="uAddr"></textarea><p class="error-msg" hidden>Alamat wajib diisi.</p></div>
+   <div class="grid grid-2">
+    <div class="field"><label for="uLat">Latitude</label><input class="input" id="uLat" type="number" step="0.00000001" min="-90" max="90"><p class="error-msg" hidden>Latitude antara -90 dan 90.</p></div>
+    <div class="field"><label for="uLng">Longitude</label><input class="input" id="uLng" type="number" step="0.00000001" min="-180" max="180"><p class="error-msg" hidden>Longitude antara -180 dan 180.</p></div>
+   </div>
+  </div>
+  <div class="grid grid-2">
+   <div class="field"><label for="uMulai">Berlaku mulai (opsional)</label><input class="input" id="uMulai" type="date"><p class="hint">Harus setelah hari ini. Kosongkan untuk slot terdekat yang bisa diubah.</p></div>
+   <div class="field" id="fBayar"><label for="uBayar">Metode bayar ongkir</label><select class="select input" id="uBayar"><option value="MIDTRANS">Non-tunai (Midtrans)</option><option value="CASH">Tunai</option></select></div>
+  </div>
+  <div class="alert alert--info" id="uRingkas" hidden></div>
+  <div class="row"><button class="btn btn-secondary" type="submit" id="uCek">Hitung</button><button class="btn btn-primary" type="button" id="uKonfirmasi" hidden>Konfirmasi Perubahan</button></div>
+ </form>
+</section>
+
+<div class="alert alert--info row-between" id="filterUser" hidden><span id="filterUserTeks"></span><a class="btn btn-ghost btn-sm" href="admin-langganan.html">Tampilkan semua</a></div>
+<section class="card stack">
+ <div class="grid grid-3">
+  <div class="field"><label for="fStatus">Status</label><select class="select input" id="fStatus"><option value="">Semua</option><option>Pending</option><option>Success</option><option>Expire</option><option>Dibatalkan</option></select></div>
+  <div class="field"><label for="fPk">Paket</label><select class="select input" id="fPk"><option value="">Semua paket</option></select></div>
+  <div class="field"><label for="fBeli">Pembelian</label><select class="select input" id="fBeli"><option value="">Online dan Offline</option><option>Online</option><option>Offline</option></select></div>
+  <div class="field"><label for="fDari">Dibuat dari</label><input class="input" id="fDari" type="date"></div>
+  <div class="field"><label for="fSampai">Dibuat sampai</label><input class="input" id="fSampai" type="date"></div>
+  <div class="field"><span class="field-label">Refund</span><div class="chip-group"><label class="chip"><input type="checkbox" id="fRefund">Hanya perlu refund</label></div></div>
+ </div>
+ <p class="t-small t-muted" id="hasil" role="status"></p>
+ <p class="empty" id="kosong" hidden>Tidak ada langganan untuk filter ini.</p>
+ <div id="list" aria-busy="true"><div class="skeleton"></div></div>
+ <div id="pager" hidden></div>
+</section>
+</main><script src="js/auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tgl = s => new Date(s.length === 10 ? `${s}T00:00:00+07:00` : s).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const opsi = (value, label) => { const o = el("option", "", label); o.value = value; return o; };
+const BADGE = {
+    Terjadwal: "badge--prepared", Disiapkan: "badge--prepared", Diantar: "badge--delivering", "Siap Diambil": "badge--ready",
+    Selesai: "badge--success", Dilewati: "badge--expire", Pending: "badge--pending", Success: "badge--success",
+    Expire: "badge--expire", Dibatalkan: "badge--cancel", Aktif: "badge--success", "Akan Datang": "badge--prepared", Refund: "badge--cancel",
+};
+const badge = teks => el("span", `badge ${BADGE[teks] || "badge--expire"}`, teks);
+const metode = m => (m === "CASH" ? "Tunai" : m === "FREE" ? "Gratis" : `Non-tunai${m.includes("_") ? ` · ${m.split("_").slice(1).join(" ").toLowerCase()}` : ""}`);
+function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
+function periksa(daftar) {
+    let pertama = null;
+    daftar.forEach(([input, valid]) => {
+        const f = input.closest(".field");
+        f.classList.toggle("is-error", !valid);
+        const pesan = f.querySelector(".error-msg");
+        if (pesan) pesan.hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return !pertama;
+}
+
+const url = new URLSearchParams(location.search);
+const userId = url.get("userId");
+let namaPaket = new Map(), halaman = 1, aktif = null;
+const paketDari = s => namaPaket.get(s.packageId) || "Paket";
+
+function baris(s) {
+    const row = el("div", "invoice");
+    const kiri = el("div");
+    kiri.append(
+        el("p", "t-h3", `${s.user ? s.user.name : s.recipientName} · ${paketDari(s)} · ${s.period}`),
+        el("p", "t-small t-muted", `Penerima ${s.recipientName} · ${tgl(s.startDate)} – ${tgl(s.endDate)} · ${s.purchaseType} · ${s.isDelivery ? "diantar" : "ambil sendiri"} · ${rp(s.totalPrice)}`),
+    );
+    const kanan = el("div", "row");
+    if (s.needsRefund) kanan.append(el("span", "badge badge--cancel", "Perlu refund"));
+    kanan.append(badge(s.displayStatus || s.status));
+    const buka = el("button", "btn btn-secondary btn-sm", "Detail");
+    buka.type = "button";
+    buka.setAttribute("aria-label", `Detail langganan ${s.recipientName}`);
+    buka.onclick = () => bukaDetail(s.id);
+    kanan.append(buka);
+    row.append(kiri, kanan);
+    return row;
+}
+
+let ke = 0;
+async function muat() {
+    const ini = ++ke;
+    const q = new URLSearchParams({ page: halaman, limit: 20 });
+    if (userId) q.set("userId", userId);
+    [["status", "fStatus"], ["packageId", "fPk"], ["purchaseType", "fBeli"], ["from", "fDari"], ["to", "fSampai"]].forEach(([k, id]) => { if ($(id).value) q.set(k, $(id).value); });
+    if ($("fRefund").checked) q.set("needsRefund", "true");
+    try {
+        const { data, meta } = await api(`/admin/subscriptions?${q}`);
+        if (ini !== ke) return;
+        $("list").removeAttribute("aria-busy");
+        $("list").replaceChildren(...data.map(baris));
+        $("kosong").hidden = data.length > 0;
+        $("hasil").textContent = `${meta.total} langganan.`;
+        renderPager($("pager"), meta, p => { halaman = p; muat(); });
+        if (userId && data[0] && data[0].user) $("filterUserTeks").textContent = `Langganan milik ${data[0].user.name}`;
+        galat(null);
+    } catch (error) { if (ini !== ke) return; $("list").removeAttribute("aria-busy"); $("list").replaceChildren(); galat(error); }
+}
+
+function hargaBaris(label, nilai, diskon) {
+    const r = el("div", `price-row${diskon ? " price-row--discount" : ""}`);
+    r.append(el("span", "", label), el("span", "", diskon ? `−${rp(nilai)}` : rp(nilai)));
+    return r;
+}
+
+function tampilDetail(s) {
+    aktif = s;
+    $("dJudul").textContent = `${s.user ? s.user.name : s.recipientName} · ${paketDari(s)} · ${s.period}`;
+    const meta = [
+        ["Status", s.displayStatus ? `${s.status} · ${s.displayStatus}` : s.status],
+        ["Periode", `${tgl(s.startDate)} – ${tgl(s.endDate)}`],
+        ["Pembelian", s.purchaseType],
+        ["Penerima", s.recipientName],
+        ["Pengantaran", s.isDelivery ? `Diantar · ${s.deliveryDistanceKm ?? "?"} km` : "Ambil sendiri"],
+        ["Dibuat", tgl(s.createdAt)],
+    ];
+    if (s.user) meta.splice(1, 0, ["Pelanggan", `${s.user.name} · ${s.user.phone}`]);
+    if (s.isDelivery && s.deliveryAddress) meta.push(["Alamat", s.deliveryAddress]);
+    if (s.notes) meta.push(["Catatan", s.notes]);
+    if (s.needsRefund) meta.push(["Refund", "Perlu refund"]);
+    $("dMeta").replaceChildren(...meta.flatMap(([k, v]) => [el("dt", "", k), el("dd", "", v)]));
+    const slotCount = (s.orders || []).length;
+    const harga = [hargaBaris(`${slotCount} porsi × ${rp(s.pricePerPortion)}`, s.foodSubtotal)];
+    if (s.tierDiscount > 0) harga.push(hargaBaris("Diskon tier", s.tierDiscount, true));
+    if (s.promoDiscount > 0) harga.push(hargaBaris("Diskon promo", s.promoDiscount, true));
+    if (s.isDelivery || s.deliveryFeeTotal > 0) harga.push(hargaBaris(`Ongkir (${rp(s.deliveryFeePerSlot)} per slot)`, s.deliveryFeeTotal));
+    const total = el("div", "price-total");
+    total.append(el("span", "", "Total"), el("span", "", rp(s.totalPrice)));
+    $("dHarga").replaceChildren(...harga, total);
+    const bayar = s.payments || [];
+    $("dKosongBayar").hidden = bayar.length > 0;
+    $("dBayar").replaceChildren(...bayar.map(p => {
+        const r = el("div", "invoice");
+        const kiri = el("div");
+        kiri.append(el("p", "t-h3", rp(p.amount)), el("p", "t-small t-muted", `${metode(p.method)}${p.type === "DELIVERY_SERVICE_UPGRADE" ? " · upgrade pengantaran" : ""} · ${tgl(p.paidAt || p.createdAt)}`));
+        r.append(kiri, badge(p.status));
+        return r;
+    }));
+    const kunci = o => (o.menuSchedule ? `${o.menuSchedule.date} ${o.menuSchedule.deliveryTime.time}` : "");
+    const slot = [...(s.orders || [])].sort((a, b) => kunci(a).localeCompare(kunci(b)));
+    $("dSlot").replaceChildren(...slot.map(o => {
+        const r = el("div", "slot");
+        const kiri = el("div");
+        const ms = o.menuSchedule;
+        kiri.append(
+            el("p", "t-h3", ms ? `${tgl(ms.date)} · ${ms.deliveryTime.range} ${ms.deliveryTime.time}` : "Slot"),
+            el("p", "t-small t-muted", `${o.menu ? o.menu.name : "Menu"}${o.usesAlternativeMenu ? " (alternatif)" : ""} · ${o.isDelivery ? `diantar${o.courier ? ` oleh ${o.courier.name}` : ""}` : "ambil sendiri"}${o.skipReason ? ` · alasan skip: ${o.skipReason}` : ""}`),
+        );
+        r.append(kiri, badge(o.status));
+        return r;
+    }));
+    const ubah = s.deliveryMethodChanges || [];
+    $("dBoxUbah").hidden = ubah.length === 0;
+    $("dUbah").replaceChildren(...ubah.map(c => {
+        const r = el("div", "invoice");
+        const kiri = el("div");
+        kiri.append(
+            el("p", "t-h3", `${c.toDelivery ? "Ke diantar" : "Ke ambil sendiri"} mulai ${tgl(c.effectiveFrom)}`),
+            el("p", "t-small t-muted", `${c.slotCount} slot · ${rp(c.amount)}${c.refundedAt ? ` · direfund ${tgl(c.refundedAt)}` : ""}`),
+        );
+        const kanan = el("div", "row");
+        if (c.needsRefund) kanan.append(el("span", "badge badge--cancel", "Perlu refund"));
+        kanan.append(badge(c.status));
+        r.append(kiri, kanan);
+        return r;
+    }));
+    siapkanUbah(s);
+    $("detail").hidden = false;
+}
+
+async function bukaDetail(id) {
+    galat(null);
+    try {
+        tampilDetail((await api(`/admin/subscriptions/${id}`)).data);
+        history.replaceState(null, "", `?${new URLSearchParams({ ...(userId ? { userId } : {}), id })}`);
+        $("detail").scrollIntoView();
+        $("tutup").focus();
+    } catch (error) { galat(error); }
+}
+
+function siapkanUbah(s) {
+    const bisa = s.status === "Success" && s.displayStatus !== "Selesai";
+    $("ubah").hidden = !bisa;
+    if (!bisa) return;
+    const keAntar = !s.isDelivery;
+    $("uJudul").textContent = keAntar ? "Ubah ke diantar" : "Ubah ke ambil sendiri";
+    $("uAlamat").hidden = !keAntar;
+    $("uAddr").value = s.deliveryAddress || "";
+    $("uLat").value = s.deliveryLatitude ?? "";
+    $("uLng").value = s.deliveryLongitude ?? "";
+    $("uMulai").value = "";
+    $("uMulai").min = (() => { const d = new Date(`${hariIni()}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+    $("fBayar").hidden = !keAntar;
+    $("uBayar").querySelector('option[value="CASH"]').disabled = s.purchaseType !== "Offline";
+    $("uBayar").value = "MIDTRANS";
+    $("uRingkas").hidden = true;
+    $("uKonfirmasi").hidden = true;
+}
+
+function bodyUbah() {
+    const keAntar = !aktif.isDelivery;
+    const body = { isDelivery: keAntar };
+    if ($("uMulai").value) body.effectiveFrom = $("uMulai").value;
+    if (keAntar) {
+        body.deliveryAddress = $("uAddr").value.trim();
+        body.deliveryLatitude = Number($("uLat").value);
+        body.deliveryLongitude = Number($("uLng").value);
+    }
+    return body;
+}
+
+$("ubah").onsubmit = async event => {
+    event.preventDefault();
+    const keAntar = !aktif.isDelivery;
+    if (keAntar) {
+        const lat = Number($("uLat").value), lng = Number($("uLng").value);
+        if (!periksa([[$("uAddr"), $("uAddr").value.trim() !== ""], [$("uLat"), $("uLat").value !== "" && lat >= -90 && lat <= 90], [$("uLng"), $("uLng").value !== "" && lng >= -180 && lng <= 180]])) return;
+    }
+    $("uCek").disabled = true;
+    galat(null);
+    try {
+        const { data } = await api(`/admin/subscriptions/${aktif.id}/delivery-method/preview`, { method: "POST", body: bodyUbah() });
+        const teks = [`${data.slotCount} slot mulai ${tgl(data.effectiveFrom)}.`];
+        if (data.delivery && !data.delivery.available) teks.push(`Jarak ${data.delivery.distanceKm} km melebihi batas ${data.delivery.maxDistanceKm} km, jadi tidak bisa diantar.`);
+        else if (data.toDelivery) teks.push(data.amount > 0 ? `Ongkir ${rp(data.deliveryFeePerSlot)} per slot. Pelanggan membayar ${rp(data.amount)}.` : "Dalam radius gratis ongkir, langsung berlaku tanpa pembayaran.");
+        else teks.push(data.amount > 0 ? `Ongkir ${rp(data.amount)} perlu direfund ke pelanggan (dikonfirmasi di halaman Pembayaran).` : "Tidak ada ongkir yang perlu direfund.");
+        $("uRingkas").textContent = teks.join(" ");
+        $("uRingkas").hidden = false;
+        $("uKonfirmasi").hidden = Boolean(data.delivery && !data.delivery.available) || data.slotCount === 0;
+        $("uKonfirmasi").dataset.amount = data.amount;
+    } catch (error) { galat(error); }
+    finally { $("uCek").disabled = false; }
+};
+
+$("uKonfirmasi").onclick = async () => {
+    const body = bodyUbah();
+    if (body.isDelivery && Number($("uKonfirmasi").dataset.amount) > 0) body.paymentMethod = $("uBayar").value;
+    if (!confirm(body.isDelivery ? "Ubah langganan ini ke diantar?" : "Ubah langganan ini ke ambil sendiri? Berlaku langsung.")) return;
+    $("uKonfirmasi").disabled = true;
+    galat(null);
+    try {
+        const { data } = await api(`/admin/subscriptions/${aktif.id}/delivery-method`, { method: "POST", body });
+        if (data.paymentSession && data.paymentSession.redirectUrl) {
+            toast("Perubahan menunggu pembayaran pelanggan.");
+            $("uRingkas").replaceChildren("Kirim tautan pembayaran ini ke pelanggan: ", Object.assign(el("a", "", data.paymentSession.redirectUrl), { href: data.paymentSession.redirectUrl, target: "_blank", rel: "noopener" }));
+            $("uKonfirmasi").hidden = true;
+            return;
+        }
+        toast(data.payment && data.payment.status === "Pending" ? "Perubahan menunggu pembayaran tunai. Verifikasi di halaman Pembayaran." : "Metode pengantaran diubah.");
+        await bukaDetail(aktif.id);
+        muat();
+    } catch (error) { galat(error); }
+    finally { $("uKonfirmasi").disabled = false; }
+};
+$("ubah").addEventListener("input", () => { $("uKonfirmasi").hidden = true; });
+$("tutup").onclick =() => { $("detail").hidden = true; aktif = null; history.replaceState(null, "", userId ? `?userId=${userId}` : location.pathname); };
+
+["fStatus", "fPk", "fBeli", "fDari", "fSampai", "fRefund"].forEach(id => $(id).addEventListener("change", () => { halaman = 1; muat(); }));
+if (userId) { $("filterUser").hidden = false; $("filterUserTeks").textContent = "Langganan satu pelanggan"; }
+(async () => {
+    try {
+        const { data } = await api("/admin/packages?limit=100");
+        namaPaket = new Map(data.map(p => [p.id, p.name]));
+        $("fPk").append(...data.map(p => opsi(p.id, p.name)));
+    } catch (error) { galat(error); }
+    muat();
+    if (url.get("id")) bukaDetail(url.get("id"));
+})();
+</script></body></html>

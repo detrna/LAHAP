@@ -55,6 +55,7 @@
                     <div class="pkg-photo" id="pratinjau" style="margin-top: 12px" hidden>
                         <img id="gambar" alt="Pratinjau foto tier" />
                     </div>
+                    <button class="btn btn-ghost btn-sm" type="button" id="hapusFoto" hidden>Hapus Foto</button>
                 </div>
                 <div class="row">
                     <button class="btn btn-primary" type="submit">Simpan</button>
@@ -84,12 +85,12 @@
             }
 
             function pesanError(error) {
-                const dariServer = error instanceof ApiError && ["CONFLICT", "INVALID_STATE", "VALIDATION_ERROR"].includes(error.code);
-                return dariServer ? error.message : errorMessage(error);
+                return error instanceof ApiError && error.issues.length ? issuesText(error.issues) : errorMessage(error);
             }
 
             function pratinjau(url) {
                 $("#pratinjau").hidden = !url;
+                $("#hapusFoto").hidden = !url;
                 if (url) $("#gambar").src = url;
             }
 
@@ -167,6 +168,11 @@
             $("#batal").onclick = () => {
                 $("#form").hidden = true;
             };
+            $("#hapusFoto").onclick = () => {
+                fotoKey = null;
+                $("#berkas").value = "";
+                pratinjau(null);
+            };
             $("#berkas").addEventListener("change", event => {
                 const berkas = event.target.files[0];
                 if (berkas) pratinjau(URL.createObjectURL(berkas));
@@ -200,7 +206,9 @@
                         discountPercent: diskon,
                     };
                     if ($("#deskripsi").value.trim()) body.description = $("#deskripsi").value.trim();
+                    else if (dipilih && dipilih.description) body.description = null;
                     if (fotoKey) body.photoKey = fotoKey;
+                    else if (dipilih && dipilih.photoKey) body.photoKey = null;
                     await api(dipilih ? `/admin/tiers/${dipilih.id}` : "/admin/tiers", {
                         method: dipilih ? "PATCH" : "POST",
                         body,

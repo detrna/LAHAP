@@ -6,13 +6,23 @@
  <div class="row-between"><div><h1 class="t-h1">Dashboard admin</h1><p class="t-muted">Ringkasan usaha.</p></div>
   <div class="field"><label for="periode">Periode</label><select class="select input" id="periode"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month">Bulan ini</option></select></div></div>
  <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
- <div class="alert alert--warning" id="peringatanMenu" role="status" hidden><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan menu supaya pelanggan bisa memesan. <a href="admin-menu.html">Buka halaman Menu</a></div>
+ <div class="alert alert--warning" id="peringatanMenu" role="status" hidden><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan jadwal menu supaya pelanggan bisa memesan. <a href="admin-jadwal.html">Buka halaman Jadwal</a></div>
+ <div class="alert alert--info" id="belumDibaca" role="status" hidden><span id="belumDibacaTeks"></span> <a href="admin-kotak-masuk.html">Buka kotak masuk</a></div>
 
  <section class="grid grid-4" aria-label="Ringkasan">
   <div class="card"><p class="t-small t-muted">Pemasukan</p><p class="price-big" id="kPemasukan">…</p></div>
   <div class="card"><p class="t-small t-muted">Pesanan</p><p class="price-big" id="kPesanan">…</p></div>
   <div class="card"><p class="t-small t-muted">Pelanggan berhenti</p><p class="price-big" id="kBerhenti">…</p></div>
   <div class="card"><p class="t-small t-muted">Bahan kurang</p><p class="price-big" id="kBahan">…</p></div>
+ </section>
+
+ <section class="card stack">
+  <div class="section-head"><h2 class="t-h2">Laporan pemasukan</h2><span class="t-small t-muted" id="rentang"></span></div>
+  <div class="grid grid-2">
+   <div><h3 class="t-h3">Total</h3><div id="lapTotal"></div></div>
+   <div class="stack"><div><h3 class="t-h3">Per jenis pembelian</h3><div id="lapBeli"></div></div><div><h3 class="t-h3">Per paket</h3><p class="t-muted" id="kosongLapPaket" hidden>Belum ada pesanan lunas.</p><div id="lapPaket"></div></div></div>
+  </div>
+  <p class="t-small t-muted">Pemasukan bersih: upgrade pengantaran yang dibayar sudah ditambahkan, dan refund ubah metode yang dikonfirmasi sudah dikurangi.</p>
  </section>
 
  <section class="card">
@@ -26,12 +36,7 @@
   <div class="field"><label for="tpl">Template pesan</label><select class="select input" id="tpl"></select><p class="hint" id="isiTpl"></p></div>
   <p class="t-muted" id="kosongChurn" hidden>Tidak ada pelanggan berhenti.</p>
   <div class="stack" id="churn"></div>
-  <details><summary>Buat template pesan baru</summary>
-   <form class="stack" id="formTpl" novalidate>
-    <div class="field"><label for="tNama">Nama template</label><input class="input" id="tNama" maxlength="100"></div>
-    <div class="field"><label for="tIsi">Isi pesan</label><textarea class="textarea" id="tIsi" placeholder="Halo {nama}, kami kangen! Pesan lagi paket LAHAP."></textarea><p class="hint">Isian yang didukung: {nama}, {paket_terakhir}, {tanggal_berakhir}, {lama_tidak_memesan}, {kode_promo}.</p></div>
-    <button class="btn btn-secondary" type="submit">Simpan Template</button>
-   </form></details>
+  <p class="t-small t-muted">Template dan kode promo dikelola di halaman <a href="admin-pelanggan.html">Pelanggan</a>.</p>
  </section>
 
  <section class="grid grid-2">
@@ -60,6 +65,29 @@ async function dashboard() {
     $("#top").replaceChildren(...data.topMenus.map(m => { const r = el("div", "invoice"); r.append(el("p", "t-h3", m.name), el("p", "t-h3", `${m.portions} porsi`)); return r; }));
     $("#kosongKurang").hidden = data.shortages.length > 0;
     $("#kurang").replaceChildren(...data.shortages.map(s => { const r = el("div", "invoice"); r.append(el("p", "t-h3", s.name), el("p", "t-small t-muted", `Kurang ${angka(s.shortageQuantity)} ${s.unit} (stok ${angka(s.currentStock)}, butuh ${angka(s.requiredQuantity)})`)); return r; }));
+    const belum = data.unreadNotificationCount || 0;
+    $("#belumDibaca").hidden = belum === 0;
+    $("#belumDibacaTeks").textContent = `${belum} notifikasi belum dibaca.`;
+}
+
+const hargaBaris = (label, nilai, diskon) => { const r = el("div", `price-row${diskon ? " price-row--discount" : ""}`); r.append(el("span", "", label), el("span", "", diskon ? `−${rp(nilai)}` : rp(nilai))); return r; };
+const ringkas = (label, x) => { const r = el("div", "invoice"); const kiri = el("div"); kiri.append(el("p", "t-h3", label), el("p", "t-small t-muted", `${x.orderCount} pesanan · makanan ${rp(x.foodRevenue)} · ongkir ${rp(x.deliveryRevenue)}`)); r.append(kiri, el("p", "t-h3", rp(x.totalRevenue))); return r; };
+async function laporan() {
+    const { data } = await api(`/admin/reports/income?period=${$("#periode").value}`);
+    const t = data.total;
+    $("#rentang").textContent = data.from === data.to ? tglPendek(data.from) : `${tglPendek(data.from)} – ${tglPendek(data.to)}`;
+    const total = el("div", "price-total");
+    total.append(el("span", "", "Pemasukan bersih"), el("span", "", rp(t.totalRevenue)));
+    $("#lapTotal").replaceChildren(
+        hargaBaris(`Makanan (${t.orderCount} pesanan)`, t.foodRevenue),
+        hargaBaris("Diskon tier", t.tierDiscount, true),
+        hargaBaris("Diskon promo", t.promoDiscount, true),
+        hargaBaris("Ongkir bersih", t.deliveryRevenue),
+        total,
+    );
+    $("#lapBeli").replaceChildren(...data.byPurchaseType.map(x => ringkas(x.purchaseType, x)));
+    $("#kosongLapPaket").hidden = data.byPackage.length > 0;
+    $("#lapPaket").replaceChildren(...[...data.byPackage].sort((a, b) => b.totalRevenue - a.totalRevenue).map(x => ringkas(x.packageName, x)));
 }
 
 async function menuMingguDepan() {
@@ -69,15 +97,16 @@ async function menuMingguDepan() {
 }
 
 async function pembayaran() {
-    const [pay, subs] = await Promise.all([api("/admin/payments?status=Pending&limit=20"), api("/admin/subscriptions?status=Pending&limit=100")]);
+    const [pay, subs, pak] = await Promise.all([api("/admin/payments?status=Pending&limit=20"), api("/admin/subscriptions?status=Pending&limit=100"), api("/admin/packages?limit=100")]);
     const peta = new Map(subs.data.map(s => [s.id, s]));
+    const namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
     const tunai = pay.data.filter(p => p.method === "CASH");
     $("#kosongBayar").hidden = tunai.length > 0;
     $("#bayar").replaceChildren(...tunai.map(p => {
         const s = peta.get(p.subscriptionId);
         const row = el("div", "invoice");
         const kiri = el("div");
-        kiri.append(el("p", "t-h3", s ? `${s.user ? s.user.name : s.recipientName} · ${s.package ? s.package.name : "Paket"} · ${s.period}` : "Pesanan tunai"), el("p", "t-small t-muted", `${metode(p.method)} · ${rp(p.amount)}`));
+        kiri.append(el("p", "t-h3", s ? `${s.user ? s.user.name : s.recipientName} · ${namaPaket.get(s.packageId) || "Paket"} · ${s.period}` : "Pesanan tunai"), el("p", "t-small t-muted", `${metode(p.method)}${p.type === "DELIVERY_SERVICE_UPGRADE" ? " · upgrade pengantaran" : ""} · ${rp(p.amount)}`));
         const kanan = el("div", "row");
         const verif = el("button", "btn btn-primary btn-sm", "Verifikasi");
         verif.type = "button";
@@ -123,17 +152,10 @@ async function churn() {
 }
 function tampilTpl() {
     const t = templates.find(x => x.id === $("#tpl").value);
-    $("#isiTpl").textContent = t ? t.body : "Belum ada template. Buat dulu di bawah.";
+    $("#isiTpl").textContent = t ? t.body : "Belum ada template. Buat dulu di halaman Pelanggan.";
 }
 $("#tpl").addEventListener("change", tampilTpl);
-$("#formTpl").onsubmit = async event => {
-    event.preventDefault();
-    const name = $("#tNama").value.trim(), body = $("#tIsi").value.trim();
-    if (!name || !body) return toast("Nama dan isi template wajib diisi.", "error");
-    try { await api("/admin/message-templates", { method: "POST", body: { name, body } }); toast("Template disimpan."); event.target.reset(); churn(); }
-    catch (error) { galat(error); }
-};
 
-$("#periode").addEventListener("change", () => dashboard().catch(galat));
-Promise.all([dashboard(), menuMingguDepan(), pembayaran(), churn()]).catch(galat);
+$("#periode").addEventListener("change", () => Promise.all([dashboard(), laporan()]).catch(galat));
+Promise.all([dashboard(), laporan(), menuMingguDepan(), pembayaran(), churn()]).catch(galat);
 </script></body></html>

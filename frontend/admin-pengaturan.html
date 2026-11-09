@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengaturan · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
+<header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div><h1 class="t-h1">Pengaturan usaha</h1><p class="t-muted" id="diubah"></p></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<div class="alert alert--info"><span class="alert-title">Kapan perubahan berlaku</span>Tarif ongkir dan lokasi dapur hanya berlaku untuk pesanan baru. Batas waktu pembayaran baru juga berlaku untuk pesanan yang masih menunggu pembayaran.</div>
+<form class="card stack" id="form" novalidate aria-busy="true">
+ <h2 class="t-h3">Usaha</h2>
+ <div class="grid grid-2">
+  <div class="field"><label for="nama">Nama usaha</label><input class="input" id="nama" maxlength="100"><p class="error-msg" hidden>Nama usaha wajib diisi.</p></div>
+  <div class="field"><label for="wa">Nomor WhatsApp usaha</label><input class="input" id="wa" inputmode="tel" placeholder="081234567890"><p class="error-msg" hidden>Nomor HP tidak valid.</p></div>
+ </div>
+ <h2 class="t-h3">Lokasi dapur</h2>
+ <div class="field"><label for="alamat">Alamat</label><textarea class="textarea" id="alamat"></textarea><p class="error-msg" hidden>Alamat wajib diisi.</p></div>
+ <div class="grid grid-2">
+  <div class="field"><label for="lat">Latitude</label><input class="input" id="lat" type="number" step="0.00000001" min="-90" max="90"><p class="error-msg" hidden>Latitude antara -90 dan 90.</p></div>
+  <div class="field"><label for="lng">Longitude</label><input class="input" id="lng" type="number" step="0.00000001" min="-180" max="180"><p class="error-msg" hidden>Longitude antara -180 dan 180.</p></div>
+ </div>
+ <p class="hint">Salin koordinat dari Google Maps (klik kanan pada titik dapur).</p>
+ <h2 class="t-h3">Ongkir bawaan</h2>
+ <p class="hint">Dipakai paket yang tidak mengisi tarifnya sendiri.</p>
+ <div class="grid grid-3">
+  <div class="field"><label for="r1">Radius gratis ongkir (km)</label><input class="input" id="r1" type="number" min="0" step="0.1"><p class="error-msg" hidden>Radius gratis tidak boleh lebih dari jarak maksimum.</p></div>
+  <div class="field"><label for="r2">Jarak antar maksimum (km)</label><input class="input" id="r2" type="number" min="0" step="0.1"><p class="error-msg" hidden>Isi jarak maksimum.</p></div>
+  <div class="field"><label for="r3">Ongkir per km (Rp)</label><input class="input" id="r3" type="number" min="0"><p class="error-msg" hidden>Isi ongkir per km (0 atau lebih).</p></div>
+ </div>
+ <h2 class="t-h3">Pembayaran</h2>
+ <div class="field"><label for="batas">Batas waktu pembayaran (menit)</label><input class="input" id="batas" type="number" min="1" max="1440" step="1"><p class="hint">Pesanan yang belum dibayar dibatalkan otomatis setelah waktu ini.</p><p class="error-msg" hidden>Isi 1 sampai 1440 menit.</p></div>
+ <button class="btn btn-primary" type="submit" id="simpan">Simpan Pengaturan</button>
+</form>
+</main><script src="js/auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const waktu = s => new Date(s).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function galat(error, teks) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = teks || errorMessage(error); }
+function periksa(daftar) {
+    let pertama = null;
+    daftar.forEach(([input, valid]) => {
+        const f = input.closest(".field");
+        f.classList.toggle("is-error", !valid);
+        const pesan = f.querySelector(".error-msg:not([data-server])");
+        if (pesan) pesan.hidden = valid;
+        input.setAttribute("aria-invalid", String(!valid));
+        if (!valid && !pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return !pertama;
+}
+const FIELDS = { name: "nama", whatsappNumber: "wa", address: "alamat", latitude: "lat", longitude: "lng", deliveryFreeRadius: "r1", deliveryMaxDistance: "r2", deliveryPricePerKm: "r3", paymentTimeoutMinutes: "batas" };
+
+function isi(s) {
+    $("nama").value = s.name;
+    $("wa").value = s.whatsappNumber;
+    $("alamat").value = s.address;
+    $("lat").value = s.latitude;
+    $("lng").value = s.longitude;
+    $("r1").value = s.deliveryFreeRadius;
+    $("r2").value = s.deliveryMaxDistance;
+    $("r3").value = s.deliveryPricePerKm;
+    $("batas").value = s.paymentTimeoutMinutes;
+    $("diubah").textContent = s.updatedAt ? `Terakhir diubah ${waktu(s.updatedAt)}.` : "";
+}
+
+async function muat() {
+    try { isi((await api("/admin/settings")).data); galat(null); }
+    catch (error) { galat(error); }
+    finally { $("form").removeAttribute("aria-busy"); }
+}
+
+const ada = id => $(id).value.trim() !== "";
+$("form").onsubmit = async event => {
+    event.preventDefault();
+    showIssues($("form"), null, {});
+    const lat = Number($("lat").value), lng = Number($("lng").value), r1 = Number($("r1").value), r2 = Number($("r2").value), batas = Number($("batas").value);
+    const hp = $("wa").value.replace(/[\s-]/g, "");
+    if (!periksa([
+        [$("nama"), ada("nama")],
+        [$("wa"), /^(\+?62|0)?8\d{8,12}$/.test(hp)],
+        [$("alamat"), ada("alamat")],
+        [$("lat"), ada("lat") && lat >= -90 && lat <= 90],
+        [$("lng"), ada("lng") && lng >= -180 && lng <= 180],
+        [$("r1"), ada("r1") && r1 >= 0 && (!ada("r2") || r1 <= r2)],
+        [$("r2"), ada("r2") && r2 >= 0],
+        [$("r3"), ada("r3") && Number($("r3").value) >= 0],
+        [$("batas"), Number.isInteger(batas) && batas >= 1 && batas <= 1440],
+    ])) return;
+    const body = {
+        name: $("nama").value.trim(), whatsappNumber: hp, address: $("alamat").value.trim(), latitude: lat, longitude: lng,
+        deliveryFreeRadius: r1, deliveryMaxDistance: r2, deliveryPricePerKm: Number($("r3").value), paymentTimeoutMinutes: batas,
+    };
+    $("simpan").disabled = true;
+    galat(null);
+    try {
+        isi((await api("/admin/settings", { method: "PUT", body })).data);
+        toast("Pengaturan disimpan.");
+    } catch (error) {
+        const sisa = showIssues($("form"), error, FIELDS);
+        if (sisa === false) galat(error);
+        else if (sisa.length) galat(error, issuesText(sisa));
+    } finally { $("simpan").disabled = false; }
+};
+muat();
+</script></body></html>

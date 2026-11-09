@@ -21,10 +21,21 @@
 <div class="field"><label for="b2">Isi pengumuman</label><textarea class="textarea" id="b2" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pengumuman wajib diisi.</p></div>
 <button class="btn btn-secondary" type="submit">Kirim Pengumuman</button>
 </form>
-<section class="card">
+<form class="card stack" id="ubah" hidden novalidate>
+<h2 class="t-h3">Ubah pengumuman</h2>
+<div class="alert alert--info">Perubahan tidak dikirim ulang ke pelanggan. Pelanggan melihat versi baru saat membuka pengumuman.</div>
+<div class="field"><label for="uc">Cakupan</label><select class="select input" id="uc"><option value="GLOBAL">Semua pelanggan</option><option value="PACKAGE">Pelanggan satu paket</option><option value="SCHEDULE">Satu hari layanan</option></select></div>
+<div class="field" id="uFPaket" hidden><label for="upk">Paket</label><select class="select input" id="upk"></select></div>
+<div class="field" id="uFJadwal" hidden><label for="ujd">Hari layanan</label><select class="select input" id="ujd"></select></div>
+<div class="field"><label for="uj">Judul</label><input class="input" id="uj" maxlength="150"><p class="error-msg" hidden>Judul wajib diisi.</p></div>
+<div class="field"><label for="ub">Isi pengumuman</label><textarea class="textarea" id="ub" maxlength="2000"></textarea><p class="error-msg" hidden>Isi pengumuman wajib diisi.</p></div>
+<div class="row"><button class="btn btn-primary" type="submit" id="simpanUbah">Simpan Perubahan</button><button class="btn btn-ghost" type="button" id="batalUbah">Batal</button></div>
+</form>
+<section class="card stack">
 <div class="section-head"><h2 class="t-h2">Pengumuman terkirim</h2></div>
 <p class="t-muted" id="kosong" hidden>Belum ada pengumuman.</p>
 <div id="daftar" aria-busy="true"><div class="skeleton"></div></div>
+<div id="pager" hidden></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
@@ -50,9 +61,10 @@ function periksa(daftar) {
 // 08xxx / +62xxx diubah ke 62xxx, sama seperti format nomor di database.
 const normal = hp => { const d = hp.replace(/[\s-+]/g, ""); return d.startsWith("0") ? `62${d.slice(1)}` : d; };
 
+let halaman = 1, sedangUbah = null;
 async function muatDaftar() {
     try {
-        const { data } = await api("/admin/announcements?limit=50");
+        const { data, meta } = await api(`/admin/announcements?page=${halaman}&limit=20`);
         $("daftar").removeAttribute("aria-busy");
         $("kosong").hidden = data.length > 0;
         $("daftar").replaceChildren(...data.map(a => {
@@ -68,21 +80,60 @@ async function muatDaftar() {
                 try { await api(`/admin/announcements/${a.id}`, { method: "DELETE" }); toast("Pengumuman dihapus."); muatDaftar(); }
                 catch (error) { hapus.disabled = false; galat(error); }
             };
-            row.append(kiri, hapus);
+            const ubah = el("button", "btn btn-secondary btn-sm", "Ubah");
+            ubah.type = "button";
+            ubah.setAttribute("aria-label", `Ubah pengumuman ${a.title}`);
+            ubah.onclick = () => bukaUbah(a);
+            const kanan = el("div", "row");
+            kanan.append(ubah, hapus);
+            row.append(kiri, kanan);
             return row;
         }));
+        renderPager($("pager"), meta, p => { halaman = p; muatDaftar(); });
     } catch (error) { $("daftar").removeAttribute("aria-busy"); $("daftar").replaceChildren(); galat(error); }
 }
 
 async function muatPilihan() {
     try {
         const [pk, jd] = await Promise.all([api("/admin/packages?limit=100"), api(`/admin/menu-schedules?from=${hariIni()}&limit=100`)]);
-        $("pk").replaceChildren(...pk.data.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; }));
         const nama = new Map(pk.data.map(p => [p.id, p.name]));
-        $("jd").replaceChildren(...jd.data.map(j => { const o = el("option", "", `${tgl(`${j.date}T00:00:00+07:00`)} · ${j.deliveryTime.range} · ${nama.get(j.packageId) || "Paket"}`); o.value = j.id; return o; }));
+        ["pk", "upk"].forEach(id => $(id).replaceChildren(...pk.data.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; })));
+        ["jd", "ujd"].forEach(id => $(id).replaceChildren(...jd.data.map(j => { const o = el("option", "", `${tgl(`${j.date}T00:00:00+07:00`)} · ${j.deliveryTime.range} · ${nama.get(j.packageId) || "Paket"}`); o.value = j.id; return o; })));
     } catch (error) { galat(error); }
 }
 $("c").addEventListener("change", () => { $("fPaket").hidden = $("c").value !== "PACKAGE"; $("fJadwal").hidden = $("c").value !== "SCHEDULE"; });
+$("uc").addEventListener("change", () => { $("uFPaket").hidden = $("uc").value !== "PACKAGE"; $("uFJadwal").hidden = $("uc").value !== "SCHEDULE"; });
+function bukaUbah(a) {
+    sedangUbah = a;
+    $("uc").value = a.scope;
+    if (a.packageId) $("upk").value = a.packageId;
+    if (a.menuScheduleId) {
+        if (![...$("ujd").options].some(o => o.value === a.menuScheduleId)) { const o = el("option", "", "Hari layanan sebelumnya"); o.value = a.menuScheduleId; $("ujd").prepend(o); }
+        $("ujd").value = a.menuScheduleId;
+    }
+    $("uj").value = a.title;
+    $("ub").value = a.body;
+    $("uc").dispatchEvent(new Event("change"));
+    $("ubah").hidden = false;
+    $("ubah").scrollIntoView();
+    $("uj").focus();
+}
+$("batalUbah").onclick = () => { $("ubah").hidden = true; };
+$("ubah").onsubmit = async event => {
+    event.preventDefault();
+    if (!periksa([[$("uj"), $("uj").value.trim() !== ""], [$("ub"), $("ub").value.trim() !== ""]])) return;
+    const scope = $("uc").value;
+    const body = { title: $("uj").value.trim(), body: $("ub").value.trim(), scope, packageId: scope === "PACKAGE" ? $("upk").value : null, menuScheduleId: scope === "SCHEDULE" ? $("ujd").value : null };
+    $("simpanUbah").disabled = true;
+    galat(null);
+    try {
+        await api(`/admin/announcements/${sedangUbah.id}`, { method: "PATCH", body });
+        toast("Pengumuman diubah.");
+        $("ubah").hidden = true;
+        muatDaftar();
+    } catch (error) { galat(error); }
+    finally { $("simpanUbah").disabled = false; }
+};
 
 $("kirim").onsubmit = async event => {
     event.preventDefault();

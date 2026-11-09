@@ -13,22 +13,31 @@ const MENU = {
     ],
     admin: [
         ["Dashboard", "admin.html"],
+        ["Kotak Masuk", "admin-kotak-masuk.html"],
         ["Pelanggan", "admin-pelanggan.html"],
+        ["Langganan", "admin-langganan.html"],
+        ["Pesanan", "admin-pesanan.html"],
+        ["Pembayaran", "admin-pembayaran.html"],
         ["Menu", "admin-menu.html"],
+        ["Jadwal", "admin-jadwal.html"],
         ["Paket", "admin-paket.html"],
+        ["Bahan", "admin-bahan.html"],
         ["Promo", "admin-promo.html"],
         ["Tier", "admin-tier.html"],
-        ["Pembayaran", "admin-pembayaran.html"],
-        ["Bahan", "admin-bahan.html"],
-        ["Pesanan", "admin-pesanan.html"],
         ["Notifikasi", "admin-notifikasi.html"],
         ["Pengguna", "admin-pengguna.html"],
+        ["Pengaturan", "admin-pengaturan.html"],
+        ["Akun", "akun.html"],
     ],
     dapur: [
         ["To-do Dapur", "dapur.html"],
         ["Stok Bahan", "dapur-stok.html"],
+        ["Akun", "akun.html"],
     ],
-    kurir: [["To-do Kurir", "kurir.html"]],
+    kurir: [
+        ["To-do Kurir", "kurir.html"],
+        ["Akun", "akun.html"],
+    ],
 };
 
 class ApiError extends Error {
@@ -75,7 +84,7 @@ const store = {
     },
 };
 
-async function rawFetch(path, { method = "GET", body, auth = true } = {}) {
+async function rawFetch(path, { method = "GET", body, auth = true, timeout = REQUEST_TIMEOUT_MS } = {}) {
     // Baru pindah halaman: token di memori kosong tapi sesi masih ada, jadi ambil dulu.
     if (auth && !store.token && store.user) await refreshSession();
     const headers = {};
@@ -83,7 +92,7 @@ async function rawFetch(path, { method = "GET", body, auth = true } = {}) {
     if (body !== undefined && !form) headers["Content-Type"] = "application/json";
     if (auth && store.token) headers.Authorization = `Bearer ${store.token}`;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
         const response = await fetch(API_BASE + path, {
             method,
@@ -211,10 +220,11 @@ function errorMessage(error) {
     }
     const messages = {
         INVALID_CREDENTIALS: "Nomor HP atau email, atau password salah.",
-        CONFLICT: "Nomor HP atau email sudah terdaftar.",
         INVALID_PHONE_NUMBER: "Nomor HP tidak valid.",
     };
     if (messages[error.code]) return messages[error.code];
+    if (error.code === "CONFLICT" && /^(phone|email) is already registered$/.test(error.message)) return "Nomor HP atau email sudah terdaftar.";
+    if (error.message === "at least one active admin is required") return "Harus ada minimal satu admin aktif.";
     if (error.status >= 500) return "Server sedang bermasalah. Coba lagi beberapa saat lagi.";
     if (error.status === 403) return "Kamu tidak punya akses untuk tindakan ini.";
     return error.message === "request failed" ? "Permintaan gagal. Coba lagi." : error.message;
@@ -283,10 +293,147 @@ function toast(message, type = "info") {
             logout();
         });
     }
+    if (key === "admin") pasangLonceng(nav.querySelector('a[href="admin-kotak-masuk.html"]'));
 })();
+
+function pasangLonceng(link) {
+    if (!link) return;
+    const angka = document.createElement("span");
+    angka.className = "badge badge--cancel";
+    angka.hidden = true;
+    link.append(" ", angka);
+    const perbarui = async () => {
+        try {
+            const { meta } = await api("/me/notifications?limit=1");
+            angka.textContent = meta.unreadCount;
+            angka.hidden = !meta.unreadCount;
+            link.setAttribute("aria-label", meta.unreadCount ? `Kotak Masuk, ${meta.unreadCount} belum dibaca` : "Kotak Masuk");
+        } catch {
+            angka.hidden = true;
+        }
+    };
+    window.perbaruiLonceng = perbarui;
+    perbarui();
+    let stream = null;
+    let ditutup = false;
+    const sambung = async () => {
+        if (ditutup || stream || !(await ensureToken())) return;
+        stream = new EventSource(`${API_BASE}/realtime/stream?accessToken=${encodeURIComponent(store.token)}`);
+        stream.addEventListener("notification", perbarui);
+        stream.onerror = () => {
+            stream.close();
+            stream = null;
+            if (ditutup) return;
+            setTimeout(async () => {
+                if (ditutup || document.hidden) return;
+                await refreshSession();
+                await sambung();
+                perbarui();
+            }, 5000);
+        };
+    };
+    window.addEventListener("pagehide", () => {
+        ditutup = true;
+        if (stream) stream.close();
+    });
+    sambung();
+}
 
 // Ubah tampilan badge status (kelas + teks) di satu tempat.
 function setBadge(badge, kelas, teks) {
     badge.className = `badge ${kelas}`;
     badge.textContent = teks;
+}
+
+function showIssues(form, error, fields) {
+    form.querySelectorAll(".is-error").forEach(f => f.classList.remove("is-error"));
+    form.querySelectorAll("[aria-invalid=true]").forEach(i => i.setAttribute("aria-invalid", "false"));
+    form.querySelectorAll(".error-msg[data-server]").forEach(p => p.remove());
+    if (!(error instanceof ApiError) || error.code !== "VALIDATION_ERROR") return false;
+    const sisa = [];
+    let pertama = null;
+    error.issues.forEach(issue => {
+        const id = fields[issue.path];
+        const input = id && form.querySelector(`#${id}`);
+        if (!input) return sisa.push(issue);
+        const field = input.closest(".field") || input.parentElement;
+        field.classList.add("is-error");
+        input.setAttribute("aria-invalid", "true");
+        const pesan = document.createElement("p");
+        pesan.className = "error-msg";
+        pesan.dataset.server = "1";
+        pesan.textContent = issue.message;
+        field.append(pesan);
+        if (!pertama) pertama = input;
+    });
+    if (pertama) pertama.focus();
+    return sisa;
+}
+
+function issuesText(issues) {
+    return issues.map(i => (i.path ? `${i.path}: ${i.message}` : i.message)).join("; ");
+}
+
+function needsChangeReason(error) {
+    return error instanceof ApiError && error.issues.some(i => i.code === "change_reason_required");
+}
+
+function renderPager(container, meta, onPage) {
+    const halaman = Math.max(1, Math.ceil(meta.total / meta.limit));
+    container.hidden = halaman <= 1;
+    const tombol = (label, ke, aktif) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn btn-ghost btn-sm";
+        b.textContent = label;
+        b.disabled = !aktif;
+        b.onclick = () => onPage(ke);
+        return b;
+    };
+    const info = document.createElement("span");
+    info.className = "t-small t-muted";
+    info.textContent = `Halaman ${meta.page} dari ${halaman}`;
+    container.className = "row-between";
+    container.replaceChildren(tombol("Sebelumnya", meta.page - 1, meta.page > 1), info, tombol("Berikutnya", meta.page + 1, meta.page < halaman));
+}
+
+function askChangeReason(container, onSubmit) {
+    container.hidden = false;
+    container.className = "alert alert--warning stack";
+    const judul = document.createElement("span");
+    judul.className = "alert-title";
+    judul.textContent = "Perubahan ini mengenai pesanan yang sudah lunas";
+    const teks = document.createElement("p");
+    teks.textContent = "Tulis alasan perubahan. Alasan ini dikirim ke pelanggan sebagai pengumuman.";
+    const isi = document.createElement("textarea");
+    isi.className = "textarea";
+    isi.maxLength = 500;
+    isi.setAttribute("aria-label", "Alasan perubahan");
+    const baris = document.createElement("div");
+    baris.className = "row";
+    const kirim = document.createElement("button");
+    kirim.type = "button";
+    kirim.className = "btn btn-primary btn-sm";
+    kirim.textContent = "Kirim dengan Alasan";
+    const batal = document.createElement("button");
+    batal.type = "button";
+    batal.className = "btn btn-ghost btn-sm";
+    batal.textContent = "Batal";
+    batal.onclick = () => (container.hidden = true);
+    kirim.onclick = async () => {
+        const alasan = isi.value.trim();
+        if (!alasan) return isi.focus();
+        kirim.disabled = true;
+        try {
+            await onSubmit(alasan);
+            container.hidden = true;
+        } catch {
+            isi.focus();
+        } finally {
+            kirim.disabled = false;
+        }
+    };
+    baris.append(kirim, batal);
+    container.replaceChildren(judul, teks, isi, baris);
+    isi.focus();
 }

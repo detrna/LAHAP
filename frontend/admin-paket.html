@@ -11,12 +11,14 @@
  <div class="field"><label for="d">Deskripsi</label><textarea class="textarea" id="d"></textarea><p class="error-msg" hidden>Deskripsi wajib diisi.</p></div>
  <div class="field"><label for="h">Harga per porsi (Rp)</label><input class="input" id="h" type="number" min="0" inputmode="numeric"><p class="error-msg" hidden>Harga harus lebih dari 0.</p></div>
  <div class="field" id="fPeriode"><span class="field-label">Periode</span><div class="chip-group" id="periode"><label class="chip"><input type="checkbox" value="Harian">Harian</label><label class="chip"><input type="checkbox" value="Mingguan">Mingguan</label><label class="chip"><input type="checkbox" value="Bulanan">Bulanan</label></div><p class="error-msg" hidden>Pilih minimal satu periode.</p></div>
- <div class="field"><label for="w">Waktu makan (jam, pisahkan dengan koma)</label><input class="input" id="w" placeholder="07:00, 12:00, 17:00"><p class="error-msg" hidden>Isi jam dengan format 07:00, dipisah koma.</p></div>
+ <div class="field"><label for="w">Waktu makan (jam, pisahkan dengan koma)</label><input class="input" id="w" placeholder="07:00, 12:00, 17:00"><p class="hint" id="hintJam">Mengganti jam yang sudah ada (jumlah jam tetap) memindahkan jadwal dan pesanannya ke jam baru.</p><p class="error-msg" hidden>Isi jam dengan format 07:00, dipisah koma.</p></div>
  <div class="grid grid-2"><div class="field"><label for="m">Berlaku mulai</label><input class="input" id="m" type="date"></div><div class="field"><label for="s">Berlaku sampai (opsional)</label><input class="input" id="s" type="date"><p class="error-msg" hidden>Tanggal akhir tidak boleh sebelum tanggal mulai.</p></div></div>
  <div class="grid grid-3"><div class="field"><label for="r1">Radius gratis ongkir (km)</label><input class="input" id="r1" type="number" min="0" step="0.1"></div><div class="field"><label for="r2">Jarak antar maksimum (km)</label><input class="input" id="r2" type="number" min="0" step="0.1"></div><div class="field"><label for="r3">Ongkir per km (Rp)</label><input class="input" id="r3" type="number" min="0"></div></div>
  <div class="field" id="fFoto"><label for="foto">Foto paket</label><input class="input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint" id="hintFoto">Wajib untuk paket baru. JPEG, PNG, atau WebP.</p><p class="error-msg" hidden>Foto paket wajib diisi.</p></div>
+ <div id="alasan" hidden></div>
  <div class="row"><button class="btn btn-primary" type="submit" id="simpan">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
+<div id="alasanToggle" hidden></div>
 <section class="card"><p class="t-muted" id="kosong" hidden>Belum ada paket.</p><div id="list" aria-busy="true"><div class="skeleton"></div></div></section>
 </main><script src="js/auth.js"></script>
 <script>
@@ -47,12 +49,22 @@ function gambar() {
         const toggle = el("button", `btn btn-sm ${p.isActive ? "btn-danger" : "btn-secondary"}`, p.isActive ? "Nonaktifkan" : "Aktifkan");
         toggle.type = "button";
         toggle.setAttribute("aria-label", `${toggle.textContent} ${p.name}`);
-        toggle.onclick = async () => {
+        const ganti = async changeReason => {
+            const body = { isActive: !p.isActive };
+            if (changeReason) body.changeReason = changeReason;
+            try { await api(`/admin/packages/${p.id}`, { method: "PATCH", body }); toast(p.isActive ? "Paket dinonaktifkan." : "Paket diaktifkan."); muat(); }
+            catch (error) {
+                toggle.disabled = false;
+                if (needsChangeReason(error) && !changeReason) return askChangeReason($("alasanToggle"), ganti);
+                galat(error);
+                if (changeReason) throw error;
+            }
+        };
+        toggle.onclick = () => {
             if (p.isActive && !confirm("Nonaktifkan paket ini? Pesanan yang sudah ada tidak terpengaruh.")) return;
             toggle.disabled = true;
             galat(null);
-            try { await api(`/admin/packages/${p.id}`, { method: "PATCH", body: { isActive: !p.isActive, changeReason: p.isActive ? "Dinonaktifkan admin" : "Diaktifkan admin" } }); toast(p.isActive ? "Paket dinonaktifkan." : "Paket diaktifkan."); muat(); }
-            catch (error) { toggle.disabled = false; galat(error); }
+            ganti();
         };
         kanan.append(badge, ubah, toggle);
         baris.append(kiri, kanan);
@@ -79,6 +91,9 @@ function bukaForm(p) {
     $("r3").value = p && p.deliveryPricePerKm != null ? p.deliveryPricePerKm : "";
     document.querySelectorAll("#periode input").forEach(c => (c.checked = p ? p.periods.includes(c.value) : false));
     $("foto").value = "";
+    fotoTerunggah = null;
+    $("alasan").hidden = true;
+    $("hintJam").hidden = !p;
     $("hintFoto").textContent = p ? "Kosongkan jika foto tidak diganti." : "Wajib untuk paket baru. JPEG, PNG, atau WebP.";
     $("form").hidden = false;
     $("n").focus();
@@ -99,6 +114,36 @@ function periksa(daftar) {
 }
 const iso = (tgl, akhir) => `${tgl}T${akhir ? "23:59:59" : "00:00:00"}+07:00`;
 const angkaAtauNull = id => ($(id).value === "" ? null : Number($(id).value));
+let fotoTerunggah = null, bodyTerakhir = null;
+$("foto").addEventListener("change", () => { fotoTerunggah = null; });
+
+function perubahanJam(lama, baru) {
+    const hapus = lama.filter(t => !baru.includes(t)).sort();
+    const tambah = baru.filter(t => !lama.includes(t)).sort();
+    if (!hapus.length && !tambah.length) return {};
+    if (lama.length === baru.length && hapus.length === tambah.length) return { deliveryTimeChanges: hapus.map((from, i) => ({ from, to: tambah[i] })) };
+    return { deliveryTimes: baru };
+}
+
+async function kirim(changeReason) {
+    const body = { ...bodyTerakhir };
+    if (changeReason) body.changeReason = changeReason;
+    try {
+        const foto = $("foto").files[0];
+        if (foto && !fotoTerunggah) fotoTerunggah = (await upload("packages", foto)).key;
+        if (fotoTerunggah) body.photoKey = fotoTerunggah;
+        if (sedangUbah) await api(`/admin/packages/${sedangUbah.id}`, { method: "PATCH", body });
+        else await api("/admin/packages", { method: "POST", body });
+        fotoTerunggah = null;
+        toast(changeReason ? "Paket disimpan. Pelanggan diberi tahu." : "Paket disimpan.");
+        $("form").hidden = true;
+        muat();
+    } catch (error) {
+        if (needsChangeReason(error) && !changeReason) return askChangeReason($("alasan"), kirim);
+        galat(error);
+        if (changeReason) throw error;
+    }
+}
 
 $("tambah").onclick = () => bukaForm(null);
 $("batal").onclick = () => { $("form").hidden = true; };
@@ -119,24 +164,18 @@ $("form").onsubmit = async event => {
         [$("s"), urut],
         [$("foto"), Boolean(sedangUbah || foto)],
     ])) return;
+    const body = {
+        name: $("n").value.trim(), description: $("d").value.trim(), basePrice: harga, periods: periode,
+        deliveryFreeRadius: angkaAtauNull("r1"), deliveryMaxDistance: angkaAtauNull("r2"), deliveryPricePerKm: angkaAtauNull("r3"),
+    };
+    Object.assign(body, sedangUbah ? perubahanJam(sedangUbah.deliveryTimes.map(t => t.time), jam) : { deliveryTimes: jam });
+    if ($("m").value) body.startAt = iso($("m").value);
+    body.endAt = $("s").value ? iso($("s").value, true) : null;
+    bodyTerakhir = body;
     const tombol = $("simpan");
     tombol.disabled = true;
     galat(null);
-    try {
-        const body = {
-            name: $("n").value.trim(), description: $("d").value.trim(), basePrice: harga, periods: periode, deliveryTimes: jam,
-            deliveryFreeRadius: angkaAtauNull("r1"), deliveryMaxDistance: angkaAtauNull("r2"), deliveryPricePerKm: angkaAtauNull("r3"),
-        };
-        if ($("m").value) body.startAt = iso($("m").value);
-        body.endAt = $("s").value ? iso($("s").value, true) : null;
-        if (foto) body.photoKey = (await upload("packages", foto)).key;
-        if (sedangUbah) await api(`/admin/packages/${sedangUbah.id}`, { method: "PATCH", body: { ...body, changeReason: "Diubah admin" } });
-        else await api("/admin/packages", { method: "POST", body });
-        toast("Paket disimpan.");
-        $("form").hidden = true;
-        muat();
-    } catch (error) { galat(error); }
-    finally { tombol.disabled = false; }
+    try { await kirim(); } finally { tombol.disabled = false; }
 };
 muat();
 </script></body></html>

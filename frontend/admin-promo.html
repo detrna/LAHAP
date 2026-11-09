@@ -49,8 +49,8 @@
                     </div>
                     <div class="field">
                         <label for="kuota">Kuota pemakaian</label>
-                        <input class="input" id="kuota" type="number" min="0" value="0" />
-                        <p class="hint">Isi 0 jika tidak dibatasi.</p>
+                        <input class="input" id="kuota" type="number" min="0" step="1" value="100" />
+                        <p class="hint">Jumlah total pemakaian. Isi 0 berarti kode tidak bisa dipakai sama sekali.</p>
                     </div>
                     <div class="field">
                         <label for="sampai">Berlaku sampai</label>
@@ -68,7 +68,10 @@
                 </div>
             </form>
 
-            <section class="card" id="daftar" aria-busy="true"><p class="t-muted">Memuat kode promo...</p></section>
+            <section class="card stack">
+                <div id="daftar" aria-busy="true"><p class="t-muted">Memuat kode promo...</p></div>
+                <div id="pager" hidden></div>
+            </section>
         </main>
         <script src="js/auth.js"></script>
         <script>
@@ -79,6 +82,7 @@
             const tanggalTampil = iso =>
                 new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
             let dipilih = null;
+            let halaman = 1;
 
             function el(tag, className, text) {
                 const node = document.createElement(tag);
@@ -93,14 +97,14 @@
             }
 
             function pesanError(error) {
-                const dariServer = error instanceof ApiError && ["CONFLICT", "INVALID_STATE", "VALIDATION_ERROR"].includes(error.code);
-                return dariServer ? error.message : errorMessage(error);
+                return error instanceof ApiError && error.issues.length ? issuesText(error.issues) : errorMessage(error);
             }
 
             function status(promo) {
                 if (!promo.isActive) return ["badge badge--expire", "Nonaktif"];
                 if (new Date(promo.validUntil) < new Date()) return ["badge badge--expire", "Kedaluwarsa"];
-                if (promo.quota > 0 && promo.usedCount >= promo.quota) return ["badge badge--cancel", "Kuota habis"];
+                if (promo.quota === 0) return ["badge badge--cancel", "Tidak bisa dipakai"];
+                if (promo.usedCount >= promo.quota) return ["badge badge--cancel", "Kuota habis"];
                 return ["badge badge--success", "Aktif"];
             }
 
@@ -112,7 +116,7 @@
                 $("#jenis").value = promo ? promo.discountType : "Persen";
                 $("#nilai").value = promo ? promo.discountValue : "";
                 $("#minimal").value = promo ? promo.minPurchase : 0;
-                $("#kuota").value = promo ? promo.quota : 0;
+                $("#kuota").value = promo ? promo.quota : 100;
                 $("#sampai").value = promo && promo.validUntil ? tanggalInput(promo.validUntil) : "";
                 $("#gabung").checked = promo ? promo.allowStackWithTier : true;
                 $("#aktif").checked = promo ? promo.isActive : true;
@@ -125,7 +129,7 @@
                 const baris = el("div", "invoice");
                 const kiri = el("div");
                 const diskon = promo.discountType === "Persen" ? `${promo.discountValue}%` : rupiah(promo.discountValue);
-                const kuota = promo.quota > 0 ? `${promo.usedCount} dari ${promo.quota} terpakai` : `${promo.usedCount} terpakai`;
+                const kuota = `${promo.usedCount} dari ${promo.quota} terpakai${promo.quota === 0 ? " · tidak bisa dipakai" : ""}`;
                 const info = [
                     `Diskon ${diskon}`,
                     kuota,
@@ -168,8 +172,12 @@
 
             async function muat() {
                 try {
-                    const { data } = await api("/admin/promo-codes");
+                    const { data, meta } = await api(`/admin/promo-codes?page=${halaman}&limit=20`);
                     $("#daftar").replaceChildren(...(data.length ? data.map(barisPromo) : [el("p", "empty", "Belum ada kode promo.")]));
+                    renderPager($("#pager"), meta, page => {
+                        halaman = page;
+                        muat();
+                    });
                 } catch (error) {
                     $("#daftar").replaceChildren();
                     tampil($("#galat"), pesanError(error));
@@ -187,15 +195,20 @@
                 event.preventDefault();
                 const tombol = event.target.querySelector("button[type=submit]");
                 const nilai = Number($("#nilai").value);
+                const kuota = Number($("#kuota").value);
                 if (!(nilai > 0) || ($("#jenis").value === "Persen" && nilai > 100)) {
                     tampil($("#errForm"), "Nilai diskon harus lebih dari 0, dan paling besar 100 untuk diskon persen.");
+                    return;
+                }
+                if ($("#kuota").value === "" || !Number.isInteger(kuota) || kuota < 0) {
+                    tampil($("#errForm"), "Isi kuota pemakaian dengan bilangan bulat 0 atau lebih.");
                     return;
                 }
                 const body = {
                     discountType: $("#jenis").value,
                     discountValue: nilai,
                     minPurchase: Number($("#minimal").value) || 0,
-                    quota: Number($("#kuota").value) || 0,
+                    quota: kuota,
                     allowStackWithTier: $("#gabung").checked,
                     isActive: $("#aktif").checked,
                 };

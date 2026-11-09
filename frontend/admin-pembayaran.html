@@ -9,31 +9,44 @@
 <div class="section-head"><h2 class="t-h2">Transaksi</h2><div class="chip-group" id="filter" role="radiogroup" aria-label="Filter status"><label class="chip"><input type="radio" name="f" value="" checked>Semua</label><label class="chip"><input type="radio" name="f" value="Pending">Pending</label><label class="chip"><input type="radio" name="f" value="Success">Success</label><label class="chip"><input type="radio" name="f" value="Expire">Expire</label><label class="chip"><input type="radio" name="f" value="Refund">Refund</label></div></div>
 <p class="empty" id="kosong" hidden>Tidak ada transaksi dengan status ini.</p>
 <div id="isi" aria-busy="true"><div class="skeleton"></div></div>
+<div id="pager" hidden></div>
 </section>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Perlu refund</h2><span class="t-small t-muted">Refund dilakukan di luar aplikasi, lalu dikonfirmasi di sini</span></div>
 <p class="t-muted" id="kosongRefund" hidden>Tidak ada refund yang menunggu.</p>
 <div id="refund"></div>
 </section>
+<section class="card">
+<div class="section-head"><h2 class="t-h2">Refund ubah metode pengantaran</h2><span class="t-small t-muted">Ongkir yang dikembalikan karena pindah ke ambil sendiri, atau upgrade yang dibayar setelah batas waktu</span></div>
+<p class="t-muted" id="kosongUbah" hidden>Tidak ada refund ubah metode yang menunggu.</p>
+<div id="ubah"></div>
+</section>
 </main><script src="js/auth.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
-const tgl = s => new Date(s).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+const tgl = s => new Date(s.length === 10 ? `${s}T00:00:00+07:00` : s).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
 const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
 const BADGE = { Pending: "badge--pending", Success: "badge--success", Expire: "badge--expire", Refund: "badge--cancel" };
 const metode = m => (m === "CASH" ? "Tunai" : m === "FREE" ? "Gratis" : `Non-tunai${m.includes("_") ? ` · ${m.split("_").slice(1).join(" ").toLowerCase()}` : ""}`);
 function galat(error) { $("#err").hidden = !error; if (error) $("#err .msg").textContent = errorMessage(error); }
 
-let peta = new Map();
-const nama = p => { const s = peta.get(p.subscriptionId); return s ? `${s.user ? s.user.name : s.recipientName} · ${s.package ? s.package.name : "Paket"} · ${s.period}` : `Pesanan ${p.subscriptionId.slice(0, 8).toUpperCase()}`; };
+let peta = new Map(), namaPaket = new Map(), halaman = 1;
+const nama = p => { const s = peta.get(p.subscriptionId); return s ? `${s.user ? s.user.name : s.recipientName} · ${namaPaket.get(s.packageId) || "Paket"} · ${s.period}` : `Pesanan ${p.subscriptionId.slice(0, 8).toUpperCase()}`; };
+async function lengkapi(ids) {
+    const kurang = [...new Set(ids)].filter(id => !peta.has(id));
+    await Promise.all(kurang.map(id => api(`/admin/subscriptions/${id}`).then(({ data }) => peta.set(id, data)).catch(() => {})));
+}
 const jenis = p => (p.type === "DELIVERY_SERVICE_UPGRADE" ? " · upgrade pengantaran" : "");
 
 function aksi(row, tombol) { row.append(tombol); }
 function baris(p, perluRefund) {
     const row = el("div", "invoice");
     const kiri = el("div");
-    kiri.append(el("p", "t-h3", nama(p)), el("p", "t-small t-muted", `${metode(p.method)}${jenis(p)} · ${rp(p.amount)} · ${tgl(p.paidAt || p.createdAt)}`));
+    const judul = el("a", "t-h3", nama(p));
+    judul.href = `admin-langganan.html?id=${p.subscriptionId}`;
+    judul.style.display = "block";
+    kiri.append(judul, el("p", "t-small t-muted", `${metode(p.method)}${jenis(p)} · ${rp(p.amount)} · ${tgl(p.paidAt || p.createdAt)}`));
     const kanan = el("div", "row");
     kanan.append(el("span", `badge ${perluRefund ? "badge--cancel" : BADGE[p.status] || "badge--expire"}`, perluRefund ? "Perlu refund" : p.status));
     const kerja = (label, kelas, url, tanya, ok) => {
@@ -59,18 +72,25 @@ async function muat() {
     const ini = ++ke;
     const status = document.querySelector("#filter input:checked").value;
     try {
-        const [bayar, refund, subs] = await Promise.all([
-            api(`/admin/payments?limit=100${status ? `&status=${status}` : ""}`),
+        const [bayar, refund, ubah, subs, pak] = await Promise.all([
+            api(`/admin/payments?page=${halaman}&limit=20${status ? `&status=${status}` : ""}`),
             api("/admin/payments?needsRefund=true&limit=50"),
-            api("/admin/subscriptions?limit=100"),
+            api("/admin/delivery-method-changes?needsRefund=true&limit=50"),
+            peta.size ? null : api("/admin/subscriptions?limit=100"),
+            namaPaket.size ? null : api("/admin/packages?limit=100"),
         ]);
+        if (subs) subs.data.forEach(s => peta.set(s.id, s));
+        if (pak) namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
+        await lengkapi([...bayar.data, ...refund.data, ...ubah.data].map(x => x.subscriptionId));
         if (ini !== ke) return;
-        peta = new Map(subs.data.map(s => [s.id, s]));
         $("#isi").removeAttribute("aria-busy");
         $("#isi").replaceChildren(...bayar.data.map(p => baris(p, false)));
         $("#kosong").hidden = bayar.data.length > 0;
         $("#refund").replaceChildren(...refund.data.filter(p => p.status !== "Refund").map(p => baris(p, true)));
         $("#kosongRefund").hidden = refund.data.some(p => p.status !== "Refund");
+        $("#ubah").replaceChildren(...ubah.data.map(barisUbah));
+        $("#kosongUbah").hidden = ubah.data.length > 0;
+        renderPager($("#pager"), bayar.meta, p => { halaman = p; muat(); });
         galat(null);
     } catch (error) {
         if (ini !== ke) return;
@@ -79,6 +99,28 @@ async function muat() {
         galat(error);
     }
 }
-document.getElementById("filter").addEventListener("change", muat);
+function barisUbah(c) {
+    const row = el("div", "invoice");
+    const kiri = el("div");
+    const judul = el("a", "t-h3", nama(c));
+    judul.href = `admin-langganan.html?id=${c.subscriptionId}`;
+    judul.style.display = "block";
+    const sebab = c.toDelivery ? "Upgrade ke diantar dibayar setelah batas waktu" : "Pindah ke ambil sendiri";
+    kiri.append(judul, el("p", "t-small t-muted", `${sebab} · ${c.slotCount} slot mulai ${tgl(c.effectiveFrom)} · ${rp(c.amount)}`));
+    const kanan = el("div", "row");
+    const b = el("button", "btn btn-secondary btn-sm", "Konfirmasi Refund");
+    b.type = "button";
+    b.onclick = async () => {
+        if (!confirm(`Refund ${rp(c.amount)} sudah dikirim ke pelanggan?`)) return;
+        b.disabled = true;
+        galat(null);
+        try { await api(`/admin/delivery-method-changes/${c.id}/confirm-refund`, { method: "POST" }); toast("Refund dikonfirmasi."); muat(); }
+        catch (error) { b.disabled = false; galat(error); }
+    };
+    kanan.append(el("span", "badge badge--cancel", "Perlu refund"), b);
+    row.append(kiri, kanan);
+    return row;
+}
+document.getElementById("filter").addEventListener("change", () => { halaman = 1; muat(); });
 muat();
 </script></body></html>

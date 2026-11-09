@@ -14,20 +14,20 @@
  <div class="row"><button class="btn btn-primary" type="submit" id="simpan">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
 <div class="field"><label for="cari">Cari nama atau nomor HP</label><input class="input" id="cari" type="search" autocomplete="off"></div>
-<section class="card"><p class="t-muted" id="kosong" hidden>Tidak ada pengguna.</p><div id="list" aria-busy="true"><div class="skeleton"></div></div></section>
+<section class="card"><p class="t-muted" id="kosong" hidden>Tidak ada pengguna.</p><div id="list" aria-busy="true"><div class="skeleton"></div></div><div id="pager" hidden></div></section>
 </main><script src="js/auth.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
 const PERAN = { ADMIN: "Admin", KITCHEN: "Dapur", COURIER: "Kurir", CUSTOMER: "Pelanggan" };
 function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
-let sedangUbah = null, ke = 0;
+let sedangUbah = null, ke = 0, halaman = 1;
 
 async function muat() {
     const ini = ++ke;
     const kata = $("cari").value.trim();
     try {
-        const { data } = await api(`/admin/users?limit=100${kata ? `&search=${encodeURIComponent(kata)}` : ""}`);
+        const { data, meta } = await api(`/admin/users?page=${halaman}&limit=20${kata ? `&search=${encodeURIComponent(kata)}` : ""}`);
         if (ini !== ke) return;
         $("list").removeAttribute("aria-busy");
         $("kosong").hidden = data.length > 0;
@@ -58,6 +58,7 @@ async function muat() {
             baris.append(kiri, kanan);
             return baris;
         }));
+        renderPager($("pager"), meta, p => { halaman = p; muat(); });
         galat(null);
     } catch (error) { if (ini !== ke) return; $("list").removeAttribute("aria-busy"); $("list").replaceChildren(); galat(error); }
 }
@@ -89,7 +90,7 @@ function periksa(daftar) {
 $("tambah").onclick = () => bukaForm(null);
 $("batal").onclick = () => { $("form").hidden = true; };
 let tunda;
-$("cari").addEventListener("input", () => { clearTimeout(tunda); tunda = setTimeout(muat, 350); });
+$("cari").addEventListener("input", () => { clearTimeout(tunda); tunda = setTimeout(() => { halaman = 1; muat(); }, 350); });
 $("form").onsubmit = async event => {
     event.preventDefault();
     const pw = $("p").value;
