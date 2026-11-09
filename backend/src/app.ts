@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import helmet from "helmet";
-import { corsPolicy, errorHandler, requestLogger } from "./http/middleware/index.js";
+import { corsPolicy, errorHandler, requestLogger, storageProxy } from "./http/middleware/index.js";
 import { createModules } from "./modules/create-modules.js";
 import type { ModuleDeps } from "./modules/module-deps.js";
 
@@ -36,6 +36,7 @@ export function createApp(deps: ModuleDeps): App {
     app.use(express.json());
 
     app.get("/health", (_req, res) => res.json({ status: "ok" }));
+    app.use(storageProxy({ storage: deps.adapters.objectStorage }));
 
     const api = express.Router();
     api.use(auth.router);
