@@ -1,155 +1,223 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Promo dan tier · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
-<header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
-<main class="container stack-lg">
-<h1 class="t-h1">Tier dan promo</h1>
-<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
-<section class="card">
-<div class="section-head"><h2 class="t-h2">Tier loyalitas</h2><span class="t-small t-muted">Diskon dari subtotal makanan, bukan ongkir</span></div>
-<div id="tier" aria-busy="true"><div class="skeleton"></div></div>
-</section>
-<form class="card stack" id="formTier" novalidate>
-<h2 class="t-h3" id="judulTier">Tambah tier</h2>
-<div class="grid grid-2">
-<div class="field"><label for="tn">Nama tier</label><input class="input" id="tn" maxlength="50"><p class="error-msg" hidden>Nama tier wajib diisi.</p></div>
-<div class="field"><label for="td">Diskon (%)</label><input class="input" id="td" type="number" min="0" max="100" step="0.1"><p class="error-msg" hidden>Diskon antara 0 dan 100 persen.</p></div>
-<div class="field"><label for="th">Syarat hari langganan terbayar</label><input class="input" id="th" type="number" min="0"><p class="error-msg" hidden>Isi angka 0 atau lebih.</p></div>
-<div class="field"><label for="tb">Masa berlaku tier (hari)</label><input class="input" id="tb" type="number" min="1" value="30"><p class="error-msg" hidden>Isi minimal 1 hari.</p></div>
-</div>
-<div class="row"><button class="btn btn-primary" type="submit" id="simpanTier">Simpan Tier</button><button class="btn btn-ghost" type="button" id="batalTier" hidden>Batal ubah</button></div>
-</form>
-<section class="card">
-<div class="section-head"><h2 class="t-h2">Kode promo</h2><span class="t-small t-muted">Satu pelanggan hanya bisa pakai sekali</span></div>
-<p class="t-muted" id="kosongKode" hidden>Belum ada kode promo.</p>
-<div id="kode" aria-busy="true"><div class="skeleton"></div></div>
-</section>
-<form class="card stack" id="form" novalidate>
-<h2 class="t-h3">Tambah kode promo</h2>
-<div class="grid grid-2">
-<div class="field"><label for="k">Kode</label><input class="input" id="k" maxlength="50" placeholder="HEMAT10" autocapitalize="characters" autocomplete="off"><p class="error-msg" hidden>Kode wajib diisi (huruf, angka, tanpa spasi).</p></div>
-<div class="field"><label for="j">Jenis diskon</label><select class="select input" id="j"><option value="Persen">Persen</option><option value="Nominal">Nominal</option></select></div>
-<div class="field"><label for="v">Nilai diskon</label><input class="input" id="v" type="number" min="0" inputmode="numeric"><p class="error-msg" id="errV" hidden>Isi nilai diskon yang valid.</p></div>
-<div class="field"><label for="q">Kuota</label><input class="input" id="q" type="number" min="1"><p class="error-msg" hidden>Kuota minimal 1.</p></div>
-<div class="field"><label for="m">Minimal belanja (Rp)</label><input class="input" id="m" type="number" min="0"></div>
-<div class="field"><label for="u">Berlaku sampai</label><input class="input" id="u" type="date"></div>
-</div>
-<div class="chip-group"><label class="chip"><input type="checkbox" id="gabung" checked>Boleh digabung dengan diskon tier</label></div>
-<button class="btn btn-primary" type="submit">Simpan Kode</button>
-</form>
-</main><script src="js/auth.js"></script>
-<script>
-const $ = id => document.getElementById(id);
-const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
-const tgl = s => new Date(s).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
-const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
-function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
-function cek(daftar) {
-    let pertama = null;
-    daftar.forEach(([input, valid]) => {
-        const f = input.closest(".field");
-        f.classList.toggle("is-error", !valid);
-        f.querySelector(".error-msg").hidden = valid;
-        input.setAttribute("aria-invalid", String(!valid));
-        if (!valid && !pertama) pertama = input;
-    });
-    if (pertama) pertama.focus();
-    return !pertama;
-}
-async function kerja(tombol, aksi, pesan, ulang) {
-    tombol.disabled = true;
-    galat(null);
-    try { await aksi(); toast(pesan); ulang(); }
-    catch (error) { tombol.disabled = false; galat(error); }
-}
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Kode promo · LAHAP</title>
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+    <body data-roles="admin">
+        <header class="app-header">
+            <div class="container">
+                <a class="brand" href="admin.html">LAHAP</a>
+                <nav class="nav"></nav>
+            </div>
+        </header>
+        <main class="container stack-lg">
+            <div class="row-between">
+                <div>
+                    <h1 class="t-h1">Kode promo</h1>
+                    <p class="t-muted">Satu pelanggan hanya bisa memakai satu kode per pesanan.</p>
+                </div>
+                <button class="btn btn-primary" id="tambah" type="button">Tambah Kode</button>
+            </div>
+            <div class="alert alert--error" id="galat" hidden><span class="alert-title">Terjadi kesalahan</span><span class="msg"></span></div>
 
-// Tier
-let tierUbah = null;
-function bukaTier(t) {
-    tierUbah = t || null;
-    $("judulTier").textContent = t ? `Ubah tier ${t.name}` : "Tambah tier";
-    $("tn").value = t ? t.name : "";
-    $("td").value = t ? t.discountPercent : "";
-    $("th").value = t ? t.requiredSubscriptionDays : "";
-    $("tb").value = t ? t.durationDays : 30;
-    $("batalTier").hidden = !t;
-    $("tn").focus();
-}
-async function muatTier() {
-    try {
-        const { data } = await api("/admin/tiers?limit=50");
-        data.sort((a, b) => a.requiredSubscriptionDays - b.requiredSubscriptionDays);
-        $("tier").removeAttribute("aria-busy");
-        $("tier").replaceChildren(...data.map(t => {
-            const row = el("div", "invoice");
-            const kiri = el("div");
-            kiri.append(el("p", "t-h3", t.name), el("p", "t-small t-muted", `${t.requiredSubscriptionDays} hari · diskon ${t.discountPercent}% · berlaku ${t.durationDays} hari · ${t.memberCount ?? 0} anggota`));
-            const kanan = el("div", "row");
-            const ubah = el("button", "btn btn-secondary btn-sm", "Ubah");
-            ubah.type = "button";
-            ubah.setAttribute("aria-label", `Ubah tier ${t.name}`);
-            ubah.onclick = () => bukaTier(t);
-            kanan.append(ubah);
-            if (t.requiredSubscriptionDays > 0) {
+            <form class="card stack" id="form" novalidate hidden>
+                <h2 class="t-h3" id="judulForm">Tambah kode promo</h2>
+                <div class="alert alert--error" id="errForm" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
+                <div class="field" id="fKode">
+                    <label for="kode">Kode</label>
+                    <input class="input" id="kode" maxlength="50" autocapitalize="characters" />
+                    <p class="hint">Kosongkan untuk dibuatkan otomatis. Kode tidak bisa diubah setelah dibuat.</p>
+                </div>
+                <div class="grid grid-2">
+                    <div class="field">
+                        <label for="jenis">Jenis diskon</label>
+                        <select class="select input" id="jenis">
+                            <option value="Persen">Persen</option>
+                            <option value="Nominal">Nominal (Rp)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="nilai">Nilai diskon</label>
+                        <input class="input" id="nilai" type="number" min="1" />
+                    </div>
+                    <div class="field">
+                        <label for="minimal">Minimal belanja (Rp)</label>
+                        <input class="input" id="minimal" type="number" min="0" value="0" />
+                    </div>
+                    <div class="field">
+                        <label for="kuota">Kuota pemakaian</label>
+                        <input class="input" id="kuota" type="number" min="0" value="0" />
+                        <p class="hint">Isi 0 jika tidak dibatasi.</p>
+                    </div>
+                    <div class="field">
+                        <label for="sampai">Berlaku sampai</label>
+                        <input class="input" id="sampai" type="date" />
+                        <p class="hint">Kosongkan untuk 14 hari dari sekarang.</p>
+                    </div>
+                </div>
+                <div class="chip-group">
+                    <label class="chip"><input type="checkbox" id="gabung" checked />Boleh digabung dengan diskon tier</label>
+                    <label class="chip"><input type="checkbox" id="aktif" checked />Kode aktif</label>
+                </div>
+                <div class="row">
+                    <button class="btn btn-primary" type="submit">Simpan</button>
+                    <button class="btn btn-ghost" type="button" id="batal">Batal</button>
+                </div>
+            </form>
+
+            <section class="card" id="daftar" aria-busy="true"><p class="t-muted">Memuat kode promo...</p></section>
+        </main>
+        <script src="js/auth.js"></script>
+        <script>
+            const $ = selector => document.querySelector(selector);
+            const rupiah = value => `Rp${Number(value).toLocaleString("id-ID")}`;
+            const tanggalISO = (tanggal, jam) => new Date(`${tanggal}T${jam}+07:00`).toISOString();
+            const tanggalInput = iso => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+            const tanggalTampil = iso =>
+                new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+            let dipilih = null;
+
+            function el(tag, className, text) {
+                const node = document.createElement(tag);
+                if (className) node.className = className;
+                if (text !== undefined) node.textContent = text;
+                return node;
+            }
+
+            function tampil(box, message) {
+                box.hidden = !message;
+                box.querySelector(".msg").textContent = message || "";
+            }
+
+            function pesanError(error) {
+                const dariServer = error instanceof ApiError && ["CONFLICT", "INVALID_STATE", "VALIDATION_ERROR"].includes(error.code);
+                return dariServer ? error.message : errorMessage(error);
+            }
+
+            function status(promo) {
+                if (!promo.isActive) return ["badge badge--expire", "Nonaktif"];
+                if (new Date(promo.validUntil) < new Date()) return ["badge badge--expire", "Kedaluwarsa"];
+                if (promo.quota > 0 && promo.usedCount >= promo.quota) return ["badge badge--cancel", "Kuota habis"];
+                return ["badge badge--success", "Aktif"];
+            }
+
+            function bukaForm(promo) {
+                dipilih = promo;
+                $("#judulForm").textContent = promo ? "Ubah kode promo" : "Tambah kode promo";
+                $("#kode").value = promo ? promo.code : "";
+                $("#kode").disabled = Boolean(promo);
+                $("#jenis").value = promo ? promo.discountType : "Persen";
+                $("#nilai").value = promo ? promo.discountValue : "";
+                $("#minimal").value = promo ? promo.minPurchase : 0;
+                $("#kuota").value = promo ? promo.quota : 0;
+                $("#sampai").value = promo && promo.validUntil ? tanggalInput(promo.validUntil) : "";
+                $("#gabung").checked = promo ? promo.allowStackWithTier : true;
+                $("#aktif").checked = promo ? promo.isActive : true;
+                tampil($("#errForm"), "");
+                $("#form").hidden = false;
+                $("#form").scrollIntoView();
+            }
+
+            function barisPromo(promo) {
+                const baris = el("div", "invoice");
+                const kiri = el("div");
+                const diskon = promo.discountType === "Persen" ? `${promo.discountValue}%` : rupiah(promo.discountValue);
+                const kuota = promo.quota > 0 ? `${promo.usedCount} dari ${promo.quota} terpakai` : `${promo.usedCount} terpakai`;
+                const info = [
+                    `Diskon ${diskon}`,
+                    kuota,
+                    promo.validUntil ? `sampai ${tanggalTampil(promo.validUntil)}` : "",
+                    promo.minPurchase > 0 ? `min. ${rupiah(promo.minPurchase)}` : "",
+                    promo.allowStackWithTier ? "bisa digabung tier" : "tidak digabung tier",
+                ].filter(Boolean);
+                kiri.append(el("p", "t-h3", promo.code), el("p", "t-small t-muted", info.join(" · ")));
+
+                const kanan = el("div", "row");
+                const [kelas, teks] = status(promo);
+                kanan.append(el("span", kelas, teks));
+                const ubah = el("button", "btn btn-secondary btn-sm", "Ubah");
+                ubah.type = "button";
+                ubah.onclick = () => bukaForm(promo);
+                const saklar = el("button", "btn btn-secondary btn-sm", promo.isActive ? "Nonaktifkan" : "Aktifkan");
+                saklar.type = "button";
+                saklar.onclick = () => kirim(`/admin/promo-codes/${promo.id}`, "PATCH", { isActive: !promo.isActive });
                 const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
                 hapus.type = "button";
-                hapus.setAttribute("aria-label", `Hapus tier ${t.name}`);
-                hapus.onclick = () => { if (confirm("Hapus tier ini? Anggotanya dipindah ke tier di bawahnya.")) kerja(hapus, () => api(`/admin/tiers/${t.id}`, { method: "DELETE" }), "Tier dihapus.", muatTier); };
-                kanan.append(hapus);
+                hapus.onclick = () => {
+                    if (confirm(`Hapus kode ${promo.code}? Kode yang masih dipakai pesanan Pending tidak bisa dihapus.`)) {
+                        kirim(`/admin/promo-codes/${promo.id}`, "DELETE");
+                    }
+                };
+                kanan.append(ubah, saklar, hapus);
+                baris.append(kiri, kanan);
+                return baris;
             }
-            row.append(kiri, kanan);
-            return row;
-        }));
-    } catch (error) { $("tier").removeAttribute("aria-busy"); $("tier").replaceChildren(); galat(error); }
-}
-$("batalTier").onclick = () => { $("formTier").reset(); bukaTier(null); };
-$("formTier").onsubmit = event => {
-    event.preventDefault();
-    const d = Number($("td").value), h = Number($("th").value), b = Number($("tb").value);
-    if (!cek([[$("tn"), $("tn").value.trim() !== ""], [$("td"), $("td").value !== "" && d >= 0 && d <= 100], [$("th"), $("th").value !== "" && h >= 0], [$("tb"), b >= 1]])) return;
-    const body = { name: $("tn").value.trim(), discountPercent: d, requiredSubscriptionDays: h, durationDays: b };
-    kerja($("simpanTier"), () => (tierUbah ? api(`/admin/tiers/${tierUbah.id}`, { method: "PATCH", body }) : api("/admin/tiers", { method: "POST", body })), "Tier disimpan.", () => { $("simpanTier").disabled = false; $("formTier").reset(); bukaTier(null); muatTier(); });
-};
 
-// Kode promo
-async function muatKode() {
-    try {
-        const { data } = await api("/admin/promo-codes?limit=100");
-        $("kode").removeAttribute("aria-busy");
-        $("kosongKode").hidden = data.length > 0;
-        $("kode").replaceChildren(...data.map(p => {
-            const row = el("div", "invoice");
-            const kiri = el("div");
-            const min = p.minPurchase > 0 ? ` · min. belanja ${rp(p.minPurchase)}` : "";
-            kiri.append(el("p", "t-h3", p.code), el("p", "t-small t-muted", `${p.discountType === "Persen" ? `${p.discountValue}%` : rp(p.discountValue)} · terpakai ${p.usedCount}/${p.quota} · sampai ${tgl(p.validUntil)}${min}${p.allowStackWithTier ? "" : " · tidak digabung tier"}`));
-            const kanan = el("div", "row");
-            kanan.append(el("span", `badge ${p.isActive ? "badge--success" : "badge--expire"}`, p.isActive ? "Aktif" : "Nonaktif"));
-            const toggle = el("button", `btn btn-sm ${p.isActive ? "btn-secondary" : "btn-primary"}`, p.isActive ? "Nonaktifkan" : "Aktifkan");
-            toggle.type = "button";
-            toggle.setAttribute("aria-label", `${toggle.textContent} kode ${p.code}`);
-            toggle.onclick = () => kerja(toggle, () => api(`/admin/promo-codes/${p.id}`, { method: "PATCH", body: { isActive: !p.isActive } }), p.isActive ? "Kode dinonaktifkan." : "Kode diaktifkan.", muatKode);
-            const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
-            hapus.type = "button";
-            hapus.setAttribute("aria-label", `Hapus kode ${p.code}`);
-            hapus.onclick = () => { if (confirm(`Hapus kode ${p.code}?`)) kerja(hapus, () => api(`/admin/promo-codes/${p.id}`, { method: "DELETE" }), "Kode dihapus.", muatKode); };
-            kanan.append(toggle, hapus);
-            row.append(kiri, kanan);
-            return row;
-        }));
-    } catch (error) { $("kode").removeAttribute("aria-busy"); $("kode").replaceChildren(); galat(error); }
-}
-$("j").addEventListener("change", () => { $("v").placeholder = $("j").value === "Persen" ? "10" : "10000"; });
-$("form").onsubmit = event => {
-    event.preventDefault();
-    const kode = $("k").value.trim().toUpperCase();
-    const persen = $("j").value === "Persen";
-    const nilai = Number($("v").value), kuota = Number($("q").value);
-    $("errV").textContent = persen ? "Diskon persen harus antara 1 dan 100." : "Diskon nominal harus lebih dari 0.";
-    if (!cek([[$("k"), /^[A-Z0-9_-]+$/.test(kode)], [$("v"), $("v").value !== "" && nilai > 0 && (!persen || nilai <= 100)], [$("q"), Number.isInteger(kuota) && kuota >= 1]])) return;
-    const body = { code: kode, discountType: $("j").value, discountValue: nilai, quota: kuota, allowStackWithTier: $("gabung").checked };
-    if (Number($("m").value) > 0) body.minPurchase = Number($("m").value);
-    if ($("u").value) body.validUntil = `${$("u").value}T23:59:59+07:00`;
-    kerja(event.target.querySelector("button[type=submit]"), () => api("/admin/promo-codes", { method: "POST", body }), "Kode promo disimpan.", () => { event.target.querySelector("button[type=submit]").disabled = false; event.target.reset(); muatKode(); });
-};
-muatTier(); muatKode();
-</script></body></html>
+            async function kirim(path, method, body) {
+                tampil($("#galat"), "");
+                try {
+                    await api(path, { method, body });
+                    await muat();
+                } catch (error) {
+                    tampil($("#galat"), pesanError(error));
+                }
+            }
+
+            async function muat() {
+                try {
+                    const { data } = await api("/admin/promo-codes");
+                    $("#daftar").replaceChildren(...(data.length ? data.map(barisPromo) : [el("p", "empty", "Belum ada kode promo.")]));
+                } catch (error) {
+                    $("#daftar").replaceChildren();
+                    tampil($("#galat"), pesanError(error));
+                } finally {
+                    $("#daftar").removeAttribute("aria-busy");
+                }
+            }
+
+            $("#tambah").onclick = () => bukaForm(null);
+            $("#batal").onclick = () => {
+                $("#form").hidden = true;
+            };
+
+            $("#form").addEventListener("submit", async event => {
+                event.preventDefault();
+                const tombol = event.target.querySelector("button[type=submit]");
+                const nilai = Number($("#nilai").value);
+                if (!(nilai > 0) || ($("#jenis").value === "Persen" && nilai > 100)) {
+                    tampil($("#errForm"), "Nilai diskon harus lebih dari 0, dan paling besar 100 untuk diskon persen.");
+                    return;
+                }
+                const body = {
+                    discountType: $("#jenis").value,
+                    discountValue: nilai,
+                    minPurchase: Number($("#minimal").value) || 0,
+                    quota: Number($("#kuota").value) || 0,
+                    allowStackWithTier: $("#gabung").checked,
+                    isActive: $("#aktif").checked,
+                };
+                if ($("#sampai").value) body.validUntil = tanggalISO($("#sampai").value, "23:59:59");
+                if (!dipilih && $("#kode").value.trim()) body.code = $("#kode").value.trim().toUpperCase();
+                tombol.disabled = true;
+                tampil($("#errForm"), "");
+                try {
+                    await api(dipilih ? `/admin/promo-codes/${dipilih.id}` : "/admin/promo-codes", {
+                        method: dipilih ? "PATCH" : "POST",
+                        body,
+                    });
+                    $("#form").hidden = true;
+                    await muat();
+                } catch (error) {
+                    tampil($("#errForm"), pesanError(error));
+                } finally {
+                    tombol.disabled = false;
+                }
+            });
+
+            muat();
+        </script>
+    </body>
+</html>
