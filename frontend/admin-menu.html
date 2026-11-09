@@ -4,47 +4,119 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Menu dan jadwal</h1>
-<form class="card stack">
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<form class="card stack" id="form" novalidate>
  <h2 class="t-h3">Tambah jadwal menu</h2>
  <div class="grid grid-2">
   <div class="field" id="fTg"><label for="tg">Tanggal</label><input class="input" id="tg" type="date"><p class="error-msg" hidden>Pilih tanggal.</p></div>
-  <div class="field"><label for="wk">Waktu makan</label><select class="select input" id="wk"><option>Pagi · 07:00</option><option>Siang · 12:00</option><option>Malam · 17:00</option></select></div>
-  <div class="field"><label for="pk">Paket</label><select class="select input" id="pk"><option>Paket Hemat</option><option>Paket Reguler</option></select></div>
-  <div class="field"><label for="mn">Menu</label><select class="select input" id="mn"><option>Ayam goreng + sayur asem</option><option>Nasi uduk + telur balado</option></select></div>
+  <div class="field"><label for="pk">Paket</label><select class="select input" id="pk"></select></div>
+  <div class="field"><label for="wk">Waktu makan</label><select class="select input" id="wk"></select></div>
+  <div class="field" id="fMn"><label for="mn">Menu utama</label><select class="select input" id="mn"></select><p class="error-msg" hidden>Belum ada menu. Tambahkan menu dulu.</p></div>
+  <div class="field"><label for="alt">Menu alternatif (untuk pelanggan beralergi)</label><select class="select input" id="alt"><option value="">Tanpa menu alternatif</option></select></div>
  </div>
- <button class="btn btn-secondary" type="button" id="draft">Simpan sebagai Draft</button>
+ <div class="row"><button class="btn btn-secondary" type="submit" id="draft">Simpan sebagai Draft</button><button class="btn btn-primary" type="button" id="terbitLangsung">Simpan dan Terbitkan</button></div>
 </form>
-<section class="card" id="jadwal">
- <div class="section-head"><h2 class="t-h2">Jadwal minggu depan</h2><span class="t-small t-muted">Pelanggan hanya melihat yang terbit</span></div>
- <div class="slot" data-terbit="0"><div><p class="t-h3">Senin 16 Nov · Siang · Paket Hemat</p><p class="t-small t-muted">Ayam goreng + sayur asem</p></div><div class="row"><span class="badge badge--pending">Draft</span><button class="btn btn-primary btn-sm tombol" type="button">Terbitkan</button></div></div>
- <div class="slot" data-terbit="1"><div><p class="t-h3">Selasa 17 Nov · Siang · Paket Reguler</p><p class="t-small t-muted">Nasi uduk + telur balado · Mengandung telur</p></div><div class="row"><span class="badge badge--success">Terbit</span><button class="btn btn-secondary btn-sm tombol" type="button">Batalkan Terbit</button></div></div>
+<section class="card">
+ <div class="section-head"><h2 class="t-h2">Jadwal mendatang</h2><span class="t-small t-muted">Pelanggan hanya melihat yang terbit</span></div>
+ <p class="t-muted" id="kosong" hidden>Belum ada jadwal. Tambahkan lewat form di atas.</p>
+ <div id="jadwal" aria-busy="true"><div class="skeleton"></div></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
-// Ganti dengan API jadwal dan publish. Batal terbit hanya jika belum ada pesanan.
-function tampilStatus(slot) {
-    const terbit = slot.dataset.terbit === "1";
-    setBadge(slot.querySelector(".badge"), terbit ? "badge--success" : "badge--pending", terbit ? "Terbit" : "Draft");
-    const tombol = slot.querySelector(".tombol");
-    tombol.textContent = terbit ? "Batalkan Terbit" : "Terbitkan";
-    tombol.className = `btn btn-sm tombol ${terbit ? "btn-secondary" : "btn-primary"}`;
+const $ = s => document.querySelector(s);
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const hari = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "short" });
+function galat(error) { $("#err").hidden = !error; if (error) $("#err .msg").textContent = errorMessage(error); }
+function setBadge2(b, kelas, teks) { b.className = `badge ${kelas}`; b.textContent = teks; }
+
+let paket = [], menus = [];
+const namaPaket = id => (paket.find(p => p.id === id) || {}).name || "Paket";
+
+function isiWaktu() {
+    const p = paket.find(x => x.id === $("#pk").value);
+    $("#wk").replaceChildren(...((p && p.deliveryTimes) || []).map(t => { const o = el("option", "", `${t.range} · ${t.time}`); o.value = t.time; return o; }));
 }
-document.querySelectorAll(".slot").forEach(slot => {
-    slot.querySelector(".tombol").onclick = () => {
-        const terbit = slot.dataset.terbit === "1";
-        if (terbit && !confirm("Batalkan terbit jadwal ini?")) return;
-        slot.dataset.terbit = terbit ? "0" : "1";
-        tampilStatus(slot);
-        toast(terbit ? "Jadwal dikembalikan ke draft." : "Jadwal diterbitkan.");
+
+function baris(j) {
+    const slot = el("div", "slot");
+    const utama = (j.menus || []).find(m => m.isPrimary);
+    const alt = (j.menus || []).find(m => !m.isPrimary);
+    const kiri = el("div");
+    kiri.append(
+        el("p", "t-h3", `${hari(j.date)} · ${j.deliveryTime.range} · ${namaPaket(j.packageId)}`),
+        el("p", "t-small t-muted", `${utama && utama.menu ? utama.menu.name : "Menu belum diisi"}${alt && alt.menu ? ` · alternatif: ${alt.menu.name}` : ""}`),
+    );
+    const kanan = el("div", "row");
+    const badge = el("span", "");
+    setBadge2(badge, j.isPublished ? "badge--success" : "badge--pending", j.isPublished ? "Terbit" : "Draft");
+    const tombol = el("button", `btn btn-sm ${j.isPublished ? "btn-secondary" : "btn-primary"}`, j.isPublished ? "Batalkan Terbit" : "Terbitkan");
+    tombol.type = "button";
+    tombol.onclick = async () => {
+        if (j.isPublished && !confirm("Batalkan terbit jadwal ini? Hanya bisa jika belum ada pesanan.")) return;
+        tombol.disabled = true;
+        galat(null);
+        try {
+            await api("/admin/menu-schedules/publish", { method: "POST", body: { ids: [j.id], publish: !j.isPublished } });
+            toast(j.isPublished ? "Jadwal dikembalikan ke draft." : "Jadwal diterbitkan.");
+            muat();
+        } catch (error) { tombol.disabled = false; galat(error); }
     };
-});
-document.getElementById("draft").onclick = () => {
-    const tg = document.getElementById("tg");
-    const ok = tg.value !== "";
-    document.getElementById("fTg").classList.toggle("is-error", !ok);
-    document.querySelector("#fTg .error-msg").hidden = ok;
-    tg.setAttribute("aria-invalid", String(!ok));
-    if (!ok) return tg.focus();
-    toast("Draft disimpan (demo).");
-};
+    kanan.append(badge, tombol);
+    slot.append(kiri, kanan);
+    return slot;
+}
+
+async function muat() {
+    try {
+        const { data } = await api(`/admin/menu-schedules?from=${hariIni()}&limit=100`);
+        data.sort((a, b) => a.date.localeCompare(b.date) || a.deliveryTime.time.localeCompare(b.deliveryTime.time));
+        $("#jadwal").removeAttribute("aria-busy");
+        $("#jadwal").replaceChildren(...data.map(baris));
+        $("#kosong").hidden = data.length > 0;
+        galat(null);
+    } catch (error) {
+        $("#jadwal").removeAttribute("aria-busy");
+        $("#jadwal").replaceChildren();
+        galat(error);
+    }
+}
+
+async function awal() {
+    try {
+        const [pk, mn] = await Promise.all([api("/admin/packages?limit=100"), api("/admin/menus?limit=100")]);
+        paket = pk.data;
+        menus = mn.data;
+        $("#pk").replaceChildren(...paket.map(p => { const o = el("option", "", p.name); o.value = p.id; return o; }));
+        $("#mn").replaceChildren(...menus.filter(m => !m.isAlternative).map(m => { const o = el("option", "", m.name); o.value = m.id; return o; }));
+        $("#alt").append(...menus.filter(m => m.isAlternative).map(m => { const o = el("option", "", m.name); o.value = m.id; return o; }));
+        isiWaktu();
+    } catch (error) { galat(error); }
+    muat();
+}
+
+async function simpan(terbit) {
+    const tg = $("#tg");
+    const ok = tg.value !== "" && $("#mn").value !== "" && $("#wk").value !== "";
+    $("#fTg").classList.toggle("is-error", tg.value === "");
+    $("#fTg .error-msg").hidden = tg.value !== "";
+    $("#fMn").classList.toggle("is-error", $("#mn").value === "");
+    $("#fMn .error-msg").hidden = $("#mn").value !== "";
+    tg.setAttribute("aria-invalid", String(tg.value === ""));
+    if (!ok) return (tg.value === "" ? tg : $("#mn")).focus();
+    const item = { packageId: $("#pk").value, date: tg.value, deliveryTime: $("#wk").value, primaryMenuId: $("#mn").value, isPublished: terbit };
+    if ($("#alt").value) item.alternativeMenuId = $("#alt").value;
+    galat(null);
+    document.querySelectorAll("#form button").forEach(b => (b.disabled = true));
+    try {
+        await api("/admin/menu-schedules", { method: "POST", body: { items: [item] } });
+        toast(terbit ? "Jadwal disimpan dan diterbitkan." : "Draft disimpan.");
+        muat();
+    } catch (error) { galat(error); }
+    finally { document.querySelectorAll("#form button").forEach(b => (b.disabled = false)); }
+}
+$("#pk").addEventListener("change", isiWaktu);
+$("#form").onsubmit = event => { event.preventDefault(); simpan(false); };
+$("#terbitLangsung").onclick = () => simpan(true);
+awal();
 </script></body></html>

@@ -4,44 +4,141 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Pesanan dan pengantaran</h1>
+<div class="field"><label for="tgl">Tanggal layanan</label><input class="input" id="tgl" type="date"></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <section class="card">
-<div class="section-head"><h2 class="t-h2">Rekap produksi · Rabu, 11 Nov</h2></div>
-<div class="invoice"><div><p class="label">Siang · 12:00 · Paket Hemat</p><p class="t-h3">Ayam goreng + sayur asem</p></div><p class="t-h3">24 porsi</p></div>
-<div class="invoice"><div><p class="label">Siang · 12:00 · Paket Reguler</p><p class="t-h3">Nasi ayam bakar + lalapan</p><p class="t-small t-muted">1 pelanggan beralergi atau punya catatan</p></div><p class="t-h3">14 porsi</p></div>
+<div class="section-head"><h2 class="t-h2">Rekap produksi</h2></div>
+<p class="t-muted" id="kosongRekap" hidden>Belum ada pesanan pada tanggal ini.</p>
+<div id="rekap" aria-busy="true"><div class="skeleton"></div></div>
 </section>
 <section class="card">
-<div class="section-head"><h2 class="t-h2">Papan pengantaran</h2></div>
-<div class="slot"><div><p class="t-h3">Budi Santoso · Siang · Diantar</p><p class="t-small t-muted">Jl. Veteran 12, Malang</p></div><div class="row"><span class="badge badge--delivering">Diantar</span><select class="select input w-auto" aria-label="Kurir untuk Budi"><option>Ahmad Fauzi</option><option>Tanpa kurir</option></select></div></div>
-<div class="slot"><div><p class="t-h3">Sari Wulandari · Malam · Diantar</p><p class="t-small t-muted">Jl. Soekarno Hatta 8, Malang</p></div><div class="row"><span class="badge badge--prepared">Disiapkan</span><select class="select input w-auto" aria-label="Kurir untuk Sari"><option>Tanpa kurir</option><option>Ahmad Fauzi</option></select></div></div>
-<button class="btn btn-secondary" id="simpan" type="button">Simpan Penugasan</button>
+<div class="section-head"><h2 class="t-h2">Papan pengantaran</h2><span class="t-small t-muted">Pilih kurir, tersimpan otomatis</span></div>
+<p class="t-muted" id="kosongAntar" hidden>Tidak ada pengantaran pada tanggal ini.</p>
+<div id="papan"></div>
 </section>
 <form class="card stack" id="koreksi" novalidate>
 <h2 class="t-h3">Koreksi status slot</h2>
 <div class="grid grid-2">
-<div class="field"><label for="slot">Slot</label><select class="select input" id="slot"><option>Budi Santoso · Siang</option><option>Sari Wulandari · Malam</option></select></div>
-<div class="field"><label for="st">Status baru</label><select class="select input" id="st"><option>Disiapkan</option><option>Diantar</option><option>Siap Diambil</option><option>Selesai</option><option>Dilewati</option></select></div>
+<div class="field"><label for="slot">Slot</label><select class="select input" id="slot"></select></div>
+<div class="field"><label for="st">Status baru</label><select class="select input" id="st"><option>Terjadwal</option><option>Disiapkan</option><option>Diantar</option><option>Siap Diambil</option><option>Selesai</option><option>Dilewati</option></select></div>
 </div>
 <div class="field" id="fAlasan"><label for="alasan">Alasan koreksi</label><textarea class="textarea" id="alasan" aria-describedby="errAlasan"></textarea><p class="error-msg" id="errAlasan" hidden>Alasan wajib diisi.</p></div>
 <button class="btn btn-primary" type="submit">Simpan Koreksi</button>
 </form>
 </main><script src="js/auth.js"></script>
 <script>
-const simpan = document.getElementById("simpan");
-simpan.onclick = () => {
-    toast("Penugasan kurir disimpan (demo).");
-    simpan.textContent = "Tersimpan";
-    simpan.disabled = true;
-    setTimeout(() => { simpan.textContent = "Simpan Penugasan"; simpan.disabled = false; }, 1500);
-};
-document.getElementById("koreksi").onsubmit = event => {
+const $ = s => document.querySelector(s);
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const BADGE = { Terjadwal: "badge--prepared", Disiapkan: "badge--prepared", Diantar: "badge--delivering", "Siap Diambil": "badge--ready", Selesai: "badge--success", Dilewati: "badge--expire" };
+function galat(error) { $("#err").hidden = !error; if (error) $("#err .msg").textContent = errorMessage(error); }
+
+let pesanan = [], kurir = [], namaPaket = new Map();
+const penerima = o => (o.subscription && o.subscription.recipientName) || "Pelanggan";
+const jam = o => (o.menuSchedule && o.menuSchedule.deliveryTime ? `${o.menuSchedule.deliveryTime.range} ${o.menuSchedule.deliveryTime.time}` : "");
+
+function rekap() {
+    const grup = new Map();
+    pesanan.filter(o => o.status !== "Dilewati").forEach(o => {
+        const k = `${o.menuSchedule ? o.menuSchedule.id : "?"}|${o.usesAlternativeMenu}`;
+        if (!grup.has(k)) grup.set(k, { o, n: 0, khusus: 0 });
+        const g = grup.get(k);
+        g.n++;
+        if (o.usesAlternativeMenu || (o.subscription && o.subscription.notes)) g.khusus++;
+    });
+    $("#kosongRekap").hidden = grup.size > 0;
+    $("#rekap").replaceChildren(...[...grup.values()].map(({ o, n, khusus }) => {
+        const row = el("div", "invoice");
+        const kiri = el("div");
+        const paket = o.menuSchedule && namaPaket.get(o.menuSchedule.packageId);
+        kiri.append(el("p", "label", `${jam(o)}${paket ? ` · ${paket}` : ""}${o.usesAlternativeMenu ? " · menu alternatif" : ""}`), el("p", "t-h3", o.menu ? o.menu.name : "Menu belum diisi"));
+        if (khusus) kiri.append(el("p", "t-small t-muted", `${khusus} pesanan beralergi atau punya catatan`));
+        row.append(kiri, el("p", "t-h3", `${n} porsi`));
+        return row;
+    }));
+    $("#rekap").removeAttribute("aria-busy");
+}
+
+function papan() {
+    const antar = pesanan.filter(o => o.isDelivery);
+    $("#kosongAntar").hidden = antar.length > 0;
+    $("#papan").replaceChildren(...antar.map(o => {
+        const slot = el("div", "slot");
+        const kiri = el("div");
+        kiri.append(el("p", "t-h3", `${penerima(o)} · ${jam(o)}`), el("p", "t-small t-muted", (o.subscription && o.subscription.deliveryAddress) || "Alamat tidak tersedia"));
+        const kanan = el("div", "row");
+        const pilih = el("select", "select input w-auto");
+        pilih.setAttribute("aria-label", `Kurir untuk ${penerima(o)}`);
+        const tanpa = el("option", "", "Tanpa kurir");
+        tanpa.value = "";
+        pilih.append(tanpa, ...kurir.map(k => { const op = el("option", "", k.name); op.value = k.id; return op; }));
+        pilih.value = o.courierId || "";
+        pilih.onchange = async () => {
+            pilih.disabled = true;
+            galat(null);
+            try {
+                await api("/admin/courier-assignments", { method: "PUT", body: { orderIds: [o.id], courierId: pilih.value || null } });
+                o.courierId = pilih.value || null;
+                toast("Penugasan kurir disimpan.");
+            } catch (error) { pilih.value = o.courierId || ""; galat(error); }
+            finally { pilih.disabled = false; }
+        };
+        kanan.append(el("span", `badge ${BADGE[o.status] || "badge--expire"}`, o.status), pilih);
+        slot.append(kiri, kanan);
+        return slot;
+    }));
+}
+
+function isiSlot() {
+    const sebelum = $("#slot").value;
+    $("#slot").replaceChildren(...pesanan.map(o => { const op = el("option", "", `${penerima(o)} · ${jam(o)} · ${o.status}`); op.value = o.id; return op; }));
+    if (sebelum) $("#slot").value = sebelum;
+}
+
+let ke = 0;
+async function muat() {
+    const ini = ++ke;
+    const t = $("#tgl").value || hariIni();
+    try {
+        const [ord, usr, pak] = await Promise.all([
+            api(`/admin/orders?date=${t}&limit=100`),
+            api("/admin/users?role=COURIER&isActive=true&limit=100"),
+            api("/admin/packages?limit=100"),
+        ]);
+        if (ini !== ke) return;
+        pesanan = ord.data;
+        kurir = usr.data;
+        namaPaket = new Map(pak.data.map(p => [p.id, p.name]));
+        rekap(); papan(); isiSlot();
+        galat(null);
+    } catch (error) {
+        if (ini !== ke) return;
+        $("#rekap").removeAttribute("aria-busy");
+        galat(error);
+    }
+}
+
+$("#tgl").value = hariIni();
+$("#tgl").addEventListener("change", muat);
+$("#koreksi").onsubmit = async event => {
     event.preventDefault();
-    const alasan = document.getElementById("alasan");
+    const alasan = $("#alasan");
     const ok = alasan.value.trim() !== "";
-    document.getElementById("fAlasan").classList.toggle("is-error", !ok);
-    document.getElementById("errAlasan").hidden = ok;
+    $("#fAlasan").classList.toggle("is-error", !ok);
+    $("#errAlasan").hidden = ok;
     alasan.setAttribute("aria-invalid", String(!ok));
     if (!ok) return alasan.focus();
-    toast("Status dikoreksi (demo).");
-    event.target.reset();
+    if (!$("#slot").value) return toast("Tidak ada slot untuk dikoreksi.", "error");
+    const tombol = event.target.querySelector("button[type=submit]");
+    tombol.disabled = true;
+    galat(null);
+    try {
+        await api(`/admin/orders/${$("#slot").value}/status`, { method: "PATCH", body: { status: $("#st").value, adminNote: alasan.value.trim() } });
+        toast("Status dikoreksi.");
+        alasan.value = "";
+        muat();
+    } catch (error) { galat(error); }
+    finally { tombol.disabled = false; }
 };
+muat();
 </script></body></html>

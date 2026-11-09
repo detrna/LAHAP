@@ -4,73 +4,120 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <h1 class="t-h1">Bahan, stok, dan alergen</h1>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <section class="card">
  <div class="section-head"><h2 class="t-h2">Stok bahan</h2><span class="t-small t-muted">Isi stok terbaru lalu simpan</span></div>
- <div class="invoice" data-nama="Ayam" data-butuh="4.8"><div><p class="t-h3">Ayam</p><p class="t-small t-muted info">Stok 3,2 kg · butuh 4,8 kg hari ini</p></div><div class="row"><span class="badge badge--pending">Menipis</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" aria-label="Stok ayam (kg)" value="3.2"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button></div></div>
- <div class="invoice" data-nama="Beras" data-butuh="2.4"><div><p class="t-h3">Beras</p><p class="t-small t-muted info">Stok 20 kg · butuh 2,4 kg hari ini</p></div><div class="row"><span class="badge badge--success">Cukup</span><input class="input w-num" type="number" min="0" step="0.1" inputmode="decimal" aria-label="Stok beras (kg)" value="20"><button class="btn btn-secondary btn-sm simpan" type="button">Simpan</button></div></div>
+ <p class="t-muted" id="kosong" hidden>Belum ada bahan.</p>
+ <div id="stok" aria-busy="true"><div class="skeleton"></div></div>
 </section>
+<form class="card stack" id="formBahan" novalidate>
+ <h2 class="t-h3">Tambah bahan</h2>
+ <div class="grid grid-2">
+  <div class="field"><label for="bn">Nama bahan</label><input class="input" id="bn" maxlength="100"></div>
+  <div class="field"><label for="bu">Satuan</label><select class="select input" id="bu"><option>kg</option><option>gram</option><option>liter</option><option>ml</option><option>butir</option><option>ikat</option></select></div>
+  <div class="field"><label for="bs">Stok awal</label><input class="input" id="bs" type="number" min="0" step="0.1" value="0"></div>
+  <div class="field"><label for="bm">Batas minimum stok</label><input class="input" id="bm" type="number" min="0" step="0.1" value="0"></div>
+ </div>
+ <div class="field"><label for="bf">Foto bahan</label><input class="input" id="bf" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">Wajib. JPEG, PNG, atau WebP.</p></div>
+ <button class="btn btn-secondary" type="submit">Tambah Bahan</button>
+</form>
 <section class="card stack">
  <h2 class="t-h2">Alergen</h2>
  <div class="chip-group" id="alergen"></div>
  <form class="row" id="formAl"><input class="input flex-1" id="baru" maxlength="50" placeholder="Nama alergen baru" aria-label="Nama alergen baru"><button class="btn btn-secondary" type="submit">Tambah</button></form>
 </section>
-<section class="card stack"><h2 class="t-h2">Daftar belanja minggu depan</h2><p class="t-muted">Ayam 33,6 kg · Beras 16,8 kg · Telur 40 butir · Sayur asem 25,2 kg</p><p class="t-small t-muted">Dihitung dari menu yang sudah terbit dan jumlah pesanan.</p></section>
+<section class="card stack"><h2 class="t-h2">Daftar belanja 7 hari ke depan</h2><p class="t-muted" id="kosongBelanja" hidden>Semua kebutuhan sudah tercukupi stok.</p><div id="belanja"></div><p class="t-small t-muted">Dihitung dari menu yang sudah terbit dan jumlah pesanan.</p></section>
 </main><script src="js/auth.js"></script>
 <script>
-// Ganti dengan API bahan, stok, dan alergen.
-const fmt = n => String(n).replace(".", ",");
-document.querySelectorAll(".simpan").forEach(b => {
-    b.onclick = () => {
-        const baris = b.closest(".invoice");
-        const input = baris.querySelector("input");
-        const stok = parseFloat(input.value);
-        if (!Number.isFinite(stok) || stok < 0) {
-            input.setAttribute("aria-invalid", "true");
-            input.focus();
-            toast("Isi stok dengan angka 0 atau lebih.", "error");
-            return;
-        }
-        input.removeAttribute("aria-invalid");
-        const butuh = parseFloat(baris.dataset.butuh);
-        baris.querySelector(".info").textContent = `Stok ${fmt(stok)} kg · butuh ${fmt(butuh)} kg hari ini`;
-        const cukup = stok >= butuh;
-        setBadge(baris.querySelector(".badge"), cukup ? "badge--success" : "badge--pending", cukup ? "Cukup" : "Menipis");
-        toast(`Stok ${baris.dataset.nama.toLowerCase()} disimpan.`);
-    };
-});
+const $ = id => document.getElementById(id);
+const angka = n => Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 });
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tambah = (t, n) => { const d = new Date(`${t}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
 
-const daftarAlergen = ["Telur", "Kacang", "Susu", "Seafood", "Gluten"];
-function gambarAlergen() {
-    document.getElementById("alergen").replaceChildren(...daftarAlergen.map(nama => {
-        const chip = document.createElement("span");
-        chip.className = "chip chip-static";
-        chip.append(nama);
-        const hapus = document.createElement("button");
-        hapus.type = "button";
-        hapus.className = "chip-remove";
-        hapus.textContent = "×";
-        hapus.setAttribute("aria-label", `Hapus alergen ${nama}`);
-        hapus.onclick = () => {
-            if (!confirm(`Hapus alergen "${nama}"?`)) return;
-            daftarAlergen.splice(daftarAlergen.indexOf(nama), 1);
-            gambarAlergen();
-        };
-        chip.append(hapus);
-        return chip;
-    }));
+function barisBahan(b) {
+    const row = el("div", "invoice");
+    const kiri = el("div");
+    kiri.append(el("p", "t-h3", b.name), el("p", "t-small t-muted", `Stok ${angka(b.stock)} ${b.unit} · minimum ${angka(b.minimumThreshold)} ${b.unit}`));
+    const kanan = el("div", "row");
+    const input = el("input", "input w-num");
+    Object.assign(input, { type: "number", min: "0", step: "0.1", value: b.stock });
+    input.setAttribute("aria-label", `Stok ${b.name} (${b.unit})`);
+    const simpan = el("button", "btn btn-secondary btn-sm", "Simpan");
+    simpan.type = "button";
+    simpan.onclick = async () => {
+        const nilai = parseFloat(input.value);
+        if (!Number.isFinite(nilai) || nilai < 0) { input.setAttribute("aria-invalid", "true"); input.focus(); return toast("Isi stok dengan angka 0 atau lebih.", "error"); }
+        input.removeAttribute("aria-invalid");
+        simpan.disabled = true;
+        galat(null);
+        try { await api(`/admin/ingredients/${b.id}`, { method: "PATCH", body: { stock: nilai } }); toast(`Stok ${b.name.toLowerCase()} disimpan.`); muatBahan(); muatBelanja(); }
+        catch (error) { simpan.disabled = false; galat(error); }
+    };
+    kanan.append(el("span", `badge ${b.isLowStock ? "badge--pending" : "badge--success"}`, b.isLowStock ? "Menipis" : "Cukup"), input, simpan);
+    row.append(kiri, kanan);
+    return row;
 }
-document.getElementById("formAl").onsubmit = event => {
+async function muatBahan() {
+    try {
+        const { data } = await api("/admin/ingredients?limit=100");
+        $("stok").removeAttribute("aria-busy");
+        $("stok").replaceChildren(...data.map(barisBahan));
+        $("kosong").hidden = data.length > 0;
+    } catch (error) { $("stok").removeAttribute("aria-busy"); $("stok").replaceChildren(); galat(error); }
+}
+async function muatBelanja() {
+    try {
+        const { data } = await api(`/admin/ingredients/shopping-list?from=${tambah(hariIni(), 1)}&to=${tambah(hariIni(), 7)}`);
+        const kurang = data.filter(x => x.shortageQuantity > 0);
+        $("kosongBelanja").hidden = kurang.length > 0;
+        $("belanja").replaceChildren(...kurang.map(x => { const r = el("div", "invoice"); r.append(el("p", "t-h3", x.name), el("p", "t-h3", `${angka(x.shortageQuantity)} ${x.unit}`)); return r; }));
+    } catch (error) { galat(error); }
+}
+
+$("formBahan").onsubmit = async event => {
     event.preventDefault();
-    const input = document.getElementById("baru");
-    const nama = input.value.trim();
-    if (!nama) return input.focus();
-    if (daftarAlergen.some(a => a.toLowerCase() === nama.toLowerCase())) {
-        toast("Alergen itu sudah ada.", "error");
-        return;
-    }
-    daftarAlergen.push(nama.charAt(0).toUpperCase() + nama.slice(1));
-    input.value = "";
-    gambarAlergen();
+    const name = $("bn").value.trim(), foto = $("bf").files[0];
+    if (!name) { $("bn").focus(); return toast("Nama bahan wajib diisi.", "error"); }
+    if (!foto) { $("bf").focus(); return toast("Foto bahan wajib diisi.", "error"); }
+    const tombol = event.target.querySelector("button[type=submit]");
+    tombol.disabled = true;
+    galat(null);
+    try {
+        const photoKey = (await upload("ingredients", foto)).key;
+        await api("/admin/ingredients", { method: "POST", body: { items: [{ name, unit: $("bu").value, stock: Number($("bs").value) || 0, minimumThreshold: Number($("bm").value) || 0, photoKey }] } });
+        toast("Bahan ditambahkan.");
+        event.target.reset();
+        muatBahan();
+    } catch (error) { galat(error); }
+    finally { tombol.disabled = false; }
 };
-gambarAlergen();
+
+async function muatAlergen() {
+    try {
+        const { data } = await api("/admin/allergies?limit=100");
+        $("alergen").replaceChildren(...data.map(a => {
+            const chip = el("span", "chip chip-static", a.name);
+            const hapus = el("button", "chip-remove", "×");
+            hapus.type = "button";
+            hapus.setAttribute("aria-label", `Hapus alergen ${a.name}`);
+            hapus.onclick = async () => {
+                if (!confirm(`Hapus alergen "${a.name}"?`)) return;
+                try { await api(`/admin/allergies/${a.id}`, { method: "DELETE" }); toast("Alergen dihapus."); muatAlergen(); }
+                catch (error) { galat(error); }
+            };
+            chip.append(hapus);
+            return chip;
+        }));
+    } catch (error) { galat(error); }
+}
+$("formAl").onsubmit = async event => {
+    event.preventDefault();
+    const nama = $("baru").value.trim();
+    if (!nama) return $("baru").focus();
+    try { await api("/admin/allergies", { method: "POST", body: { name: nama.charAt(0).toUpperCase() + nama.slice(1) } }); $("baru").value = ""; muatAlergen(); }
+    catch (error) { galat(error); toast(errorMessage(error), "error"); }
+};
+muatBahan(); muatBelanja(); muatAlergen();
 </script></body></html>

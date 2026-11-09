@@ -3,54 +3,137 @@
 <title>Dashboard admin · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="admin">
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
- <div><h1 class="t-h1">Dashboard admin</h1><p class="t-muted">Ringkasan usaha hari ini.</p></div>
- <div class="alert alert--warning" role="status"><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan menu supaya pelanggan bisa memesan. <a href="admin-menu.html">Buka halaman Menu</a></div>
+ <div class="row-between"><div><h1 class="t-h1">Dashboard admin</h1><p class="t-muted">Ringkasan usaha.</p></div>
+  <div class="field"><label for="periode">Periode</label><select class="select input" id="periode"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month">Bulan ini</option></select></div></div>
+ <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+ <div class="alert alert--warning" id="peringatanMenu" role="status" hidden><span class="alert-title">Menu minggu depan belum diisi</span>Isi dan terbitkan menu supaya pelanggan bisa memesan. <a href="admin-menu.html">Buka halaman Menu</a></div>
 
  <section class="grid grid-4" aria-label="Ringkasan">
-  <div class="card"><p class="t-small t-muted">Pemasukan hari ini</p><p class="price-big">Rp1.250.000</p></div>
-  <div class="card"><p class="t-small t-muted">Pesanan aktif</p><p class="price-big">38</p></div>
-  <div class="card"><p class="t-small t-muted">Pelanggan berhenti</p><p class="price-big">2</p></div>
-  <div class="card"><p class="t-small t-muted">Bahan hampir habis</p><p class="price-big">3</p></div>
+  <div class="card"><p class="t-small t-muted">Pemasukan</p><p class="price-big" id="kPemasukan">…</p></div>
+  <div class="card"><p class="t-small t-muted">Pesanan</p><p class="price-big" id="kPesanan">…</p></div>
+  <div class="card"><p class="t-small t-muted">Pelanggan berhenti</p><p class="price-big" id="kBerhenti">…</p></div>
+  <div class="card"><p class="t-small t-muted">Bahan kurang</p><p class="price-big" id="kBahan">…</p></div>
  </section>
 
  <section class="card">
-  <div class="section-head"><h2 class="t-h2">Pembayaran</h2><span class="t-small t-muted">Tunai Offline perlu diverifikasi</span></div>
-  <div class="invoice"><div><p class="t-h3">Dewi Lestari · Paket Reguler · Bulanan</p><p class="t-small t-muted">Offline · Tunai · Rp560.000</p></div><div class="row"><span class="badge badge--pending">Pending</span><button class="btn btn-primary btn-sm verif" type="button">Verifikasi</button></div></div>
-  <div class="invoice"><div><p class="t-h3">Budi Santoso · Paket Hemat · Mingguan</p><p class="t-small t-muted">Online · QRIS · Rp175.000</p></div><span class="badge badge--success">Success</span></div>
-  <div class="invoice"><div><p class="t-h3">Rani Putri · Paket Hemat · Harian</p><p class="t-small t-muted">Online · Virtual account · Rp45.000</p></div><span class="badge badge--expire">Expire</span></div>
+  <div class="section-head"><h2 class="t-h2">Pembayaran tunai menunggu</h2><span class="t-small t-muted">Tunai offline perlu diverifikasi</span></div>
+  <p class="t-muted" id="kosongBayar" hidden>Tidak ada pembayaran tunai yang menunggu.</p>
+  <div id="bayar"></div>
  </section>
 
  <section class="card stack">
-  <div><h2 class="t-h2">Pelanggan berhenti berlangganan</h2><p class="t-small t-muted">Tidak memesan lebih dari 2 minggu setelah periode terakhir. Hubungi lewat WhatsApp.</p></div>
-  <div class="field"><label for="tpl">Template pesan</label><textarea class="textarea" id="tpl">Halo {nama}, kami kangen! Pesan lagi paket LAHAP dan dapatkan promo spesial.</textarea><p class="hint">Tulis {nama} untuk menyisipkan nama pelanggan.</p></div>
-  <div class="alert alert--error row-between"><div><span class="alert-title">Rani Putri</span>Paket Hemat · berakhir 18 Okt · 22 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" data-nama="Rani" data-hp="6281234500001" target="_blank" rel="noopener" aria-label="Hubungi Rani Putri lewat WhatsApp">Hubungi WhatsApp</a></div>
-  <div class="alert alert--error row-between"><div><span class="alert-title">Andi Pratama</span>Paket Reguler · berakhir 22 Okt · 18 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" data-nama="Andi" data-hp="6281234500002" target="_blank" rel="noopener" aria-label="Hubungi Andi Pratama lewat WhatsApp">Hubungi WhatsApp</a></div>
+  <div><h2 class="t-h2">Pelanggan berhenti berlangganan</h2><p class="t-small t-muted">Tidak memesan lebih dari 14 hari setelah periode terakhir. Hubungi lewat WhatsApp.</p></div>
+  <div class="field"><label for="tpl">Template pesan</label><select class="select input" id="tpl"></select><p class="hint" id="isiTpl"></p></div>
+  <p class="t-muted" id="kosongChurn" hidden>Tidak ada pelanggan berhenti.</p>
+  <div class="stack" id="churn"></div>
+  <details><summary>Buat template pesan baru</summary>
+   <form class="stack" id="formTpl" novalidate>
+    <div class="field"><label for="tNama">Nama template</label><input class="input" id="tNama" maxlength="100"></div>
+    <div class="field"><label for="tIsi">Isi pesan</label><textarea class="textarea" id="tIsi" placeholder="Halo {nama}, kami kangen! Pesan lagi paket LAHAP."></textarea><p class="hint">Isian yang didukung: {nama}, {paket_terakhir}, {tanggal_berakhir}, {lama_tidak_memesan}, {kode_promo}.</p></div>
+    <button class="btn btn-secondary" type="submit">Simpan Template</button>
+   </form></details>
  </section>
 
- <section class="stack">
-  <h2 class="t-h2">Menu untuk disiapkan · Rabu, 11 Nov</h2>
-  <div class="grid grid-2">
-   <div class="card"><p class="label">Siang · 12:00 · Paket Hemat</p><div class="row-between"><p class="t-h3">Ayam goreng + sayur asem</p><p class="t-h3">24 porsi</p></div><p class="t-small t-muted">Ayam 4,8 kg · sayur asem 3,6 kg · beras 2,4 kg</p></div>
-   <div class="card"><p class="label">Siang · 12:00 · Paket Reguler</p><div class="row-between"><p class="t-h3">Nasi ayam bakar + lalapan</p><p class="t-h3">14 porsi</p></div><p class="t-small t-muted">1 pelanggan beralergi: perlu menu alternatif</p></div>
-  </div>
+ <section class="grid grid-2">
+  <div class="card stack"><h2 class="t-h2">Menu terlaris</h2><p class="t-muted" id="kosongTop" hidden>Belum ada data.</p><div id="top"></div></div>
+  <div class="card stack"><h2 class="t-h2">Bahan yang kurang</h2><p class="t-muted" id="kosongKurang" hidden>Semua bahan cukup.</p><div id="kurang"></div><a href="admin-bahan.html">Kelola bahan</a></div>
  </section>
 </main>
 <script src="js/auth.js"></script>
 <script>
-document.querySelectorAll(".verif").forEach(b => {
-    b.onclick = () => { // ganti dengan API verifikasi pembayaran
-        if (!confirm("Tandai pembayaran tunai ini sudah diterima?")) return;
-        setBadge(b.parentElement.querySelector(".badge"), "badge--success", "Success");
-        b.remove();
-        toast("Pembayaran diverifikasi.");
-    };
-});
-function isiWa() { // tautan wa.me dengan pesan terisi dan di-encode
-    document.querySelectorAll(".wa").forEach(a => {
-        const pesan = document.getElementById("tpl").value.replaceAll("{nama}", a.dataset.nama);
-        a.href = "https://wa.me/" + a.dataset.hp + "?text=" + encodeURIComponent(pesan);
-    });
+const $ = s => document.querySelector(s);
+const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+const angka = n => Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 });
+const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+const tambah = (t, n) => { const d = new Date(`${t}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const tglPendek = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+const metode = m => (m === "CASH" ? "Tunai" : m === "FREE" ? "Gratis" : "Non-tunai");
+function galat(error) { $("#err").hidden = !error; if (error) $("#err .msg").textContent = errorMessage(error); }
+
+async function dashboard() {
+    const { data } = await api(`/admin/dashboard?period=${$("#periode").value}`);
+    $("#kPemasukan").textContent = rp(data.income.totalRevenue);
+    $("#kPesanan").textContent = data.income.orderCount;
+    $("#kBahan").textContent = data.shortages.length;
+    $("#kosongTop").hidden = data.topMenus.length > 0;
+    $("#top").replaceChildren(...data.topMenus.map(m => { const r = el("div", "invoice"); r.append(el("p", "t-h3", m.name), el("p", "t-h3", `${m.portions} porsi`)); return r; }));
+    $("#kosongKurang").hidden = data.shortages.length > 0;
+    $("#kurang").replaceChildren(...data.shortages.map(s => { const r = el("div", "invoice"); r.append(el("p", "t-h3", s.name), el("p", "t-small t-muted", `Kurang ${angka(s.shortageQuantity)} ${s.unit} (stok ${angka(s.currentStock)}, butuh ${angka(s.requiredQuantity)})`)); return r; }));
 }
-document.getElementById("tpl").addEventListener("input", isiWa);
-isiWa();
+
+async function menuMingguDepan() {
+    const mulai = tambah(hariIni(), 1);
+    const { meta } = await api(`/admin/menu-schedules?from=${mulai}&to=${tambah(mulai, 6)}&isPublished=true&limit=1`);
+    $("#peringatanMenu").hidden = meta.total > 0;
+}
+
+async function pembayaran() {
+    const [pay, subs] = await Promise.all([api("/admin/payments?status=Pending&limit=20"), api("/admin/subscriptions?status=Pending&limit=100")]);
+    const peta = new Map(subs.data.map(s => [s.id, s]));
+    const tunai = pay.data.filter(p => p.method === "CASH");
+    $("#kosongBayar").hidden = tunai.length > 0;
+    $("#bayar").replaceChildren(...tunai.map(p => {
+        const s = peta.get(p.subscriptionId);
+        const row = el("div", "invoice");
+        const kiri = el("div");
+        kiri.append(el("p", "t-h3", s ? `${s.user ? s.user.name : s.recipientName} · ${s.package ? s.package.name : "Paket"} · ${s.period}` : "Pesanan tunai"), el("p", "t-small t-muted", `${metode(p.method)} · ${rp(p.amount)}`));
+        const kanan = el("div", "row");
+        const verif = el("button", "btn btn-primary btn-sm", "Verifikasi");
+        verif.type = "button";
+        verif.onclick = async () => {
+            if (!confirm("Tandai pembayaran tunai ini sudah diterima?")) return;
+            verif.disabled = true;
+            try { await api(`/admin/payments/${p.id}/verify-cash`, { method: "POST" }); toast("Pembayaran diverifikasi."); pembayaran(); dashboard(); }
+            catch (error) { verif.disabled = false; galat(error); }
+        };
+        kanan.append(el("span", "badge badge--pending", "Pending"), verif);
+        row.append(kiri, kanan);
+        return row;
+    }));
+}
+
+let templates = [];
+async function churn() {
+    const [c, t, u] = await Promise.all([api("/admin/retention/churn?limit=20"), api("/admin/message-templates?limit=50"), api("/admin/users?role=CUSTOMER&isChurned=true&limit=1")]);
+    templates = t.data;
+    $("#kBerhenti").textContent = u.meta.total;
+    $("#tpl").replaceChildren(...templates.map(x => { const o = el("option", "", x.name); o.value = x.id; return o; }));
+    tampilTpl();
+    $("#kosongChurn").hidden = c.data.length > 0;
+    $("#churn").replaceChildren(...c.data.map(x => {
+        const box = el("div", "alert alert--error row-between");
+        const kiri = el("div");
+        kiri.append(el("span", "alert-title", x.name), `${x.lastPackageName} · berakhir ${tglPendek(x.lastEndDate)} · ${x.daysSinceLastOrder} hari tidak memesan`);
+        const wa = el("button", "btn btn-secondary btn-sm", "Hubungi WhatsApp");
+        wa.type = "button";
+        wa.setAttribute("aria-label", `Hubungi ${x.name} lewat WhatsApp`);
+        wa.onclick = async () => {
+            if (!$("#tpl").value) return toast("Buat template pesan dulu.", "error");
+            wa.disabled = true;
+            try {
+                const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, { method: "POST", body: { templateId: $("#tpl").value } });
+                window.open(data.whatsappUrl, "_blank", "noopener");
+            } catch (error) { galat(error); }
+            finally { wa.disabled = false; }
+        };
+        box.append(kiri, wa);
+        return box;
+    }));
+}
+function tampilTpl() {
+    const t = templates.find(x => x.id === $("#tpl").value);
+    $("#isiTpl").textContent = t ? t.body : "Belum ada template. Buat dulu di bawah.";
+}
+$("#tpl").addEventListener("change", tampilTpl);
+$("#formTpl").onsubmit = async event => {
+    event.preventDefault();
+    const name = $("#tNama").value.trim(), body = $("#tIsi").value.trim();
+    if (!name || !body) return toast("Nama dan isi template wajib diisi.", "error");
+    try { await api("/admin/message-templates", { method: "POST", body: { name, body } }); toast("Template disimpan."); event.target.reset(); churn(); }
+    catch (error) { galat(error); }
+};
+
+$("#periode").addEventListener("change", () => dashboard().catch(galat));
+Promise.all([dashboard(), menuMingguDepan(), pembayaran(), churn()]).catch(galat);
 </script></body></html>

@@ -4,43 +4,83 @@
 <header class="app-header"><div class="container"><a class="brand" href="admin.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
 <div><h1 class="t-h1">Pelanggan</h1><p class="t-muted">Direktori pelanggan dan tindak lanjut yang berhenti berlangganan.</p></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
 <div class="field"><label for="cari">Cari nama atau nomor HP</label><input class="input" id="cari" type="search" autocomplete="off"></div>
 <p class="t-small t-muted" id="hasil" role="status" aria-live="polite"></p>
 <p class="empty" id="kosongCari" hidden>Tidak ada pelanggan yang cocok dengan pencarian.</p>
-<section class="card" id="daftar">
-<div class="invoice" data-cari="budi santoso 082222"><div><p class="t-h3">Budi Santoso</p><p class="t-small t-muted">082222 · 3 pesanan</p></div><div class="row"><span class="badge badge--ready">Silver</span><span class="badge badge--success">Aktif</span></div></div>
-<div class="invoice" data-cari="dewi lestari 085555"><div><p class="t-h3">Dewi Lestari</p><p class="t-small t-muted">085555 · 5 pesanan</p></div><div class="row"><span class="badge badge--ready">Gold</span><span class="badge badge--success">Aktif</span></div></div>
-<div class="invoice" data-cari="rani putri 081234500001"><div><p class="t-h3">Rani Putri</p><p class="t-small t-muted">081234500001 · 1 pesanan</p></div><div class="row"><span class="badge badge--expire">Biasa</span><span class="badge badge--cancel">Berhenti</span></div></div>
-</section>
+<section class="card" id="daftar" aria-busy="true"><div class="skeleton"></div></section>
 <section class="card stack">
 <div><h2 class="t-h2">Tindak lanjut pelanggan berhenti</h2><p class="t-small t-muted">Tidak memesan lebih dari 14 hari setelah periode terakhir berakhir.</p></div>
-<div class="field"><label for="tpl">Template pesan</label><textarea class="textarea" id="tpl">Halo {nama}, paket {paket_terakhir} kamu berakhir {tanggal_berakhir}. Pakai kode {kode_promo} untuk pesan lagi.</textarea><p class="hint">Isian: {nama}, {paket_terakhir}, {tanggal_berakhir}, {lama_tidak_memesan}, {kode_promo}.</p></div>
-<div class="field"><label for="kode">Kode promo (jika template memakainya)</label><input class="input" id="kode" value="MERDEKA"></div>
-<div class="alert alert--error row-between"><div><span class="alert-title">Rani Putri</span>Paket Hemat · berakhir 18 Oktober 2026 · 22 hari tidak memesan</div><a class="btn btn-secondary btn-sm wa" target="_blank" rel="noopener" data-hp="6281234500001" data-nama="Rani Putri" data-paket="Paket Hemat" data-tgl="18 Oktober 2026" data-hari="22 hari" aria-label="Hubungi Rani Putri lewat WhatsApp">Hubungi WhatsApp</a></div>
+<div class="field"><label for="tpl">Template pesan</label><select class="select input" id="tpl"></select><p class="hint" id="isiTpl"></p></div>
+<div class="field"><label for="kode">Kode promo (jika template memakainya)</label><input class="input" id="kode" placeholder="MERDEKA"></div>
+<p class="t-muted" id="kosongChurn" hidden>Tidak ada pelanggan berhenti.</p>
+<div class="stack" id="churn"></div>
 </section>
 </main><script src="js/auth.js"></script>
 <script>
-const isi = () => {
-    document.querySelectorAll(".wa").forEach(a => {
-        const pesan = document.getElementById("tpl").value
-            .replaceAll("{nama}", a.dataset.nama).replaceAll("{paket_terakhir}", a.dataset.paket)
-            .replaceAll("{tanggal_berakhir}", a.dataset.tgl).replaceAll("{lama_tidak_memesan}", a.dataset.hari)
-            .replaceAll("{kode_promo}", document.getElementById("kode").value);
-        a.href = `https://wa.me/${a.dataset.hp}?text=${encodeURIComponent(pesan)}`;
-    });
-};
-document.getElementById("tpl").addEventListener("input", isi);
-document.getElementById("kode").addEventListener("input", isi);
-document.getElementById("cari").addEventListener("input", event => {
-    const kata = event.target.value.trim().toLowerCase();
-    let tampil = 0;
-    document.querySelectorAll("#daftar .invoice").forEach(row => {
-        row.hidden = !row.dataset.cari.includes(kata);
-        if (!row.hidden) tampil++;
-    });
-    document.getElementById("daftar").hidden = tampil === 0;
-    document.getElementById("kosongCari").hidden = tampil > 0;
-    document.getElementById("hasil").textContent = kata ? `${tampil} pelanggan ditemukan.` : "";
-});
-isi();
+const $ = id => document.getElementById(id);
+const tglPendek = s => new Date(`${s}T00:00:00+07:00`).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+const el = (tag, c, t) => { const n = document.createElement(tag); if (c) n.className = c; if (t !== undefined) n.textContent = t; return n; };
+function galat(error) { $("err").hidden = !error; if (error) $("err").querySelector(".msg").textContent = errorMessage(error); }
+
+let ke = 0;
+async function muatPelanggan() {
+    const ini = ++ke;
+    const kata = $("cari").value.trim();
+    try {
+        const { data, meta } = await api(`/admin/users?role=CUSTOMER&limit=50${kata ? `&search=${encodeURIComponent(kata)}` : ""}`);
+        if (ini !== ke) return;
+        $("daftar").removeAttribute("aria-busy");
+        $("daftar").hidden = data.length === 0;
+        $("kosongCari").hidden = data.length > 0;
+        $("hasil").textContent = kata ? `${meta.total} pelanggan ditemukan.` : `${meta.total} pelanggan.`;
+        $("daftar").replaceChildren(...data.map(u => {
+            const row = el("div", "invoice");
+            const kiri = el("div");
+            kiri.append(el("p", "t-h3", u.name || "Tanpa nama"), el("p", "t-small t-muted", `${u.phone}${u.email ? ` · ${u.email}` : ""}`));
+            const kanan = el("div", "row");
+            const tier = u.membership && u.membership.tier;
+            if (tier) kanan.append(el("span", "badge badge--ready", tier.name));
+            kanan.append(el("span", `badge ${u.isChurned ? "badge--cancel" : u.isActive ? "badge--success" : "badge--expire"}`, u.isChurned ? "Berhenti" : u.isActive ? "Aktif" : "Nonaktif"));
+            row.append(kiri, kanan);
+            return row;
+        }));
+        galat(null);
+    } catch (error) { if (ini !== ke) return; $("daftar").removeAttribute("aria-busy"); galat(error); }
+}
+let tunda;
+$("cari").addEventListener("input", () => { clearTimeout(tunda); tunda = setTimeout(muatPelanggan, 350); });
+
+let templates = [];
+function tampilTpl() { const t = templates.find(x => x.id === $("tpl").value); $("isiTpl").textContent = t ? t.body : "Belum ada template. Buat dulu di Dashboard."; }
+async function muatChurn() {
+    try {
+        const [c, t] = await Promise.all([api("/admin/retention/churn?limit=30"), api("/admin/message-templates?limit=50")]);
+        templates = t.data;
+        $("tpl").replaceChildren(...templates.map(x => { const o = el("option", "", x.name); o.value = x.id; return o; }));
+        tampilTpl();
+        $("kosongChurn").hidden = c.data.length > 0;
+        $("churn").replaceChildren(...c.data.map(x => {
+            const box = el("div", "alert alert--error row-between");
+            const kiri = el("div");
+            kiri.append(el("span", "alert-title", x.name), `${x.lastPackageName} · berakhir ${tglPendek(x.lastEndDate)} · ${x.daysSinceLastOrder} hari tidak memesan`);
+            const wa = el("button", "btn btn-secondary btn-sm", "Hubungi WhatsApp");
+            wa.type = "button";
+            wa.setAttribute("aria-label", `Hubungi ${x.name} lewat WhatsApp`);
+            wa.onclick = async () => {
+                if (!$("tpl").value) return toast("Buat template pesan dulu di Dashboard.", "error");
+                wa.disabled = true;
+                try {
+                    const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, { method: "POST", body: { templateId: $("tpl").value, promoCode: $("kode").value.trim().toUpperCase() || null } });
+                    window.open(data.whatsappUrl, "_blank", "noopener");
+                } catch (error) { galat(error); }
+                finally { wa.disabled = false; }
+            };
+            box.append(kiri, wa);
+            return box;
+        }));
+    } catch (error) { galat(error); }
+}
+$("tpl").addEventListener("change", tampilTpl);
+muatPelanggan(); muatChurn();
 </script></body></html>
