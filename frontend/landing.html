@@ -9,22 +9,14 @@
 <style>
 .hero{display:grid;gap:var(--sp-5);align-items:center}
 .hero-foto{aspect-ratio:4/3;border-radius:var(--radius-card);background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden}
-.hero-foto img,.menu-foto img{width:100%;height:100%;object-fit:cover}
+.hero-foto img{width:100%;height:100%;object-fit:cover}
 .pill{display:inline-flex;padding:2px 12px;border-radius:var(--radius-pill);background:var(--orange-100);color:var(--orange-900);font:600 12px/18px 'Poppins',sans-serif}
 .fitur{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .fitur span{padding:6px 12px;background:var(--white);border:1px solid var(--line);border-radius:var(--radius-control)}
-.tabs{display:flex;gap:var(--sp-2);overflow-x:auto;padding-bottom:var(--sp-1)}
-.tab{flex:1 0 64px;min-height:64px;display:grid;place-items:center;padding:var(--sp-2);background:var(--white);border:1.5px solid var(--line);border-radius:var(--radius-card);font:inherit;cursor:pointer}
-.tab[aria-pressed=true]{background:var(--orange-700);border-color:var(--orange-700);color:var(--white)}
-.menu-card{display:grid;gap:0;overflow:hidden;padding:0}
-.menu-foto{aspect-ratio:4/3;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center}
-.menu-info{padding:var(--sp-4)}
-.paket-foto{aspect-ratio:16/9;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden}
-.paket-foto img{width:100%;height:100%;object-fit:cover}
 details{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-3) var(--sp-4)}
 summary{cursor:pointer;font-weight:600;min-height:32px}
 details p{margin-top:var(--sp-2);color:var(--muted)}
-@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}.menu-card{grid-template-columns:1fr 1.2fr}.menu-foto{aspect-ratio:auto;min-height:260px}}
+@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
@@ -75,94 +67,18 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
 <footer class="footer t-small"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM. Butuh bantuan pesanan? Hubungi admin lewat WhatsApp.</p></footer>
 </main>
 <script src="js/auth.js"></script>
+<script src="js/katalog.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
-const rp = n => "Rp" + Math.round(n).toLocaleString("id-ID");
-const WIB = { timeZone: "Asia/Jakarta" };
-
-function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
-
-function gambar(url, alt) {
-    const img = el("img");
-    img.src = url;
-    img.alt = alt;
-    img.loading = "lazy";
-    return img;
-}
-
-function kartuPaket(p) {
-    const card = el("article", "card card-flush");
-    const foto = el("div", "paket-foto");
-    if (p.photoUrl) foto.append(gambar(p.photoUrl, p.name));
-    else foto.textContent = "Foto paket";
-    const body = el("div", "pkg-body stack");
-    const harga = el("p");
-    harga.append(el("span", "price-big", rp(p.basePrice)), el("span", "t-small t-muted", " per porsi"));
-    const aksi = el("a", "btn btn-primary btn-block", "Pilih Paket");
-    aksi.href = `checkout.html?paket=${encodeURIComponent(p.id)}`;
-    body.append(el("h3", "t-h3", p.name), el("p", "t-muted", p.description || ""), harga, el("p", "t-small t-muted", `Periode: ${(p.periods || []).join(", ")}`), aksi);
-    card.append(foto, body);
-    return card;
-}
-
-function kartuMenu(item) {
-    const menus = item.jadwal.menus || [];
-    const utama = menus.find(m => !m.isAlternative) || menus[0];
-    const card = el("article", "card menu-card");
-    const foto = el("div", "menu-foto");
-    if (utama && utama.photoUrl) foto.append(gambar(utama.photoUrl, utama.name));
-    else foto.textContent = "Foto menu";
-    const info = el("div", "menu-info stack");
-    const alergen = utama ? (utama.allergies || []).map(a => a.name ?? a) : [];
-    const aksi = el("a", "btn btn-primary", `Pesan ${item.paket.name}`);
-    aksi.href = `checkout.html?paket=${encodeURIComponent(item.paket.id)}`;
-    info.append(
-        el("p", "label", `${item.jadwal.deliveryTime ? `${item.jadwal.deliveryTime.range} · ${item.jadwal.deliveryTime.time} · ` : ""}${item.paket.name}`),
-        el("h3", "t-h2", utama ? utama.name : "Menu belum diisi"),
-        el("p", "t-muted", utama && utama.description ? utama.description : ""),
-        el("p", "t-small t-muted", alergen.length ? `Mengandung: ${alergen.join(", ").toLowerCase()}` : "Tidak ada alergen terdaftar"),
-        aksi,
-    );
-    card.append(foto, info);
-    return card;
-}
-
-function tampilMenu(daftar, tanggal) {
-    const isi = daftar.filter(item => item.jadwal.date === tanggal);
-    $("#isiMenu").replaceChildren(...isi.map(kartuMenu));
-    document.querySelectorAll(".tab").forEach(tab => tab.setAttribute("aria-pressed", String(tab.dataset.tanggal === tanggal)));
-}
-
-function bangunTab(daftar) {
-    const tanggal = [...new Set(daftar.map(item => item.jadwal.date))].sort().slice(0, 5);
-    $("#tabs").replaceChildren(
-        ...tanggal.map(t => {
-            const d = new Date(`${t}T00:00:00+07:00`);
-            const tab = el("button", "tab");
-            tab.type = "button";
-            tab.dataset.tanggal = t;
-            tab.append(el("span", "t-small", d.toLocaleDateString("id-ID", { ...WIB, weekday: "short" })), el("strong", "t-h3", d.toLocaleDateString("id-ID", { ...WIB, day: "numeric" })));
-            tab.onclick = () => tampilMenu(daftar, t);
-            return tab;
-        }),
-    );
-    if (tanggal.length) tampilMenu(daftar, tanggal[0]);
-    $("#boxMenu").hidden = tanggal.length === 0;
-}
 
 async function muat() {
     $("#galatMuat").hidden = true;
     $("#kosongPaket").hidden = true;
+    $("#boxPaket").hidden = false;
     $("#paket").setAttribute("aria-busy", "true");
     let tersedia;
     try {
-        const { data } = await api("/packages", { auth: false });
-        tersedia = data.filter(p => p.isAvailable);
+        tersedia = await muatPaket();
     } catch {
         $("#paket").replaceChildren();
         $("#paket").removeAttribute("aria-busy");
@@ -175,18 +91,11 @@ async function muat() {
     $("#paket").replaceChildren(...tersedia.map(kartuPaket));
     $("#boxPaket").hidden = tersedia.length === 0;
     $("#kosongPaket").hidden = tersedia.length > 0;
-    // Satu paket yang gagal dimuat jadwalnya tidak boleh menghilangkan seluruh menu.
-    const hasil = await Promise.allSettled(
-        tersedia.map(async paket => {
-            const { data: jadwal } = await api(`/packages/${paket.id}/schedules`, { auth: false });
-            return jadwal.filter(j => j.isPublished).map(j => ({ paket, jadwal: j }));
-        }),
-    );
-    const daftar = hasil.flatMap(h => (h.status === "fulfilled" ? h.value : []));
-    if (hasil.some(h => h.status === "rejected")) $("#galatMuat").hidden = false;
-    const berfoto = daftar.map(item => (item.jadwal.menus || []).find(m => m.photoUrl)).find(Boolean);
-    if (berfoto) $("#heroFoto").replaceChildren(gambar(berfoto.photoUrl, berfoto.name));
-    bangunTab(daftar);
+    const { daftar, gagal } = await muatMenu(tersedia);
+    if (gagal) $("#galatMuat").hidden = false;
+    const berfoto = daftar.map(item => menuUtama(item.jadwal)).find(menu => menu.photoUrl);
+    if (berfoto) isiFoto($("#heroFoto"), berfoto.photoUrl, berfoto.name, "Foto menu");
+    pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya());
 }
 
 const user = currentUser();
