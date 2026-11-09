@@ -62,13 +62,14 @@ const store = {
 
 async function rawFetch(path, { method = "GET", body, auth = true } = {}) {
     const headers = {};
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    const form = body instanceof FormData;
+    if (body !== undefined && !form) headers["Content-Type"] = "application/json";
     if (auth && store.token) headers.Authorization = `Bearer ${store.token}`;
     const response = await fetch(API_BASE + path, {
         method,
         headers,
         credentials: "include",
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined || form ? body : JSON.stringify(body),
     });
     const json = await response.json().catch(() => null);
     return { response, json };
@@ -93,6 +94,14 @@ async function api(path, options = {}) {
     }
     if (!response.ok) throw new ApiError(response.status, json);
     return json;
+}
+
+async function upload(folder, file) {
+    const body = new FormData();
+    body.append("folder", folder);
+    body.append("file", file);
+    const { data } = await api("/files", { method: "POST", body });
+    return data;
 }
 
 async function login(identifier, password) {
