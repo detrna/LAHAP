@@ -291,6 +291,8 @@ a.pkg-photo{text-decoration:none}
 .footer{margin-top:var(--sp-7);padding:var(--sp-5) 0;border-top:1px solid var(--line);color:var(--muted)}
 .btn-sm{min-height:44px;padding:0 var(--sp-3)}
 .w-num{width:96px}
+.w-isi{width:140px}
+.hint--lega{margin-top:var(--sp-2)}
 .w-auto{width:auto}
 .flex-1{flex:1}
 
