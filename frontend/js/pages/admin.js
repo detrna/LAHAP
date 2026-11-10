@@ -1,5 +1,7 @@
 import "../layout/boot.js";
 import { api, fetchAll } from "../core/api.js";
+import { errorMessage } from "../core/errors.js";
+import { bukaWhatsapp } from "../features/whatsapp.js";
 import { $, el } from "../ui/dom.js";
 import { angka, formatTanggal, hariIni, rp, tambahHari } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
@@ -180,13 +182,19 @@ async function churn() {
                 if (!$("#tpl").value) return toast("Buat template pesan dulu.", "error");
                 wa.disabled = true;
                 try {
-                    const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, {
-                        method: "POST",
-                        body: { templateId: $("#tpl").value },
+                    const body = {
+                        templateId: $("#tpl").value,
+                        promoCode: $("#kode").value.trim().toUpperCase() || null,
+                    };
+                    await bukaWhatsapp(async () => {
+                        const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, {
+                            method: "POST",
+                            body,
+                        });
+                        return data.whatsappUrl;
                     });
-                    window.open(data.whatsappUrl, "_blank", "noopener");
                 } catch (error) {
-                    galat(error);
+                    toast(errorMessage(error), "error");
                 } finally {
                     wa.disabled = false;
                 }

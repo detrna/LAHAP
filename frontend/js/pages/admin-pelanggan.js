@@ -1,6 +1,7 @@
 import "../layout/boot.js";
 import { api, fetchAll } from "../core/api.js";
-import { issuesText } from "../core/errors.js";
+import { errorMessage, issuesText } from "../core/errors.js";
+import { bukaWhatsapp } from "../features/whatsapp.js";
 import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal } from "../ui/format.js";
 import { showIssues, tampilGalat } from "../ui/forms.js";
@@ -152,7 +153,7 @@ async function muatTemplate() {
                     muatTemplate().catch(galat);
                 } catch (error) {
                     hapus.disabled = false;
-                    galat(error);
+                    toast(errorMessage(error), "error");
                 }
             };
             kanan.append(ubah, hapus);
@@ -261,16 +262,19 @@ async function muatChurn() {
                     if (!$("#tpl").value) return toast("Buat template pesan dulu.", "error");
                     wa.disabled = true;
                     try {
-                        const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, {
-                            method: "POST",
-                            body: {
-                                templateId: $("#tpl").value,
-                                promoCode: $("#kode").value.trim().toUpperCase() || null,
-                            },
+                        const body = {
+                            templateId: $("#tpl").value,
+                            promoCode: $("#kode").value.trim().toUpperCase() || null,
+                        };
+                        await bukaWhatsapp(async () => {
+                            const { data } = await api(`/admin/retention/churn/${x.userId}/follow-up`, {
+                                method: "POST",
+                                body,
+                            });
+                            return data.whatsappUrl;
                         });
-                        window.open(data.whatsappUrl, "_blank", "noopener");
                     } catch (error) {
-                        galat(error);
+                        toast(errorMessage(error), "error");
                     } finally {
                         wa.disabled = false;
                     }
