@@ -32,6 +32,23 @@ function bukaHalaman() {
         document.body.prepend(skip);
     }
 
+    const brand = document.querySelector(".brand");
+    if (brand) {
+        const logo = document.createElement("img");
+        logo.className = "brand-logo";
+        logo.src = "img/logo-lahap.png";
+        logo.alt = "LAHAP";
+        logo.onerror = () => logo.replaceWith(document.createTextNode("LAHAP"));
+        brand.replaceChildren(logo);
+    }
+    if (!document.querySelector('link[rel="icon"]')) {
+        const ikon = document.createElement("link");
+        ikon.rel = "icon";
+        ikon.type = "image/png";
+        ikon.href = "img/logo-lahap.png";
+        document.head.append(ikon);
+    }
+
     const nav = document.querySelector(".nav");
     if (!nav) return true;
     const page = location.pathname.split("/").pop().toLowerCase() || "index.html";

@@ -13,6 +13,7 @@ const MENU = {
     dapur: [
         ["To-do Dapur", "dapur.html"],
         ["Stok Bahan", "dapur-stok.html"],
+        ["Kotak Masuk", "notifikasi.html"],
         ["Akun", "akun.html"],
     ],
     kurir: [
@@ -36,5 +37,5 @@ export function pasangNav(nav, key, page, user) {
             logout();
         });
     }
-    if (key === "pelanggan" || key === "kurir") pasangLonceng(nav.querySelector('a[href="notifikasi.html"]'), key);
+    if (key === "pelanggan" || key === "kurir" || key === "dapur") pasangLonceng(nav.querySelector('a[href="notifikasi.html"]'), key);
 }
