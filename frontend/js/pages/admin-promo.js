@@ -5,6 +5,7 @@ import { formatTanggal, rp, tanggalInput } from "../ui/format.js";
 import { pesanForm, tampilGalat, tampilPesan, tandaiField } from "../ui/forms.js";
 import { buatKodeAcak } from "../ui/kode-acak.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const tanggalISO = (tanggal, jam) => new Date(`${tanggal}T${jam}+07:00`).toISOString();
@@ -79,13 +80,33 @@ function barisPromo(promo) {
     ubah.onclick = () => bukaForm(promo);
     const saklar = el("button", "btn btn-secondary btn-sm", promo.isActive ? "Nonaktifkan" : "Aktifkan");
     saklar.type = "button";
-    saklar.onclick = () => kirim(`/admin/promo-codes/${promo.id}`, "PATCH", { isActive: !promo.isActive });
+    saklar.onclick = async () => {
+        if (promo.isActive) {
+            const ok = await peringatan({
+                judul: `Nonaktifkan kode ${promo.code}?`,
+                akibat: [
+                    "Pelanggan tidak bisa memakai kode ini lagi saat checkout.",
+                    "Pesanan yang sudah memakai kode ini tidak berubah.",
+                ],
+                tombol: "Ya, nonaktifkan",
+            });
+            if (!ok) return;
+        }
+        kirim(`/admin/promo-codes/${promo.id}`, "PATCH", { isActive: !promo.isActive });
+    };
     const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
     hapus.type = "button";
-    hapus.onclick = () => {
-        if (confirm(`Hapus kode ${promo.code}? Kode yang masih dipakai pesanan Pending tidak bisa dihapus.`)) {
-            kirim(`/admin/promo-codes/${promo.id}`, "DELETE");
-        }
+    hapus.onclick = async () => {
+        const ok = await peringatan({
+            judul: `Hapus kode ${promo.code}?`,
+            akibat: [
+                "Kode yang dihapus tidak bisa dikembalikan.",
+                "Kode yang masih dipakai pesanan Pending tidak bisa dihapus.",
+            ],
+            tombol: "Ya, hapus",
+            bahaya: true,
+        });
+        if (ok) kirim(`/admin/promo-codes/${promo.id}`, "DELETE");
     };
     kanan.append(ubah, saklar, hapus);
     baris.append(kiri, kanan);
@@ -126,7 +147,9 @@ $("#acak").onclick = () => {
     kode.value = buatKodeAcak();
     kode.setAttribute("aria-invalid", "false");
     $("#fKode").classList.remove("is-error");
-    $("#fKode").querySelectorAll(".error-msg").forEach(p => p.remove());
+    $("#fKode")
+        .querySelectorAll(".error-msg")
+        .forEach(p => p.remove());
     kode.focus();
 };
 $("#batal").onclick = () => {

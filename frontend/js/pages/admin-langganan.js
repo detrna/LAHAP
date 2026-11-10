@@ -8,6 +8,7 @@ import { formatTanggal, hariIni, rp, tambahHari } from "../ui/format.js";
 import { periksa, tampilGalat } from "../ui/forms.js";
 import { barisHarga } from "../ui/harga.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { badge, labelMetode } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
@@ -311,14 +312,17 @@ $("#ubah").onsubmit = async event => {
 $("#uKonfirmasi").onclick = async () => {
     const body = bodyUbah();
     if (body.isDelivery && Number($("#uKonfirmasi").dataset.amount) > 0) body.paymentMethod = $("#uBayar").value;
-    if (
-        !confirm(
+    const ok = await peringatan({
+        judul: body.isDelivery ? "Ubah pesanan ini ke diantar?" : "Ubah pesanan ini ke ambil sendiri?",
+        akibat: [
+            $("#uRingkas").textContent,
             body.isDelivery
-                ? "Ubah langganan ini ke diantar?"
-                : "Ubah langganan ini ke ambil sendiri? Berlaku langsung.",
-        )
-    )
-        return;
+                ? "Jika ada ongkir, slot baru pindah ke diantar setelah pelanggan membayar sebelum batas waktu."
+                : "Berlaku langsung. Kurir yang sudah ditugaskan dilepas dari slot ini.",
+        ],
+        tombol: "Ya, ubah",
+    });
+    if (!ok) return;
     $("#uKonfirmasi").disabled = true;
     galat(null);
     try {

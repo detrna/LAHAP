@@ -1,7 +1,7 @@
 import { api } from "../core/api.js";
 import { currentUser } from "../core/session.js";
 import { el, isiFoto, tautan, tautanLuar } from "../ui/dom.js";
-import { formatTanggal, hariIni, labelWaktu, rp, tambahHari } from "../ui/format.js";
+import { formatTanggal, formatWhatsapp, hariIni, labelWaktu, rp, tambahHari } from "../ui/format.js";
 import { pasangGeser } from "../ui/geser.js";
 import { muatBisnis } from "./bisnis.js";
 
@@ -50,12 +50,6 @@ export function tombolPesan(paket, label = "Pesan Paket", kelas = "btn btn-prima
     tombol.type = "button";
     tombol.disabled = true;
     return tombol;
-}
-
-function formatWhatsapp(nomor) {
-    const sisa = nomor.slice(2);
-    const kelompok = [sisa.slice(0, 3), ...(sisa.slice(3).match(/.{1,4}/g) || [])];
-    return `+${nomor.slice(0, 2)} ${kelompok.join("-")}`;
 }
 
 function hrefLokasi(bisnis) {

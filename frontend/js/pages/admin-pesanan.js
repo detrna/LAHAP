@@ -3,6 +3,7 @@ import { api, fetchAll } from "../core/api.js";
 import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal, hariIni } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 import { ALUR_AMBIL, ALUR_ANTAR, badge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
@@ -12,6 +13,7 @@ let pesanan = [],
     kurir = [],
     namaPaket = new Map();
 const penerima = o => (o.subscription && o.subscription.recipientName) || "Pelanggan";
+const namaKurir = id => (kurir.find(k => k.id === id) || {}).name || "kurir lama";
 const jam = o =>
     o.menuSchedule && o.menuSchedule.deliveryTime
         ? `${o.menuSchedule.deliveryTime.range} ${o.menuSchedule.deliveryTime.time}`
@@ -101,7 +103,32 @@ async function tugas(t) {
             const simpan = el("button", "btn btn-secondary btn-sm", "Tugaskan");
             simpan.type = "button";
             simpan.onclick = async () => {
-                if (!pilih.value && !confirm("Lepaskan kurir dari semua pengantaran di waktu makan ini?")) return;
+                const sudahAda = x.deliveryCount - x.unassignedCount;
+                const waktu = `${formatTanggal(x.date, "hari")} · ${x.deliveryTime.range} ${x.deliveryTime.time}`;
+                if (!pilih.value && sudahAda > 0) {
+                    const ok = await peringatan({
+                        judul: "Lepaskan kurir?",
+                        akibat: [
+                            `${sudahAda} pengantaran ${waktu} tidak punya kurir lagi.`,
+                            "Pengantaran itu hilang dari daftar tugas kurirnya.",
+                        ],
+                        tombol: "Ya, lepaskan",
+                        bahaya: true,
+                    });
+                    if (!ok) return;
+                } else if (pilih.value && sudahAda > 0 && !(x.courier && x.courier.id === pilih.value)) {
+                    const ok = await peringatan({
+                        judul: "Ganti kurir?",
+                        akibat: [
+                            `Semua ${x.deliveryCount} pengantaran ${waktu} dipindah ke ${namaKurir(pilih.value)}.`,
+                            x.courier
+                                ? `${x.courier.name} tidak lagi mengantar pesanan ini.`
+                                : "Kurir yang sudah ditugaskan di waktu makan ini diganti.",
+                        ],
+                        tombol: "Ya, ganti",
+                    });
+                    if (!ok) return;
+                }
                 simpan.disabled = true;
                 galat(null);
                 try {
@@ -141,6 +168,23 @@ function papan() {
             const kanan = el("div", "row");
             const pilih = pilihKurir(o.courierId, `Kurir untuk ${penerima(o)}`);
             pilih.onchange = async () => {
+                if (o.courierId) {
+                    const ok = await peringatan({
+                        judul: pilih.value ? "Ganti kurir?" : "Lepaskan kurir?",
+                        akibat: [
+                            pilih.value
+                                ? `Pengantaran ${penerima(o)} · ${jam(o)} dipindah dari ${namaKurir(o.courierId)} ke ${namaKurir(pilih.value)}.`
+                                : `Pengantaran ${penerima(o)} · ${jam(o)} tidak punya kurir lagi.`,
+                            `Pengantaran ini hilang dari daftar tugas ${namaKurir(o.courierId)}.`,
+                        ],
+                        tombol: pilih.value ? "Ya, ganti" : "Ya, lepaskan",
+                        bahaya: !pilih.value,
+                    });
+                    if (!ok) {
+                        pilih.value = o.courierId;
+                        return;
+                    }
+                }
                 pilih.disabled = true;
                 galat(null);
                 try {
@@ -183,6 +227,15 @@ function ambil() {
                 selesai.type = "button";
                 selesai.setAttribute("aria-label", `Tandai pesanan ${penerima(o)} sudah diambil`);
                 selesai.onclick = async () => {
+                    const ok = await peringatan({
+                        judul: "Tandai sudah diambil?",
+                        akibat: [
+                            `Pesanan ${penerima(o)} · ${jam(o)} menjadi Selesai.`,
+                            "Status tidak bisa dikembalikan.",
+                        ],
+                        tombol: "Ya, sudah diambil",
+                    });
+                    if (!ok) return;
                     selesai.disabled = true;
                     galat(null);
                     try {
@@ -343,6 +396,20 @@ $("#koreksi").onsubmit = async event => {
     alasan.setAttribute("aria-invalid", String(!ok));
     if (!ok) return alasan.focus();
     if (!$("#slot").value || !$("#st").value) return toast("Tidak ada slot untuk dikoreksi.", "error");
+    const o = pesanan.find(x => x.id === $("#slot").value);
+    const baru = $("#st").value;
+    const setuju = await peringatan({
+        judul: "Koreksi status slot?",
+        akibat: [
+            o ? `${penerima(o)} · ${jam(o)} · ${o.isDelivery ? "antar" : "ambil"}` : null,
+            `${o ? o.status : "Status sekarang"} → ${baru}`,
+            ...(baru === "Dilewati" ? ["Slot dilewati tanpa refund.", "Porsinya tidak lagi dihitung dapur."] : []),
+            "Status hanya bisa maju, jadi koreksi ini tidak bisa dibatalkan.",
+        ],
+        tombol: "Ya, koreksi",
+        bahaya: true,
+    });
+    if (!setuju) return;
     const tombol = $("#simpanKoreksi");
     tombol.disabled = true;
     galat(null);

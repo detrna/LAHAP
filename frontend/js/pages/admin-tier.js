@@ -4,6 +4,7 @@ import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { $, el } from "../ui/dom.js";
 import { rp } from "../ui/format.js";
 import { pesanForm, tampilGalat, tampilPesan, tandaiField } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 
 let dipilih = null;
 let fotoKey = null;
@@ -84,7 +85,18 @@ function barisTier(tier) {
     const hapus = el("button", "btn btn-danger btn-sm", "Hapus");
     hapus.type = "button";
     hapus.onclick = async () => {
-        if (!confirm(`Hapus tier ${tier.name}? Anggotanya dipindahkan ke tier yang sesuai.`)) return;
+        const ok = await peringatan({
+            judul: `Hapus tier ${tier.name}?`,
+            akibat: [
+                tier.memberCount
+                    ? `${tier.memberCount} anggotanya dipindah ke tier di bawahnya dengan masa berlaku yang sama, atau kehilangan keanggotaan jika tidak ada tier di bawahnya.`
+                    : "Tier ini belum punya anggota.",
+                "Tier yang dihapus tidak bisa dikembalikan.",
+            ],
+            tombol: "Ya, hapus",
+            bahaya: true,
+        });
+        if (!ok) return;
         tampilGalat($("#galat"), "");
         try {
             await api(`/admin/tiers/${tier.id}`, { method: "DELETE" });
@@ -96,6 +108,23 @@ function barisTier(tier) {
     kanan.append(ubah, hapus);
     baris.append(kiri, kanan);
     return baris;
+}
+
+function setujuiUbahTier(tier, { syarat, durasi, diskon }) {
+    const akibat = [];
+    if (syarat !== tier.requiredSubscriptionDays)
+        akibat.push(
+            `Syarat berubah dari ${tier.requiredSubscriptionDays} ke ${syarat} hari. Anggota sekarang tetap di tier ini sampai pesanan berbayar berikutnya.`,
+        );
+    if (diskon !== Number(tier.discountPercent))
+        akibat.push(
+            `Diskon berubah dari ${Number(tier.discountPercent)}% ke ${diskon}% untuk pesanan baru. Pesanan yang sudah dibayar tidak berubah.`,
+        );
+    if (durasi !== tier.durationDays)
+        akibat.push(`Masa berlaku ${durasi} hari baru dipakai saat keanggotaan diperpanjang.`);
+    if (!akibat.length) return true;
+    if (tier.memberCount) akibat.push(`Tier ini punya ${tier.memberCount} anggota aktif.`);
+    return peringatan({ judul: `Ubah aturan tier ${tier.name}?`, akibat, tombol: "Ya, simpan" });
 }
 
 async function muat() {
@@ -150,6 +179,7 @@ $("#form").addEventListener("submit", async event => {
         );
         return;
     }
+    if (dipilih && !(await setujuiUbahTier(dipilih, { syarat, durasi, diskon }))) return;
     tombol.disabled = true;
     tampilPesan($("#errForm"), "");
     try {

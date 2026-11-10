@@ -6,6 +6,7 @@ import { $, el } from "../ui/dom.js";
 import { hariIni } from "../ui/format.js";
 import { pilihBerkas } from "../ui/berkas.js";
 import { pesanForm, tampilGalat } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 import { badge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
@@ -91,7 +92,16 @@ function kartu(item) {
         form.hidden = !form.hidden;
     };
     selesai.onclick = async () => {
-        if (!confirm("Tandai pengantaran ini selesai?")) return;
+        const ok = await peringatan({
+            judul: "Tandai pengantaran selesai?",
+            akibat: [
+                `${item.recipientName} · ${item.deliveryAddress}`,
+                "Pesanan ini menjadi Selesai.",
+                "Status tidak bisa dikembalikan.",
+            ],
+            tombol: "Ya, selesai",
+        });
+        if (!ok) return;
         selesai.disabled = true;
         galat("");
         try {

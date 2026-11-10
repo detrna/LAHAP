@@ -6,6 +6,7 @@ import { currentUser } from "../core/session.js";
 import { $, el } from "../ui/dom.js";
 import { angka, formatTanggal, hariIni, tambahHari } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const jamMakan = t => `${t.range} · ${t.time}`;
@@ -99,13 +100,17 @@ function barisMenu(tanggal, m) {
     kanan.append(el("span", "t-h3", `${m.portions} porsi`));
     const siap = el("button", "btn btn-primary btn-sm", "Makanan Siap");
     siap.type = "button";
-    siap.onclick = () => {
-        if (
-            !confirm(
-                `Tandai ${m.portions} porsi "${m.name}" (${jamMakan(m.deliveryTime)}) siap? Porsi antar masuk daftar kurir, porsi ambil sendiri jadi Siap Diambil.`,
-            )
-        )
-            return;
+    siap.onclick = async () => {
+        const ok = await peringatan({
+            judul: `Tandai ${m.portions} porsi "${m.name}" siap?`,
+            akibat: [
+                jamMakan(m.deliveryTime),
+                "Porsi antar masuk daftar kurir, porsi ambil sendiri jadi Siap Diambil.",
+                "Status tidak bisa dikembalikan.",
+            ],
+            tombol: "Ya, makanan siap",
+        });
+        if (!ok) return;
         jalankan(
             async () =>
                 tandaiSiap({ menuScheduleId: await idJadwal(m, tanggal), usesAlternativeMenu: m.isAlternative }),

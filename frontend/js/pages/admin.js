@@ -4,7 +4,8 @@ import { $, el } from "../ui/dom.js";
 import { angka, formatTanggal, hariIni, rp, tambahHari } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
 import { barisHarga } from "../ui/harga.js";
-import { labelMetode } from "../ui/status.js";
+import { peringatan } from "../ui/peringatan.js";
+import { labelMetode, peringatanTunai } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
@@ -124,7 +125,10 @@ async function pembayaran() {
             const verif = el("button", "btn btn-primary btn-sm", "Verifikasi");
             verif.type = "button";
             verif.onclick = async () => {
-                if (!confirm("Tandai pembayaran tunai ini sudah diterima?")) return;
+                const siapa = s
+                    ? `${s.user ? s.user.name : s.recipientName} · ${namaPaket.get(s.packageId) || "Paket"}`
+                    : null;
+                if (!(await peringatan(peringatanTunai(p, siapa)))) return;
                 verif.disabled = true;
                 try {
                     await api(`/admin/payments/${p.id}/verify-cash`, { method: "POST" });

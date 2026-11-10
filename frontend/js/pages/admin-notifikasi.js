@@ -4,6 +4,7 @@ import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal, hariIni } from "../ui/format.js";
 import { periksa, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const CAKUPAN = { GLOBAL: "Semua pelanggan", PACKAGE: "Satu paket", SCHEDULE: "Satu hari layanan" };
@@ -33,7 +34,13 @@ async function muatDaftar() {
                 hapus.type = "button";
                 hapus.setAttribute("aria-label", `Hapus pengumuman ${a.title}`);
                 hapus.onclick = async () => {
-                    if (!confirm("Hapus pengumuman ini?")) return;
+                    const ok = await peringatan({
+                        judul: `Hapus pengumuman "${a.title}"?`,
+                        akibat: ["Pengumuman hilang dari daftar pengumuman pelanggan dan tidak bisa dikembalikan."],
+                        tombol: "Ya, hapus",
+                        bahaya: true,
+                    });
+                    if (!ok) return;
                     hapus.disabled = true;
                     try {
                         await api(`/admin/announcements/${a.id}`, { method: "DELETE" });
@@ -131,6 +138,19 @@ $("#ubah").onsubmit = async event => {
         packageId: scope === "PACKAGE" ? $("#upk").value : null,
         menuScheduleId: scope === "SCHEDULE" ? $("#ujd").value : null,
     };
+    const ok = await peringatan({
+        judul: "Ubah pengumuman yang sudah terkirim?",
+        akibat: [
+            "Pelanggan langsung melihat teks baru di daftar pengumuman, tanpa notifikasi ulang.",
+            scope !== sedangUbah.scope ||
+            body.packageId !== (sedangUbah.packageId ?? null) ||
+            body.menuScheduleId !== (sedangUbah.menuScheduleId ?? null)
+                ? "Penerimanya berubah, jadi sebagian pelanggan tidak lagi melihat pengumuman ini."
+                : null,
+        ],
+        tombol: "Ya, simpan",
+    });
+    if (!ok) return;
     $("#simpanUbah").disabled = true;
     galat(null);
     try {
@@ -191,8 +211,22 @@ $("#umum").onsubmit = async event => {
         ])
     )
         return;
-    const label = $("#c").selectedOptions[0].textContent.toLowerCase();
-    if (!confirm(`Kirim pengumuman ini ke: ${label}?`)) return;
+    const teksPilihan = id => ($(id).selectedOptions[0] || {}).textContent || "";
+    const penerima =
+        cakupan === "PACKAGE"
+            ? `pelanggan aktif paket ${teksPilihan("#pk")}`
+            : butuhJadwal
+              ? `pelanggan yang punya pesanan di ${teksPilihan("#jd")}`
+              : "semua pelanggan aktif";
+    const ok = await peringatan({
+        judul: "Kirim pengumuman?",
+        akibat: [
+            `Dikirim ke ${penerima} sekaligus.`,
+            "Pengumuman yang sudah terkirim tidak bisa ditarik. Mengubah atau menghapusnya tidak mengirim notifikasi ulang.",
+        ],
+        tombol: "Ya, kirim",
+    });
+    if (!ok) return;
     const body = { title: $("#j2").value.trim(), body: $("#b2").value.trim(), target: cakupan };
     if (cakupan === "PACKAGE") body.packageId = $("#pk").value;
     if (butuhJadwal) body.menuScheduleId = $("#jd").value;

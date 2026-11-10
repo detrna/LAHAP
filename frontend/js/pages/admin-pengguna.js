@@ -1,10 +1,12 @@
 import "../layout/boot.js";
 import { ApiError, api } from "../core/api.js";
+import { currentUser } from "../core/session.js";
 import { pilihAlergi } from "../features/alergi.js";
 import { pasangPeta, pastikanLeaflet } from "../features/peta.js";
 import { $, el } from "../ui/dom.js";
 import { periksa, pesanForm, showIssues, tampilGalat, tandaiField } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const PERAN = { ADMIN: "Admin", KITCHEN: "Dapur", COURIER: "Kurir", CUSTOMER: "Pelanggan" };
@@ -22,6 +24,9 @@ const FIELD = {
 };
 const EMAIL_VALID = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
+const saya = () => (currentUser() || {}).id;
+const TUGAS_KURIR =
+    "Pengantaran yang sudah ditugaskan ke kurir ini tetap atas namanya sampai ditugaskan ulang di halaman Pesanan.";
 const alergiPengguna = pilihAlergi($("#alergi"));
 let sedangUbah = null,
     ke = 0,
@@ -65,6 +70,10 @@ async function muat() {
                     ubah.disabled = false;
                 };
                 kanan.append(ubah);
+                if (u.id === saya()) {
+                    baris.append(kiri, kanan);
+                    return baris;
+                }
                 const toggle = el(
                     "button",
                     `btn btn-sm ${u.isActive ? "btn-danger" : "btn-secondary"}`,
@@ -73,7 +82,18 @@ async function muat() {
                 toggle.type = "button";
                 toggle.setAttribute("aria-label", `${toggle.textContent} ${u.name}`);
                 toggle.onclick = async () => {
-                    if (u.isActive && !confirm("Nonaktifkan pengguna ini? Dia tidak bisa masuk lagi.")) return;
+                    if (u.isActive) {
+                        const ok = await peringatan({
+                            judul: `Nonaktifkan ${u.name || u.phone}?`,
+                            akibat: [
+                                "Pengguna ini langsung keluar dari semua perangkat dan tidak bisa masuk lagi.",
+                                u.role === "COURIER" ? TUGAS_KURIR : null,
+                            ],
+                            tombol: "Ya, nonaktifkan",
+                            bahaya: true,
+                        });
+                        if (!ok) return;
+                    }
                     toggle.disabled = true;
                     galat(null);
                     try {
@@ -192,6 +212,34 @@ function isiProfil(body, baru) {
     body.allergyIds = alergi;
 }
 
+function setujuiUbahAkun(u, body) {
+    const diriSendiri = u.id === saya();
+    const ganti = body.role !== u.role;
+    if (!ganti && !body.password) return true;
+    const nama = u.name || u.phone;
+    const akibat = [];
+    if (ganti) {
+        akibat.push(
+            `Peran ${diriSendiri ? "kamu" : nama} berubah dari ${PERAN[u.role] || u.role} ke ${PERAN[body.role] || body.role}.`,
+        );
+        if (diriSendiri && u.role === "ADMIN")
+            akibat.push("Kamu kehilangan akses ke halaman admin setelah sesimu diperbarui.");
+        if (u.role === "COURIER") akibat.push(TUGAS_KURIR);
+    }
+    if (body.password)
+        akibat.push(
+            diriSendiri
+                ? "Kamu keluar dari semua perangkat, termasuk yang ini, dan harus masuk lagi dengan password baru."
+                : `${nama} keluar dari semua perangkat dan harus masuk lagi dengan password baru.`,
+        );
+    return peringatan({
+        judul: diriSendiri ? "Ubah akunmu sendiri?" : `Ubah akun ${nama}?`,
+        akibat,
+        tombol: "Ya, simpan",
+        bahaya: diriSendiri || (ganti && u.role === "ADMIN"),
+    });
+}
+
 $("#tambah").onclick = () => bukaForm(null);
 $("#batal").onclick = () => {
     $("#form").hidden = true;
@@ -228,6 +276,7 @@ $("#form").onsubmit = async event => {
     if (sedangUbah) body.email = email || null;
     else if (email) body.email = email;
     if (body.role === "CUSTOMER") isiProfil(body, !sedangUbah);
+    if (sedangUbah && !(await setujuiUbahAkun(sedangUbah, body))) return;
     $("#simpan").disabled = true;
     galat(null);
     try {

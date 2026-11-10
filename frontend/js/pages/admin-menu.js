@@ -5,6 +5,7 @@ import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
 import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { askChangeReason, needsChangeReason, periksa, showIssues, tampilGalat, tampilPesan } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
@@ -111,7 +112,16 @@ function barisMenu(m) {
     hapus.type = "button";
     hapus.setAttribute("aria-label", `Hapus ${m.name}`);
     hapus.onclick = async () => {
-        if (!confirm(`Hapus menu "${m.name}"? Menu yang masih dipakai jadwal tidak bisa dihapus.`)) return;
+        const ok = await peringatan({
+            judul: `Hapus menu "${m.name}"?`,
+            akibat: [
+                "Menu yang dihapus tidak bisa dikembalikan.",
+                "Menu yang masih dipakai jadwal tidak bisa dihapus.",
+            ],
+            tombol: "Ya, hapus",
+            bahaya: true,
+        });
+        if (!ok) return;
         hapus.disabled = true;
         galat(null);
         try {

@@ -5,6 +5,7 @@ import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal } from "../ui/format.js";
 import { showIssues, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
@@ -137,7 +138,13 @@ async function muatTemplate() {
             hapus.type = "button";
             hapus.setAttribute("aria-label", `Hapus template ${t.name}`);
             hapus.onclick = async () => {
-                if (!confirm(`Hapus template "${t.name}"?`)) return;
+                const ok = await peringatan({
+                    judul: `Hapus template "${t.name}"?`,
+                    akibat: ["Template yang dihapus tidak bisa dikembalikan."],
+                    tombol: "Ya, hapus",
+                    bahaya: true,
+                });
+                if (!ok) return;
                 hapus.disabled = true;
                 try {
                     await api(`/admin/message-templates/${t.id}`, { method: "DELETE" });

@@ -1,4 +1,5 @@
 import { el } from "./dom.js";
+import { rp } from "./format.js";
 
 export const BADGE = {
     Terjadwal: "badge--prepared",
@@ -47,3 +48,17 @@ export function labelMetode(method) {
 }
 
 export const labelJenisBayar = type => (type === "SUBSCRIPTION" ? "Pembayaran pesanan" : "Tambah ongkir");
+
+export function peringatanTunai(p, siapa) {
+    return {
+        judul: `Terima tunai ${rp(p.amount)}?`,
+        akibat: [
+            siapa,
+            p.type === "DELIVERY_SERVICE_UPGRADE"
+                ? "Pembayaran upgrade ditandai lunas dan slotnya pindah ke diantar."
+                : "Pesanan ditandai lunas, slotnya masuk jadwal dapur, dan tier pelanggan dihitung ulang.",
+            "Verifikasi tidak bisa dibatalkan, jadi pastikan uangnya sudah diterima.",
+        ],
+        tombol: "Ya, sudah diterima",
+    };
+}

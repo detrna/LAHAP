@@ -33,3 +33,9 @@ export const jam = nilai => new Date(nilai).toLocaleTimeString("id-ID", { ...WIB
 export const tanggalInput = nilai => (nilai ? new Date(nilai).toLocaleDateString("sv-SE", WIB) : "");
 
 export const labelWaktu = waktu => (waktu ? `${waktu.range} ${waktu.time}` : "");
+
+export function formatWhatsapp(nomor) {
+    const sisa = nomor.slice(2);
+    const kelompok = [sisa.slice(0, 3), ...(sisa.slice(3).match(/.{1,4}/g) || [])];
+    return `+${nomor.slice(0, 2)} ${kelompok.join("-")}`;
+}

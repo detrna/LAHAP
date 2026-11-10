@@ -4,6 +4,7 @@ import { $, el } from "../ui/dom.js";
 import { formatTanggal, rp, tanggalInput } from "../ui/format.js";
 import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { askChangeReason, needsChangeReason, periksa, tampilGalat } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 import { setBadge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
@@ -55,8 +56,19 @@ function gambar() {
                     if (changeReason) throw error;
                 }
             };
-            toggle.onclick = () => {
-                if (p.isActive && !confirm("Nonaktifkan paket ini? Pesanan yang sudah ada tidak terpengaruh.")) return;
+            toggle.onclick = async () => {
+                if (p.isActive) {
+                    const ok = await peringatan({
+                        judul: `Nonaktifkan paket ${p.name}?`,
+                        akibat: [
+                            "Paket hilang dari katalog dan tidak bisa dipesan lagi.",
+                            "Pesanan yang sudah dibayar tetap disiapkan dan diantar.",
+                        ],
+                        tombol: "Ya, nonaktifkan",
+                        bahaya: true,
+                    });
+                    if (!ok) return;
+                }
                 toggle.disabled = true;
                 galat(null);
                 ganti();

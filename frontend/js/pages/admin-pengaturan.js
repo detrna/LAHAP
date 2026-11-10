@@ -4,11 +4,13 @@ import { issuesText } from "../core/errors.js";
 import { gambarJangkauan } from "../features/jangkauan.js";
 import { pasangPeta } from "../features/peta.js";
 import { $ } from "../ui/dom.js";
-import { formatTanggal } from "../ui/format.js";
+import { angka, formatTanggal, formatWhatsapp, rp } from "../ui/format.js";
 import { periksa, showIssues, tampilGalat } from "../ui/forms.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
+let tersimpan = null;
 const peta = pasangPeta($("#peta"), {
     label: "Peta lokasi dapur. Ketuk untuk memindahkan pin.",
     petunjuk: "Ketuk peta, cari alamat, atau pakai lokasi Anda untuk menaruh pin dapur.",
@@ -39,6 +41,7 @@ const FIELDS = {
 };
 
 function isi(s) {
+    tersimpan = s;
     $("#nama").value = s.name;
     $("#wa").value = s.whatsappNumber;
     $("#alamat").value = s.address;
@@ -63,6 +66,57 @@ async function muat() {
     } finally {
         $("#form").removeAttribute("aria-busy");
     }
+}
+
+const nomorWa = hp => {
+    const digit = hp.replace(/\D/g, "");
+    if (digit.startsWith("62")) return digit;
+    if (digit.startsWith("0")) return `62${digit.slice(1)}`;
+    return `62${digit}`;
+};
+
+function akibatPengaturan(lama, baru) {
+    const beda = key => Number(lama[key]) !== Number(baru[key]);
+    const akibat = [];
+    if (lama.name !== baru.name)
+        akibat.push(
+            `Nama usaha berubah dari "${lama.name}" ke "${baru.name}" dan langsung terlihat oleh semua pelanggan.`,
+        );
+    const wa = nomorWa(baru.whatsappNumber);
+    if (lama.whatsappNumber !== wa)
+        akibat.push(
+            `Nomor WhatsApp bantuan yang dilihat pelanggan berganti ke ${formatWhatsapp(wa)}. Pastikan nomornya benar.`,
+        );
+    if (lama.address !== baru.address || beda("latitude") || beda("longitude"))
+        akibat.push(
+            "Lokasi ambil berubah untuk semua pesanan, termasuk yang sudah dibayar. Pelanggan ambil sendiri akan diarahkan ke alamat baru, dan ongkir pesanan baru dihitung dari lokasi baru.",
+        );
+    const tarif = [];
+    if (beda("deliveryFreeRadius")) tarif.push(`gratis ongkir ${angka(baru.deliveryFreeRadius)} km`);
+    if (beda("deliveryMaxDistance")) tarif.push(`jarak maksimal ${angka(baru.deliveryMaxDistance)} km`);
+    if (beda("deliveryPricePerKm")) tarif.push(`${rp(baru.deliveryPricePerKm)} per km`);
+    if (tarif.length) {
+        akibat.push(
+            `Tarif antar baru (${tarif.join(", ")}) hanya berlaku untuk pesanan baru. Pesanan lama tetap memakai ongkir saat checkout.`,
+        );
+        if (Number(baru.deliveryMaxDistance) < Number(lama.deliveryMaxDistance))
+            akibat.push("Pelanggan di luar jarak maksimal yang baru tidak bisa memilih diantar lagi.");
+    }
+    if (beda("paymentTimeoutMinutes")) {
+        akibat.push(
+            `Batas bayar menjadi ${baru.paymentTimeoutMinutes} menit dan langsung berlaku untuk pesanan yang masih Pending.`,
+        );
+        if (Number(baru.paymentTimeoutMinutes) < Number(lama.paymentTimeoutMinutes))
+            akibat.push("Pesanan Pending yang sudah lewat batas baru akan kedaluwarsa dalam satu menit.");
+    }
+    return akibat;
+}
+
+function setujuiPengaturan(baru) {
+    if (!tersimpan) return true;
+    const akibat = akibatPengaturan(tersimpan, baru);
+    if (!akibat.length) return true;
+    return peringatan({ judul: "Simpan perubahan usaha?", akibat, tombol: "Ya, simpan" });
 }
 
 const ada = id => $(`#${id}`).value.trim() !== "";
@@ -100,6 +154,7 @@ $("#form").onsubmit = async event => {
         deliveryPricePerKm: Number($("#r3").value),
         paymentTimeoutMinutes: batas,
     };
+    if (!(await setujuiPengaturan(body))) return;
     $("#simpan").disabled = true;
     galat(null);
     try {

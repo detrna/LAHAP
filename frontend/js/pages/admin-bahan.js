@@ -7,6 +7,7 @@ import { angka, hariIni, tambahHari } from "../ui/format.js";
 import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { showIssues, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { toast } from "../ui/toast.js";
 
 const SATUAN = ["kg", "gram", "liter", "ml", "butir", "ikat"];
@@ -172,6 +173,7 @@ $("#formUbah").onsubmit = async event => {
         return;
     }
     const body = { name, unit: $("#uu").value, minimumThreshold: min, allergyIds: alergenUbah.nilai() };
+    if (!(await setujuiUbahBahan(sedangUbah, body))) return;
     $("#simpanUbah").disabled = true;
     galat(null);
     try {
@@ -197,9 +199,37 @@ $("#formUbah").onsubmit = async event => {
     }
 };
 
+function setujuiUbahBahan(b, body) {
+    const namaAlergen = ids =>
+        ids
+            .map(id => (alergi.find(a => a.id === id) || {}).name)
+            .filter(Boolean)
+            .join(", ") || "tidak ada";
+    const lama = (b.allergies || []).map(a => a.id);
+    const alergenBerubah = lama.length !== body.allergyIds.length || lama.some(id => !body.allergyIds.includes(id));
+    const akibat = [];
+    if (alergenBerubah)
+        akibat.push(
+            `Alergen ${b.name} berubah dari ${namaAlergen(lama)} ke ${namaAlergen(body.allergyIds)}.`,
+            "Alergen semua menu yang memakai bahan ini ikut berubah, termasuk peringatan alergi saat checkout dan daftar khusus dapur untuk pesanan yang sudah dibayar.",
+        );
+    if (b.unit !== body.unit)
+        akibat.push(
+            `Satuan berubah dari ${b.unit} ke ${body.unit}. Jumlah stok dan takaran resep tidak dikonversi, jadi periksa lagi resep yang memakai bahan ini.`,
+        );
+    if (!akibat.length) return true;
+    return peringatan({ judul: `Simpan perubahan ${b.name}?`, akibat, tombol: "Ya, simpan" });
+}
+
 $("#hapus").onclick = async () => {
-    if (!terpilih.size || !confirm(`Hapus ${terpilih.size} bahan? Bahan yang dipakai resep menu tidak bisa dihapus.`))
-        return;
+    if (!terpilih.size) return;
+    const ok = await peringatan({
+        judul: `Hapus ${terpilih.size} bahan?`,
+        akibat: ["Bahan yang dihapus tidak bisa dikembalikan.", "Bahan yang dipakai resep menu tidak bisa dihapus."],
+        tombol: "Ya, hapus",
+        bahaya: true,
+    });
+    if (!ok) return;
     $("#hapus").disabled = true;
     galat(null);
     try {
@@ -370,6 +400,15 @@ $("#simpanStruk").onclick = async () => {
         items.push({ id: x.id, stock: nilai });
     }
     if (!items.length) return toast("Centang minimal satu bahan.", "error");
+    const ok = await peringatan({
+        judul: `Perbarui stok ${items.length} bahan?`,
+        akibat: [
+            "Stok bahan yang dicentang diganti dengan angka stok baru di daftar ini.",
+            "Perubahan tercatat di riwayat stok setiap bahan.",
+        ],
+        tombol: "Ya, perbarui stok",
+    });
+    if (!ok) return;
     $("#simpanStruk").disabled = true;
     galat(null);
     try {
@@ -403,6 +442,14 @@ function chipNama(a) {
             sibuk = true;
             const baru = input.value.trim();
             if (!baru || baru === a.name) return muatAlergen();
+            const ok = await peringatan({
+                judul: `Ganti nama alergen "${a.name}"?`,
+                akibat: [
+                    `Nama baru "${baru}" langsung muncul di semua menu, bahan, dan profil pelanggan yang memakai alergen ini.`,
+                ],
+                tombol: "Ya, ganti nama",
+            });
+            if (!ok) return muatAlergen();
             try {
                 await api(`/admin/allergies/${a.id}`, { method: "PATCH", body: { name: baru } });
                 galat(null);
@@ -429,7 +476,13 @@ function chipNama(a) {
     hapus.type = "button";
     hapus.setAttribute("aria-label", `Hapus alergen ${a.name}`);
     hapus.onclick = async () => {
-        if (!confirm(`Hapus alergen "${a.name}"?`)) return;
+        const ok = await peringatan({
+            judul: `Hapus alergen "${a.name}"?`,
+            akibat: ["Alergen ini hilang dari semua bahan dan profil pelanggan yang memakainya."],
+            tombol: "Ya, hapus",
+            bahaya: true,
+        });
+        if (!ok) return;
         try {
             await api(`/admin/allergies/${a.id}`, { method: "DELETE" });
             toast("Alergen dihapus.");

@@ -5,6 +5,7 @@ import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal, hariIni, tambahHari } from "../ui/format.js";
 import { askChangeReason, needsChangeReason, showIssues, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
+import { peringatan } from "../ui/peringatan.js";
 import { setBadge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
@@ -16,6 +17,21 @@ let paket = [],
     terpilih = new Set(),
     sedangUbah = null,
     nomor = 0;
+const AKIBAT_TERBIT = [
+    "Pelanggan langsung bisa melihat dan memesan jadwal ini.",
+    "Setelah ada yang memesan, jadwal tidak bisa dibatalkan terbitnya atau dihapus.",
+];
+const tanyaTerbit = judul => peringatan({ judul, akibat: AKIBAT_TERBIT, tombol: "Ya, terbitkan" });
+const tanyaBatalTerbit = judul =>
+    peringatan({
+        judul,
+        akibat: [
+            "Jadwal kembali ke draft dan tidak terlihat oleh pelanggan.",
+            "Jadwal yang sudah punya pesanan tidak bisa dibatalkan terbitnya.",
+        ],
+        tombol: "Ya, batalkan terbit",
+        bahaya: true,
+    });
 const namaPaket = id => (paket.find(p => p.id === id) || {}).name || "Paket";
 const waktuPaket = id => (paket.find(p => p.id === id) || {}).deliveryTimes || [];
 const utamaOpsi = () => menus.filter(m => !m.isAlternative).map(m => opsi(m.id, m.name));
@@ -121,7 +137,11 @@ function baris(j) {
     );
     tombol.type = "button";
     tombol.onclick = async () => {
-        if (j.isPublished && !confirm("Batalkan terbit jadwal ini? Hanya bisa jika belum ada pesanan.")) return;
+        const label = `${formatTanggal(j.date, "hari")} · ${j.deliveryTime.range} ${j.deliveryTime.time} · ${namaPaket(j.packageId)}`;
+        const ok = j.isPublished
+            ? await tanyaBatalTerbit(`Batalkan terbit ${label}?`)
+            : await tanyaTerbit(`Terbitkan ${label}?`);
+        if (!ok) return;
         tombol.disabled = true;
         galat(null);
         try {
@@ -208,6 +228,7 @@ async function simpan(terbit) {
         input.focus();
         return toast("Lengkapi tanggal, waktu makan, dan menu utama di setiap baris.", "error");
     }
+    if (terbit && !(await tanyaTerbit(`Simpan dan terbitkan ${items.length} jadwal?`))) return;
     galat(null);
     document.querySelectorAll("#form > .row button").forEach(b => (b.disabled = true));
     try {
@@ -289,11 +310,11 @@ async function terbitRentang(publish) {
     $("#rSampai").closest(".field").classList.toggle("is-error", !ok);
     $("#rSampai").closest(".field").querySelector(".error-msg").hidden = ok;
     if (!ok) return $("#rDari").focus();
-    if (
-        !publish &&
-        !confirm("Batalkan terbit semua jadwal di rentang ini? Jadwal yang sudah punya pesanan tidak bisa dibatalkan.")
-    )
-        return;
+    const rentang = `${namaPaket($("#rPk").value)} · ${formatTanggal($("#rDari").value)} sampai ${formatTanggal($("#rSampai").value)}`;
+    const setuju = publish
+        ? await tanyaTerbit(`Terbitkan semua jadwal ${rentang}?`)
+        : await tanyaBatalTerbit(`Batalkan terbit semua jadwal ${rentang}?`);
+    if (!setuju) return;
     galat(null);
     try {
         const { data } = await api("/admin/menu-schedules/publish", {
@@ -313,11 +334,14 @@ $("#rentang").onsubmit = event => {
 $("#batalRentang").onclick = () => terbitRentang(false);
 
 $("#hapus").onclick = async () => {
-    if (
-        !terpilih.size ||
-        !confirm(`Hapus ${terpilih.size} jadwal? Jadwal yang sudah punya pesanan tidak bisa dihapus.`)
-    )
-        return;
+    if (!terpilih.size) return;
+    const ok = await peringatan({
+        judul: `Hapus ${terpilih.size} jadwal?`,
+        akibat: ["Jadwal yang dihapus tidak bisa dikembalikan.", "Jadwal yang sudah punya pesanan tidak bisa dihapus."],
+        tombol: "Ya, hapus",
+        bahaya: true,
+    });
+    if (!ok) return;
     $("#hapus").disabled = true;
     galat(null);
     try {

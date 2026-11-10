@@ -4,7 +4,8 @@ import { $, el } from "../ui/dom.js";
 import { formatTanggal, rp } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
-import { BADGE, labelMetode } from "../ui/status.js";
+import { peringatan } from "../ui/peringatan.js";
+import { BADGE, labelMetode, peringatanTunai } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
@@ -56,7 +57,7 @@ function baris(p, perluRefund) {
         const b = el("button", `btn ${kelas} btn-sm`, label);
         b.type = "button";
         b.onclick = async () => {
-            if (!confirm(tanya)) return;
+            if (!(await peringatan(tanya))) return;
             b.disabled = true;
             galat(null);
             try {
@@ -75,7 +76,16 @@ function baris(p, perluRefund) {
             "Konfirmasi Refund",
             "btn-secondary",
             `/admin/payments/${p.id}/confirm-refund`,
-            "Refund sudah dikirim ke pelanggan?",
+            {
+                judul: `Refund ${rp(p.amount)} sudah dikirim?`,
+                akibat: [
+                    nama(p),
+                    "Pembayaran ditandai Refund dan tidak bisa dikembalikan.",
+                    "Pastikan uangnya sudah benar-benar diterima pelanggan.",
+                ],
+                tombol: "Ya, sudah dikirim",
+                bahaya: true,
+            },
             "Refund dikonfirmasi.",
         );
     else if (p.status === "Pending" && p.method === "CASH")
@@ -83,7 +93,7 @@ function baris(p, perluRefund) {
             "Verifikasi Tunai",
             "btn-primary",
             `/admin/payments/${p.id}/verify-cash`,
-            "Tandai pembayaran tunai ini sudah diterima?",
+            peringatanTunai(p, nama(p)),
             "Pembayaran diverifikasi.",
         );
     row.append(kiri, kanan);
@@ -144,7 +154,17 @@ function barisUbah(c) {
     const b = el("button", "btn btn-secondary btn-sm", "Konfirmasi Refund");
     b.type = "button";
     b.onclick = async () => {
-        if (!confirm(`Refund ${rp(c.amount)} sudah dikirim ke pelanggan?`)) return;
+        const ok = await peringatan({
+            judul: `Refund ${rp(c.amount)} sudah dikirim?`,
+            akibat: [
+                nama(c),
+                "Refund ini ditandai selesai dan tidak bisa dikembalikan.",
+                "Pastikan uangnya sudah benar-benar diterima pelanggan.",
+            ],
+            tombol: "Ya, sudah dikirim",
+            bahaya: true,
+        });
+        if (!ok) return;
         b.disabled = true;
         galat(null);
         try {
