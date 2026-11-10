@@ -3,7 +3,9 @@ import { api, ApiError } from "../core/api.js";
 import { $, el } from "../ui/dom.js";
 import { formatTanggal, rp, tanggalInput } from "../ui/format.js";
 import { pesanForm, tampilGalat, tampilPesan, tandaiField } from "../ui/forms.js";
+import { buatKodeAcak } from "../ui/kode-acak.js";
 import { renderPager } from "../ui/pager.js";
+import { toast } from "../ui/toast.js";
 
 const tanggalISO = (tanggal, jam) => new Date(`${tanggal}T${jam}+07:00`).toISOString();
 let dipilih = null;
@@ -42,6 +44,7 @@ function bukaForm(promo) {
     $("#judulForm").textContent = promo ? "Ubah kode promo" : "Tambah kode promo";
     $("#kode").value = promo ? promo.code : "";
     $("#kode").disabled = Boolean(promo);
+    $("#acak").disabled = Boolean(promo);
     $("#jenis").value = promo ? promo.discountType : "Persen";
     $("#nilai").value = promo ? promo.discountValue : "";
     $("#minimal").value = promo ? promo.minPurchase : 0;
@@ -118,6 +121,14 @@ async function muat() {
 }
 
 $("#tambah").onclick = () => bukaForm(null);
+$("#acak").onclick = () => {
+    const kode = $("#kode");
+    kode.value = buatKodeAcak();
+    kode.setAttribute("aria-invalid", "false");
+    $("#fKode").classList.remove("is-error");
+    $("#fKode").querySelectorAll(".error-msg").forEach(p => p.remove());
+    kode.focus();
+};
 $("#batal").onclick = () => {
     $("#form").hidden = true;
 };
@@ -148,10 +159,11 @@ $("#form").addEventListener("submit", async event => {
     tombol.disabled = true;
     tampilPesan($("#errForm"), "");
     try {
-        await api(dipilih ? `/admin/promo-codes/${dipilih.id}` : "/admin/promo-codes", {
+        const { data } = await api(dipilih ? `/admin/promo-codes/${dipilih.id}` : "/admin/promo-codes", {
             method: dipilih ? "PATCH" : "POST",
             body,
         });
+        if (!dipilih) toast(`Kode ${data.code} dibuat.`, "success");
         $("#form").hidden = true;
         await muat();
     } catch (error) {

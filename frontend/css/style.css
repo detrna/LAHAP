@@ -126,6 +126,8 @@ a.pkg-photo{text-decoration:none}
 .btn-primary:hover{background:var(--orange-800)}
 .btn-secondary{background:var(--white);border-color:var(--orange-700);color:var(--orange-700)}
 .btn-secondary:hover{background:var(--orange-50)}
+.btn-ikon{width:44px;padding:0;flex:0 0 auto}
+.btn-ikon svg{width:20px;height:20px}
 .btn-ghost{background:none;color:var(--orange-700)}
 .btn-ghost:hover{background:var(--orange-50)}
 .btn-danger{background:var(--white);border-color:var(--danger);color:var(--danger)}
@@ -252,6 +254,9 @@ a.pkg-photo{text-decoration:none}
 .map-legend{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin:0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
 .map-legend li{display:inline-flex;align-items:center;gap:var(--sp-2)}
 .map-legend .swatch{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;flex:none}
+.map-legend .swatch--dashed{border-style:dashed}
+.map-pin-kitchen{display:grid;place-items:center}
+.map-pin-kitchen-badge{width:28px;height:28px;border-radius:50%;background:var(--orange-700);color:var(--white);display:grid;place-items:center;font-size:14px;box-shadow:var(--shadow-pop);border:2px solid var(--white)}
 
 /* Halaman Langganan Saya */
 .dash{display:grid;gap:var(--sp-5)}

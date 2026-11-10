@@ -28,8 +28,13 @@
                 <div class="alert alert--error" id="errForm" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
                 <div class="field" id="fKode">
                     <label for="kode">Kode</label>
-                    <input class="input" id="kode" maxlength="50" autocapitalize="characters" />
-                    <p class="hint">Kosongkan untuk dibuatkan otomatis. Kode tidak bisa diubah setelah dibuat.</p>
+                    <div class="row">
+                        <input class="input" id="kode" maxlength="50" autocapitalize="characters" style="flex:1" />
+                        <button class="btn btn-secondary btn-ikon" id="acak" type="button" aria-label="Buat kode acak" title="Buat kode acak">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="16" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="16" r="1" fill="currentColor"/><circle cx="16" cy="16" r="1" fill="currentColor"/></svg>
+                        </button>
+                    </div>
+                    <p class="hint">Klik tombol dadu untuk membuat kode acak. Kode tidak bisa diubah setelah dibuat.</p>
                 </div>
                 <div class="grid grid-2">
                     <div class="field">
