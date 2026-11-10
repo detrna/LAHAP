@@ -43,6 +43,8 @@ a{color:var(--orange-700)}
 .app-header{background:var(--white);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
 .app-header .container{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2);padding-block:var(--sp-3)}
 .brand{font:600 20px/28px 'Poppins',sans-serif;color:var(--orange-700);text-decoration:none}
+.brand{display:inline-flex;align-items:center}
+.brand-logo{display:block;height:36px;width:auto;max-width:160px}
 .nav{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
 .nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-3);border-radius:var(--radius-control);color:var(--ink);text-decoration:none}
 .nav a:hover{background:var(--orange-50)}
