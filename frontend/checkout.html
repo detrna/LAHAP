@@ -15,7 +15,13 @@
  <div class="field"><span class="field-label">Periode</span><div class="chip-group" id="periode"></div></div>
  <div class="field" id="boxMulai" hidden><label for="mulai">Mulai tanggal</label><input class="input" id="mulai" type="date"><p class="hint" id="hintMulai"></p></div>
  <div class="field" id="boxWaktu" hidden><span class="field-label">Waktu makan</span><div class="chip-group" id="waktu"></div></div>
- <div class="field" id="boxHari" hidden><span class="field-label">Pilih hari layanan</span><div class="chip-group" id="hari"></div><p class="hint" id="hintHari"></p></div>
+ <div class="field" id="boxHari" hidden>
+  <div class="row-between"><span class="field-label" id="labelHari">Pilih hari layanan</span><span class="hint" id="jumlahHari" aria-live="polite"></span></div>
+  <div class="kalender" id="kalender" role="group" aria-labelledby="labelHari">
+   <div class="kal-nav"><button class="btn btn-ghost kal-panah" type="button" id="mingguLalu" aria-label="Minggu sebelumnya">‹</button><span class="kal-judul" id="judulMinggu"></span><button class="btn btn-ghost kal-panah" type="button" id="mingguDepan" aria-label="Minggu berikutnya">›</button></div>
+   <div id="hari"></div>
+  </div>
+  <p class="hint" id="hintHari"></p></div>
  <div class="field"><span class="field-label">Metode penerimaan</span><div class="chip-group">
   <label class="chip"><input type="radio" name="metode" value="antar" checked>Diantar</label><label class="chip"><input type="radio" name="metode" value="ambil">Ambil Sendiri</label></div></div>
  <div class="field"><label for="penerima">Nama penerima</label><input class="input" id="penerima" autocomplete="name"></div>

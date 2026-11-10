@@ -5,14 +5,14 @@ import { currentUser } from "../core/session.js";
 import { bayarSnap } from "../features/pelanggan.js";
 import { pasangPeta } from "../features/peta.js";
 import { $ } from "../ui/dom.js";
-import { formatTanggal, hariIni, tambahHari } from "../ui/format.js";
+import { awalMinggu, hariIni, tambahHari } from "../ui/format.js";
 import { pesanForm, showIssues, tampilGalat } from "../ui/forms.js";
 import { toast } from "../ui/toast.js";
+import { isiKalender } from "./checkout/kalender.js";
 import { tampilHarga, waktu } from "./checkout/rincian.js";
 import { tampilSukses } from "./checkout/sukses.js";
 
 const idPaket = new URLSearchParams(location.search).get("paket");
-const senin = tanggal => tambahHari(tanggal, -((new Date(`${tanggal}T00:00:00Z`).getUTCDay() + 6) % 7));
 const awalBulan = tanggal => `${tanggal.slice(0, 8)}01`;
 
 let paket = null;
@@ -43,6 +43,8 @@ const semua = name => [...document.querySelectorAll(`[name=${name}]:checked`)].m
 function aturPeriode() {
     const periode = nilai("periode");
     $("#boxHari").hidden = periode !== "Harian";
+    const slot = semua("hari").length;
+    $("#jumlahHari").textContent = slot ? `${slot} slot dipilih` : "";
     $("#boxWaktu").hidden = periode === "Harian" || !periode;
     $("#boxMulai").hidden = periode === "Harian" || !periode;
     $("#hintMulai").textContent =
@@ -81,7 +83,7 @@ function badan() {
     if (periode === "Harian") body.menuScheduleIds = semua("hari");
     else {
         const mulai = $("#mulai").value;
-        body.periodStart = !mulai ? "" : periode === "Mingguan" ? senin(mulai) : awalBulan(mulai);
+        body.periodStart = !mulai ? "" : periode === "Mingguan" ? awalMinggu(mulai) : awalBulan(mulai);
         body.deliveryTimes = semua("waktu");
     }
     if (antar) {
@@ -179,18 +181,9 @@ async function muatHari() {
     const dipilih = new Set(semua("hari"));
     const { data: jadwal } = await api(`/packages/${paket.id}/schedules`, { auth: false });
     const terbit = jadwal.filter(j => j.isPublished && j.date > hariIni());
-    $("#hari").replaceChildren(
-        ...terbit.map(j => {
-            return chip(
-                "hari",
-                j.id,
-                `${formatTanggal(j.date, "hari")} · ${j.deliveryTime.time}`,
-                dipilih.has(j.id),
-                "checkbox",
-            );
-        }),
-    );
-    $("#hintHari").textContent = terbit.length ? "" : "Belum ada menu terbit untuk dipilih harian.";
+    const ada = isiKalender({ jadwal: terbit, waktu: paket.deliveryTimes, dipilih }) > 0;
+    $("#kalender").hidden = !ada;
+    $("#hintHari").textContent = ada ? "" : "Belum ada menu terbit untuk dipilih harian.";
 }
 
 async function muat() {
@@ -213,7 +206,7 @@ async function muat() {
             }),
         );
         $("#mulai").min = tambahHari(hariIni(), 1);
-        $("#mulai").value = tambahHari(senin(hariIni()), 7);
+        $("#mulai").value = tambahHari(awalMinggu(hariIni()), 7);
         $("#penerima").value = (currentUser() && currentUser().name) || "";
         const [, profil] = await Promise.all([muatHari(), api("/me").catch(() => null)]);
         let titik = null;

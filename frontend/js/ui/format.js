@@ -20,6 +20,8 @@ export function tambahHari(tanggal, n) {
     return d.toISOString().slice(0, 10);
 }
 
+export const awalMinggu = tanggal => tambahHari(tanggal, -((new Date(`${tanggal}T00:00:00Z`).getUTCDay() + 6) % 7));
+
 export function formatTanggal(nilai, gaya = "sedang") {
     const opsi = typeof gaya === "string" ? GAYA_TANGGAL[gaya] : gaya;
     const waktu = new Date(nilai.length === 10 ? `${nilai}T00:00:00+07:00` : nilai);

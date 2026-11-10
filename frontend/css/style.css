@@ -150,6 +150,28 @@ a.pkg-photo{text-decoration:none}
 .chip-static{cursor:default}
 .chip-remove{display:inline-grid;place-items:center;width:28px;height:28px;margin-right:calc(var(--sp-2) * -1);padding:0;border:0;border-radius:50%;background:none;color:var(--muted);font:600 16px/1 'Poppins',sans-serif;cursor:pointer}
 .chip-remove:hover{background:var(--orange-100);color:var(--orange-900)}
+.kalender{padding:var(--sp-3);background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card)}
+.kal-nav{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-3)}
+.kal-panah{width:44px;padding:0;font-size:22px}
+.kal-panah:disabled{background:none;color:var(--ink);opacity:.3}
+.kal-judul{display:flex;flex-direction:column;align-items:center;text-align:center;font-size:14px;line-height:20px}
+.kal-grid{display:grid;grid-template-columns:auto repeat(7,minmax(0,1fr));gap:var(--sp-2)}
+.kal-grid>*{grid-column:calc(var(--h) + 1);grid-row:calc(var(--w) + 1)}
+.kal-hari,.kal-waktu{display:grid;place-items:center;min-height:44px;padding:var(--sp-1);border:0;border-radius:var(--radius-control);background:none;color:var(--ink);font:inherit;cursor:pointer}
+.kal-hari:hover,.kal-waktu:hover{background:var(--orange-50)}
+.kal-hari:disabled{color:#A89E96;cursor:default;background:none}
+.kal-akhir .kal-angka{color:var(--muted)}
+.kal-nama,.kal-rentang{font:600 11px/16px 'Poppins',sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.kal-hari:disabled .kal-nama{color:inherit}
+.kal-angka,.kal-jam{font:600 16px/22px 'Poppins',sans-serif;font-variant-numeric:tabular-nums}
+.kal-sel{justify-content:center;padding:0 var(--sp-2);font-variant-numeric:tabular-nums}
+.kal-kosong{display:grid;place-items:center;min-height:44px;border:1.5px dashed var(--line);border-radius:var(--radius-control);color:#C4BBB3}
+@media(max-width:639px){
+  .kal-grid{grid-template-columns:auto repeat(var(--n),minmax(0,1fr))}
+  .kal-grid>*{grid-column:calc(var(--w) + 1);grid-row:calc(var(--h) + 1)}
+  .kal-hari{grid-auto-flow:column;justify-content:start;gap:var(--sp-1);padding-inline:var(--sp-2)}
+  .kal-sel{padding:0}
+}
 
 /* Badge status: selalu berlabel teks + titik */
 .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:var(--radius-pill);font:600 12px/18px 'Poppins',sans-serif;white-space:nowrap}
