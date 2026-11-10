@@ -37,6 +37,7 @@ a{color:var(--orange-700)}
 .stack>*+*{margin-top:var(--sp-4)}
 .stack-lg>*+*{margin-top:var(--sp-5)}
 .row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.row--bawah{align-items:flex-end}
 .row-between{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
 .grid{display:grid;gap:var(--sp-4)}
 @media(min-width:720px){.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:repeat(3,1fr)}.container{padding:var(--sp-5)}}
