@@ -107,7 +107,7 @@ function bukaUbah(a) {
     $("#uc").value = a.scope;
     if (a.packageId) $("#upk").value = a.packageId;
     if (a.menuScheduleId) {
-        if (![...$("ujd").options].some(o => o.value === a.menuScheduleId))
+        if (![...$("#ujd").options].some(o => o.value === a.menuScheduleId))
             $("#ujd").prepend(opsi(a.menuScheduleId, "Hari layanan sebelumnya"));
         $("#ujd").value = a.menuScheduleId;
     }

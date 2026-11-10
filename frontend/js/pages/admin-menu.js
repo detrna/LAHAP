@@ -190,13 +190,13 @@ function bukaForm(m) {
 
 function isiForm() {
     const fields = { name: "n", description: "d", tags: "tg", photoKey: "foto" };
-    const ingredients = [...$("resep").children].map((r, i) => {
+    const ingredients = [...$("#resep").children].map((r, i) => {
         const n = r.dataset.id;
         fields[`ingredients.${i}.ingredientId`] = `rb-${n}`;
         fields[`ingredients.${i}.quantityPerPortion`] = `rq-${n}`;
         return { ingredientId: $(`#rb-${n}`).value, quantityPerPortion: Number($(`#rq-${n}`).value) };
     });
-    const components = [...$("komponen").children]
+    const components = [...$("#komponen").children]
         .map((r, i) => {
             const n = r.dataset.id;
             fields[`components.${i}.name`] = `kn-${n}`;
