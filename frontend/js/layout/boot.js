@@ -1,4 +1,5 @@
 import { keLogin } from "../core/api.js";
+import { IS_LOCAL } from "../core/config.js";
 import { HOME, ROLE_KEY, currentUser } from "../core/session.js";
 import { pasangAdmin } from "./admin-shell.js";
 import { pasangNav } from "./nav.js";
@@ -58,3 +59,5 @@ function bukaHalaman() {
 }
 
 if (!bukaHalaman()) await new Promise(() => {});
+
+if (IS_LOCAL) import("../dev/agentation.js").catch(error => console.warn("agentation tidak dapat dimuat", error));
