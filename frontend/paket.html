@@ -6,7 +6,7 @@
 <style>
 .detail{display:grid;gap:var(--sp-5);align-items:start}
 .detail .pkg-photo{border-radius:var(--radius-card)}
-@media(min-width:720px){.detail{grid-template-columns:1fr 1fr}}
+@media(min-width:720px){.detail{grid-template-columns:1fr 1fr;align-items:stretch}.detail .pkg-photo{aspect-ratio:auto;min-height:100%}}
 </style></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
@@ -24,8 +24,8 @@
   <h1 class="t-h1" id="nama"></h1>
   <p class="t-muted" id="deskripsi"></p>
   <p><span class="price-big" id="harga"></span><span class="t-small t-muted"> per porsi</span></p>
-  <div class="stack"><p class="label">Periode</p><div class="row" id="periode"></div></div>
-  <div class="stack"><p class="label">Waktu makan</p><div class="row" id="waktu"></div></div>
+  <div class="stack"><p class="label">Periode</p><div class="fakta" id="periode"></div></div>
+  <div class="stack"><p class="label">Waktu makan</p><div class="fakta" id="waktu"></div></div>
   <p class="t-small t-muted" id="masaJual" hidden></p>
   <div class="row" id="aksi"></div>
  </div>
@@ -38,7 +38,7 @@
 
 <section class="stack" id="boxMenu" hidden>
  <div><p class="label">Menu</p><h2 class="t-h2">Menu dua minggu ke depan</h2></div>
- <div class="tabs" id="tabs" role="group" aria-label="Pilih tanggal"></div>
+ <div class="tabs" id="tabs" role="group" aria-label="Lompat ke tanggal"></div>
  <div class="menu-geser" id="geserMenu">
   <button class="geser-btn geser-kiri" id="geserKiri" type="button" aria-label="Menu sebelumnya">‹</button>
   <div class="menu-rail" id="isiMenu" tabindex="0" role="region" aria-label="Menu" aria-live="polite"></div>

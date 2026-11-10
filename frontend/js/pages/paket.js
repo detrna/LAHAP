@@ -23,8 +23,8 @@ function tampilPaket(paket) {
     $("#deskripsi").textContent = paket.description || "";
     $("#deskripsi").hidden = !paket.description;
     $("#harga").textContent = rp(paket.basePrice);
-    $("#periode").replaceChildren(...(paket.periods || []).map(p => el("span", "chip chip-static", p)));
-    $("#waktu").replaceChildren(...(paket.deliveryTimes || []).map(t => el("span", "chip chip-static", labelWaktu(t))));
+    $("#periode").replaceChildren(...(paket.periods || []).map(p => el("span", "fakta-item", p)));
+    $("#waktu").replaceChildren(...(paket.deliveryTimes || []).map(t => el("span", "fakta-item", labelWaktu(t))));
     $("#masaJual").hidden = !paket.endAt;
     if (paket.endAt) $("#masaJual").textContent = `Bisa dipesan sampai ${formatTanggal(paket.endAt, "panjang")}`;
     $("#aksi").replaceChildren(tombolPesan(paket, "Pesan Paket Ini"));
