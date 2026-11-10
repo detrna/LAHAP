@@ -14,13 +14,7 @@ const MENU = {
         ["Profil", "profil.html"],
     ],
     admin: [],
-    dapur: [
-        ["To-do Dapur", "dapur.html"],
-        ["Stok Bahan", "dapur-stok.html"],
-        ["Hitung Stok AI", "dapur-foto.html"],
-        ["Kotak Masuk", "notifikasi.html"],
-        ["Akun", "akun.html"],
-    ],
+    dapur: [],
     kurir: [
         ["To-do Kurir", "kurir.html"],
         ["Kotak Masuk", "notifikasi.html"],
@@ -50,5 +44,5 @@ export function pasangNav(nav, key, page, user) {
             logout();
         });
     }
-    if (key === "pelanggan" || key === "kurir" || key === "dapur") pasangLonceng(nav.querySelector('a[href="notifikasi.html"]'), key);
+    if (key === "pelanggan" || key === "kurir") pasangLonceng(nav.querySelector('a[href="notifikasi.html"]'), key);
 }

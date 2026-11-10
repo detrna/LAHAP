@@ -1,7 +1,7 @@
 import { keLogin } from "../core/api.js";
 import { IS_LOCAL } from "../core/config.js";
 import { HOME, ROLE_KEY, currentUser } from "../core/session.js";
-import { pasangAdmin } from "./admin-shell.js";
+import { pasangAdmin, pasangDapur } from "./admin-shell.js";
 import { pasangNav } from "./nav.js";
 
 function bukaHalaman() {
@@ -54,6 +54,7 @@ function bukaHalaman() {
     if (!nav) return true;
     const page = location.pathname.split("/").pop().toLowerCase() || "index.html";
     if (key === "admin") pasangAdmin(nav, page);
+    else if (key === "dapur") pasangDapur(nav, page);
     else pasangNav(nav, key, page, user);
     return true;
 }

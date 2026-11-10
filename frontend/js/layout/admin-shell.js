@@ -37,7 +37,18 @@ const ADMIN_MENU = [
         ],
     },
 ];
+const DAPUR_MENU = [
+    {
+        group: "",
+        links: [
+            ["To-do Dapur", "dapur.html", "pesanan"],
+            ["Stok Bahan", "dapur-stok.html", "bahan"],
+            ["Hitung Stok AI", "dapur-foto.html", "foto"],
+        ],
+    },
+];
 const ADMIN_ICONS = {
+    foto: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
     dashboard:
         '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
     pesanan:
@@ -63,7 +74,15 @@ const BELL_ICON =
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
 
 export function pasangAdmin(nav, page) {
-    const ada = ADMIN_MENU.flatMap(g => g.links).find(([, href]) => href === page);
+    pasangSidebar(nav, page, { menu: ADMIN_MENU, label: "admin", home: "admin.html", lonceng: "admin" });
+}
+
+export function pasangDapur(nav, page) {
+    pasangSidebar(nav, page, { menu: DAPUR_MENU, label: "dapur", home: "dapur.html", lonceng: "dapur" });
+}
+
+function pasangSidebar(nav, page, { menu, label: peran, home, lonceng }) {
+    const ada = menu.flatMap(g => g.links).find(([, href]) => href === page);
     const judul = ada ? ada[0] : page === "notifikasi.html" ? "Kotak Masuk" : "";
     const lanjut = (label, href) => `<a href="${href}"${href === page ? ' aria-current="page"' : ""}>${label}</a>`;
     const itemSidebar = ([label, href, icon]) =>
@@ -71,10 +90,10 @@ export function pasangAdmin(nav, page) {
 
     const sidebar = document.createElement("aside");
     sidebar.className = "sidebar";
-    sidebar.id = "sidebar-admin";
+    sidebar.id = `sidebar-${peran}`;
     sidebar.innerHTML =
-        '<nav aria-label="Menu admin">' +
-        ADMIN_MENU.map(
+        `<nav aria-label="Menu ${peran}">` +
+        menu.map(
             g =>
                 `<div class="sidebar-group">${g.group ? `<p class="label">${g.group}</p>` : ""}${g.links.map(itemSidebar).join("")}</div>`,
         ).join("") +
@@ -87,13 +106,13 @@ export function pasangAdmin(nav, page) {
     const tombol = document.createElement("button");
     tombol.type = "button";
     tombol.className = "sidebar-toggle";
-    tombol.setAttribute("aria-label", "Buka menu admin");
+    tombol.setAttribute("aria-label", `Buka menu ${peran}`);
     tombol.setAttribute("aria-controls", sidebar.id);
     tombol.setAttribute("aria-expanded", "false");
     tombol.innerHTML =
         '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
     const brand = container.querySelector(".brand");
-    brand.href = "admin.html";
+    brand.href = home;
     const kiri = document.createElement("div");
     kiri.className = "header-left";
     kiri.append(tombol, brand);
@@ -117,7 +136,7 @@ export function pasangAdmin(nav, page) {
         sidebar.classList.toggle("is-open", terbuka);
         backdrop.hidden = !terbuka;
         tombol.setAttribute("aria-expanded", String(terbuka));
-        tombol.setAttribute("aria-label", terbuka ? "Tutup menu admin" : "Buka menu admin");
+        tombol.setAttribute("aria-label", terbuka ? `Tutup menu ${peran}` : `Buka menu ${peran}`);
     };
     tombol.addEventListener("click", () => buka(!sidebar.classList.contains("is-open")));
     backdrop.addEventListener("click", () => buka(false));
@@ -134,5 +153,5 @@ export function pasangAdmin(nav, page) {
         event.preventDefault();
         logout();
     });
-    pasangLonceng(document.getElementById("lonceng"), "admin");
+    pasangLonceng(document.getElementById("lonceng"), lonceng);
 }
