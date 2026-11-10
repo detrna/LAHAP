@@ -92,6 +92,10 @@ body.has-sidebar .nav a{white-space:nowrap}
 a.pkg-photo{text-decoration:none}
 .pkg-photo{aspect-ratio:16/9;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden}
 .pkg-photo img,.menu-foto img{width:100%;height:100%;object-fit:cover}
+.thumb{width:56px;height:56px;flex:none;border-radius:8px;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden;font-weight:600}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb-lg{width:120px;height:120px;font-size:32px}
+.pilih-bahan{flex:1 1 12rem;min-width:0}
 .pkg-body{padding:var(--sp-4)}
 .pkg-card{display:flex;flex-direction:column}
 .pkg-card .pkg-body{flex:1;display:flex;flex-direction:column}

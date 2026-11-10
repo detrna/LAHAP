@@ -1,7 +1,7 @@
 import "../layout/boot.js";
 import { api, fetchAll, upload } from "../core/api.js";
 import { errorMessage, issuesText } from "../core/errors.js";
-import { $, el, opsi } from "../ui/dom.js";
+import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
 import { angka, hariIni, tambahHari } from "../ui/format.js";
 import { showIssues, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
@@ -14,7 +14,14 @@ let alergi = [],
     halaman = 1,
     terpilih = new Set(),
     sedangUbah = null,
+    pratinjauLokal = null,
     nomor = 0;
+
+function pratinjauFoto(url) {
+    if (pratinjauLokal) URL.revokeObjectURL(pratinjauLokal);
+    pratinjauLokal = null;
+    gantiThumb($("#fotoUbah"), url, sedangUbah ? sedangUbah.name : "");
+}
 
 function chipAlergen(container, prefix, dipilih) {
     container.replaceChildren(
@@ -44,7 +51,7 @@ function barisBahan(b) {
         cek.checked ? terpilih.add(b.id) : terpilih.delete(b.id);
         $("#hapus").disabled = terpilih.size === 0;
     };
-    const teks = el("div");
+    const teks = el("div", "flex-1");
     teks.append(
         el("p", "t-h3", b.name),
         el(
@@ -53,7 +60,7 @@ function barisBahan(b) {
             `Stok ${angka(b.stock)} ${b.unit} · minimum ${angka(b.minimumThreshold)} ${b.unit}${(b.allergies || []).length ? ` · alergen: ${b.allergies.map(a => a.name).join(", ")}` : ""}`,
         ),
     );
-    kiri.append(cek, teks);
+    kiri.append(cek, thumb(b.photoUrl, b.name), teks);
     const kanan = el("div", "row");
     const input = el("input", "input w-num");
     Object.assign(input, { type: "number", min: "0", step: "0.1", value: b.stock });
@@ -141,6 +148,7 @@ function bukaUbah(b) {
     $("#uu").value = b.unit;
     $("#um").value = b.minimumThreshold;
     $("#uf").value = "";
+    pratinjauFoto(b.photoUrl);
     chipAlergen(
         $("#ua"),
         "ua",
@@ -151,8 +159,16 @@ function bukaUbah(b) {
     $("#formUbah").scrollIntoView();
     $("#un").focus();
 }
+$("#uf").addEventListener("change", () => {
+    const file = $("#uf").files[0];
+    pratinjauFoto(file ? null : sedangUbah && sedangUbah.photoUrl);
+    if (!file) return;
+    pratinjauLokal = URL.createObjectURL(file);
+    gantiThumb($("#fotoUbah"), pratinjauLokal, sedangUbah ? sedangUbah.name : "");
+});
 $("#batalUbah").onclick = () => {
     $("#formUbah").hidden = true;
+    pratinjauFoto(null);
 };
 $("#formUbah").onsubmit = async event => {
     event.preventDefault();
@@ -177,6 +193,7 @@ $("#formUbah").onsubmit = async event => {
         await api(`/admin/ingredients/${sedangUbah.id}`, { method: "PATCH", body });
         toast("Bahan disimpan.");
         $("#formUbah").hidden = true;
+        pratinjauFoto(null);
         muatBahan();
         muatBelanja();
     } catch (error) {
@@ -307,6 +324,7 @@ $("#formStruk").onsubmit = async event => {
             fetchAll("/admin/ingredients"),
         ]);
         const stokSekarang = new Map(semua.map(b => [b.id, b.stock]));
+        const fotoBahan = new Map(semua.map(b => [b.id, b.photoUrl]));
         hasilStruk = data.items;
         $("#hasilStruk").replaceChildren(
             ...hasilStruk.map(x => {
@@ -316,7 +334,7 @@ $("#formStruk").onsubmit = async event => {
                 cek.type = "checkbox";
                 cek.checked = true;
                 cek.id = `sc-${x.id}`;
-                const teks = el("div");
+                const teks = el("div", "flex-1");
                 const lama = stokSekarang.get(x.id);
                 teks.append(
                     el("p", "t-h3", x.name),
@@ -326,7 +344,7 @@ $("#formStruk").onsubmit = async event => {
                         `Stok sekarang ${lama === undefined ? "?" : angka(lama)} ${x.unit}${lama === undefined ? "" : ` · bertambah ${angka(x.stock - lama)} ${x.unit}`}`,
                     ),
                 );
-                kiri.append(cek, teks);
+                kiri.append(cek, thumb(fotoBahan.get(x.id), x.name), teks);
                 const input = el("input", "input w-num");
                 Object.assign(input, { id: `ss-${x.id}`, type: "number", min: "0", step: "0.01", value: x.stock });
                 input.setAttribute("aria-label", `Stok baru ${x.name} (${x.unit})`);

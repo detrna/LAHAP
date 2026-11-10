@@ -1,6 +1,6 @@
 import "../layout/boot.js";
 import { api } from "../core/api.js";
-import { $, el } from "../ui/dom.js";
+import { $, el, thumb } from "../ui/dom.js";
 import { angka, formatTanggal } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
@@ -133,8 +133,9 @@ function panelFoto(b, inputStok, tombolSimpan) {
 
 function baris(b) {
     const row = el("div", "invoice");
-    const kiri = el("div");
-    kiri.append(
+    const kiri = el("div", "row");
+    const teks = el("div", "flex-1");
+    teks.append(
         el("p", "t-h3", b.name),
         el(
             "p",
@@ -142,6 +143,7 @@ function baris(b) {
             `Stok ${angka(b.stock)} ${b.unit} · batas minimum ${angka(b.minimumThreshold)} ${b.unit}`,
         ),
     );
+    kiri.append(thumb(b.photoUrl, b.name), teks);
     const kanan = el("div", "row");
     const badge = el(
         "span",

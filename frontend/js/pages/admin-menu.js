@@ -1,7 +1,7 @@
 import "../layout/boot.js";
 import { api, fetchAll, upload } from "../core/api.js";
 import { errorMessage, issuesText } from "../core/errors.js";
-import { $, el, opsi } from "../ui/dom.js";
+import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
 import { askChangeReason, needsChangeReason, periksa, showIssues, tampilGalat, tampilPesan } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
 import { toast } from "../ui/toast.js";
@@ -19,7 +19,7 @@ function barisResep(line) {
     const id = ++nomor;
     const row = el("div", "row");
     row.dataset.id = id;
-    const pilih = el("select", "select input flex-1");
+    const pilih = el("select", "select input pilih-bahan");
     pilih.id = `rb-${id}`;
     pilih.setAttribute("aria-label", "Bahan");
     pilih.append(...bahan.map(b => opsi(b.id, `${b.name} (${b.unit})`)));
@@ -30,13 +30,20 @@ function barisResep(line) {
         pilih.value = line.ingredientId;
         jumlah.value = line.quantityPerPortion;
     }
+    const foto = thumb(null, "");
+    const gantiFoto = () => {
+        const b = bahan.find(x => x.id === pilih.value);
+        gantiThumb(foto, b ? b.photoUrl : null, b ? b.name : "");
+    };
+    pilih.addEventListener("change", gantiFoto);
+    gantiFoto();
     const hapus = el("button", "btn btn-ghost btn-sm", "Hapus");
     hapus.type = "button";
     hapus.setAttribute("aria-label", "Hapus bahan dari resep");
     hapus.onclick = () => row.remove();
     const f = el("div", "field flex-1");
     const r = el("div", "row");
-    r.append(pilih, jumlah, hapus);
+    r.append(foto, pilih, jumlah, hapus);
     f.append(r);
     row.append(f);
     $("#resep").append(row);
@@ -76,11 +83,8 @@ function barisKomponen(c) {
 function barisMenu(m) {
     const baris = el("div", "invoice");
     const kiri = el("div", "row");
-    const foto = document.createElement("img");
-    foto.src = m.photoUrl;
-    foto.alt = "";
-    foto.style.cssText = "width:64px;height:64px;object-fit:cover;border-radius:8px";
-    const teks = el("div");
+    const foto = thumb(m.photoUrl, m.name);
+    const teks = el("div", "flex-1");
     const judul = el("p", "t-h3", m.name);
     if (m.isAlternative) judul.append(" ", el("span", "badge badge--ready", "Alternatif"));
     teks.append(judul);

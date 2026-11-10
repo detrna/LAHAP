@@ -28,10 +28,26 @@ export function tautanLuar(href, text) {
 
 export function isiFoto(wadah, url, alt, teksKosong) {
     wadah.textContent = teksKosong;
+    wadah.dataset.foto = url || "";
     if (!url) return;
     const img = el("img");
     img.alt = alt;
-    img.onload = () => wadah.replaceChildren(img);
-    img.onerror = () => (wadah.textContent = teksKosong);
+    img.onload = () => {
+        if (wadah.dataset.foto === url) wadah.replaceChildren(img);
+    };
+    img.onerror = () => {
+        if (wadah.dataset.foto === url) wadah.textContent = teksKosong;
+    };
     img.src = url;
+}
+
+export function gantiThumb(kotak, url, nama) {
+    isiFoto(kotak, url, "", (nama || "").trim().charAt(0).toUpperCase());
+}
+
+export function thumb(url, nama, className = "") {
+    const kotak = el("span", `thumb ${className}`.trim());
+    kotak.setAttribute("aria-hidden", "true");
+    gantiThumb(kotak, url, nama);
+    return kotak;
 }
