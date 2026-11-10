@@ -103,7 +103,7 @@ export async function muatMenu(daftarPaket, rentang = RENTANG_MENU) {
 }
 
 export function kartuPaket(paket) {
-    const card = el("article", "card card-flush");
+    const card = el("article", "card card-flush pkg-card");
     const foto = tautan(hrefPaket(paket), "pkg-photo");
     foto.setAttribute("aria-label", `Lihat detail ${paket.name}`);
     isiFoto(foto, paket.photoUrl, paket.name, "Foto paket");
@@ -118,15 +118,42 @@ export function kartuPaket(paket) {
     body.append(harga, el("p", "t-small t-muted", `Periode: ${(paket.periods || []).join(", ")}`));
     if (waktu) body.append(el("p", "t-small t-muted", `Waktu makan: ${waktu}`));
     if (paket.endAt) body.append(el("p", "t-small t-muted", `Bisa dipesan sampai ${formatTanggal(paket.endAt)}`));
-    const aksi = el("div", "row");
+    const aksi = el("div", "row pkg-aksi");
     aksi.append(tombolPesan(paket), tautan(hrefPaket(paket), "btn btn-secondary", "Lihat Menu"));
     body.append(aksi);
     card.append(foto, body);
     return card;
 }
 
+function kartuMenuRingkas(item, alergiUser) {
+    const utama = menuUtama(item.jadwal);
+    const card = el("article", "card card-flush menu-mini");
+    const foto = el("div", "pkg-photo");
+    isiFoto(foto, utama.photoUrl, utama.name, "Foto menu");
+    const info = el("div", "pkg-body stack");
+    const waktu = labelWaktu(item.jadwal.deliveryTime);
+    if (waktu) info.append(el("p", "label", waktu));
+    info.append(el("h3", "t-h3", utama.name));
+    if (utama.description) info.append(el("p", "t-muted clamp-3", utama.description));
+    if ((utama.tags || []).length) {
+        const tags = el("div", "row");
+        tags.append(...utama.tags.map(tag => el("span", "badge badge--expire", tag)));
+        info.append(tags);
+    }
+    info.append(el("p", "t-small t-muted", teksAlergen(utama)));
+    const bentrok = alergiBentrok(utama, alergiUser).map(a => a.name.toLowerCase());
+    if (bentrok.length) {
+        const peringatan = el("div", "alert alert--warning t-small");
+        peringatan.append(el("span", "alert-title", "Cek alergimu"), `Ada ${bentrok.join(", ")} dari daftar alergimu.`);
+        info.append(peringatan);
+    }
+    card.append(foto, info);
+    return card;
+}
+
 export function kartuMenu(item, alergiUser, opsi = {}) {
-    const { tampilPaket = true, tampilAksi = true, rinci = false } = opsi;
+    const { tampilPaket = true, tampilAksi = true, ringkas = false } = opsi;
+    if (ringkas) return kartuMenuRingkas(item, alergiUser);
     const utama = menuUtama(item.jadwal);
     const alternatif = menuAlternatif(item.jadwal);
     const card = el("article", "card menu-card");
@@ -138,13 +165,6 @@ export function kartuMenu(item, alergiUser, opsi = {}) {
     if (label) info.append(el("p", "label", label));
     info.append(el("h3", "t-h2", utama.name));
     if (utama.description) info.append(el("p", "t-muted", utama.description));
-    if (rinci && (utama.tags || []).length) {
-        const tags = el("div", "row");
-        tags.append(...utama.tags.map(tag => el("span", "badge badge--expire", tag)));
-        info.append(tags);
-    }
-    if (rinci && (utama.components || []).length)
-        info.append(el("p", "t-small", `Isi: ${utama.components.map(c => c.name).join(", ")}`));
     info.append(el("p", "t-small t-muted", teksAlergen(utama)));
     const bentrok = alergiBentrok(utama, alergiUser).map(a => a.name.toLowerCase());
     if (bentrok.length) {
@@ -172,6 +192,8 @@ export function pasangMenu({ box, tabs, isi }, daftar, alergiUser, opsi = {}) {
         isi.replaceChildren(
             ...daftar.filter(item => item.jadwal.date === tanggal).map(item => kartuMenu(item, alergiUser, opsi)),
         );
+        isi.scrollLeft = 0;
+        if (opsi.ringkas) isi.setAttribute("aria-label", `Menu ${formatTanggal(tanggal, "hari")}`);
         tabs.querySelectorAll(".tab").forEach(tab =>
             tab.setAttribute("aria-pressed", String(tab.dataset.tanggal === tanggal)),
         );

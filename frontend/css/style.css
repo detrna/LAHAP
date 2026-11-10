@@ -93,6 +93,19 @@ a.pkg-photo{text-decoration:none}
 .pkg-photo{aspect-ratio:16/9;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden}
 .pkg-photo img,.menu-foto img{width:100%;height:100%;object-fit:cover}
 .pkg-body{padding:var(--sp-4)}
+.pkg-card{display:flex;flex-direction:column}
+.pkg-card .pkg-body{flex:1;display:flex;flex-direction:column}
+.pkg-body>.pkg-aksi{margin-top:auto;padding-top:var(--sp-4)}
+.clamp-3{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.menu-geser{position:relative}
+.menu-rail{display:flex;gap:var(--sp-4);overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:2px;scroll-behavior:smooth;padding:2px 2px var(--sp-3)}
+.menu-mini{flex:0 0 80%;scroll-snap-align:start}
+.geser-btn{display:none;position:absolute;top:calc(50% - 22px - var(--sp-2));z-index:1;width:44px;height:44px;place-items:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--white);box-shadow:var(--shadow-pop);color:var(--ink);font:600 22px/1 'Poppins',sans-serif;cursor:pointer;transition:opacity .15s}
+.geser-btn:hover{background:var(--orange-50)}
+.geser-btn[aria-disabled=true]{opacity:.35;cursor:default;background:var(--white)}
+.geser-kiri{left:calc(-1 * var(--sp-4))}
+.geser-kanan{right:calc(-1 * var(--sp-4))}
+@media(min-width:720px){.menu-mini{flex-basis:calc((100% - 2 * var(--sp-4)) / 3)}.menu-geser[data-luber=true] .geser-btn{display:grid}}
 .tabs{display:flex;gap:var(--sp-2);overflow-x:auto;padding-bottom:var(--sp-1)}
 .tab{flex:1 0 64px;min-height:64px;display:grid;place-items:center;padding:var(--sp-2);background:var(--white);border:1.5px solid var(--line);border-radius:var(--radius-card);font:inherit;cursor:pointer}
 .tab[aria-pressed=true]{background:var(--orange-700);border-color:var(--orange-700);color:var(--white)}

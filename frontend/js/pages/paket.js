@@ -5,6 +5,7 @@ import { muatBisnis } from "../features/bisnis.js";
 import { alergiSaya, muatMenu, pasangFooter, pasangMenu, tombolPesan } from "../features/katalog.js";
 import { $, el, isiFoto } from "../ui/dom.js";
 import { formatTanggal, labelWaktu, rp } from "../ui/format.js";
+import { pasangGeser } from "../ui/geser.js";
 
 const idPaket = new URLSearchParams(location.search).get("id");
 const RENTANG_DETAIL = { dariHari: 1, sampaiHari: 14 };
@@ -60,11 +61,12 @@ async function muat() {
     const jumlah = pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya(), {
         tampilPaket: false,
         tampilAksi: false,
-        rinci: true,
+        ringkas: true,
     });
     $("#kosongMenu").hidden = gagal || jumlah > 0;
 }
 
 $("#ulang").onclick = muat;
+pasangGeser($("#geserMenu"), $("#isiMenu"), $("#geserKiri"), $("#geserKanan"));
 pasangFooter($("#footer"));
 muat();

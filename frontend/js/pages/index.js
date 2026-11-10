@@ -1,7 +1,7 @@
 import "../layout/boot.js";
 import { api } from "../core/api.js";
 import { errorMessage } from "../core/errors.js";
-import { alergiSaya, kartuPaket, muatMenu, pasangFooter, pasangMenu } from "../features/katalog.js";
+import { kartuPaket, pasangFooter } from "../features/katalog.js";
 import { $ } from "../ui/dom.js";
 import { renderPager } from "../ui/pager.js";
 
@@ -26,7 +26,6 @@ async function muat() {
         $("#paket").replaceChildren();
         $("#paket").removeAttribute("aria-busy");
         $("#pager").hidden = true;
-        $("#boxMenu").hidden = true;
         $("#err .msg").textContent = errorMessage(error);
         $("#err").hidden = false;
         return;
@@ -44,11 +43,6 @@ async function muat() {
         muat();
         $("#paket").scrollIntoView({ block: "start", behavior: "smooth" });
     });
-    const { daftar: menu, gagal } = await muatMenu(daftar);
-    if (nomor !== urutan) return;
-    $("#galatMenu").hidden = !gagal;
-    pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, menu, alergiSaya());
-    if (gagal) $("#boxMenu").hidden = false;
 }
 
 $("#cari").addEventListener("input", () => {

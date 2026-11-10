@@ -39,7 +39,11 @@
 <section class="stack" id="boxMenu" hidden>
  <div><p class="label">Menu</p><h2 class="t-h2">Menu dua minggu ke depan</h2></div>
  <div class="tabs" id="tabs" role="group" aria-label="Pilih tanggal"></div>
- <div class="stack" id="isiMenu" aria-live="polite"></div>
+ <div class="menu-geser" id="geserMenu">
+  <button class="geser-btn geser-kiri" id="geserKiri" type="button" aria-label="Menu sebelumnya">‹</button>
+  <div class="menu-rail" id="isiMenu" tabindex="0" role="region" aria-label="Menu" aria-live="polite"></div>
+  <button class="geser-btn geser-kanan" id="geserKanan" type="button" aria-label="Menu berikutnya">›</button>
+ </div>
 </section>
 <p class="empty" id="kosongMenu" hidden>Menu untuk dua minggu ke depan belum diterbitkan.</p>
 <div class="alert alert--warning" id="galatMenu" role="status" hidden>Menu belum bisa dimuat. Muat ulang halaman untuk mencoba lagi.</div>
