@@ -244,3 +244,18 @@ export function issuesText(issues) {
         })
         .join(" ");
 }
+
+const PESAN_ALASAN_PROMO = {
+    NOT_FOUND: "Kode promo tidak berlaku",
+    INACTIVE: "Kode promo sedang tidak aktif.",
+    EXPIRED: "Masa berlaku kode promo sudah habis.",
+    QUOTA_EXHAUSTED: "Kuota pemakaian kode promo sudah habis.",
+    MIN_PURCHASE_NOT_MET: "Total pesanan belum memenuhi syarat minimal belanja.",
+    ALREADY_USED: "Kamu sudah pernah memakai kode promo ini.",
+    TIER_DISCOUNT_LARGER: "Diskon tier lebih besar dan tidak dapat digabung.",
+};
+
+export function pesanAlasanPromo(reason) {
+    if (!reason) return "";
+    return PESAN_ALASAN_PROMO[reason] || "Kode promo tidak berlaku";
+}

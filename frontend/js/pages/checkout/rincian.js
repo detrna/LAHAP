@@ -1,4 +1,5 @@
 import { $, el } from "../../ui/dom.js";
+import { pesanAlasanPromo } from "../../core/errors.js";
 import { formatTanggal, rp } from "../../ui/format.js";
 
 export const waktu = item => item.time ?? item;
@@ -68,6 +69,6 @@ export function tampilHarga(p, antar) {
     $("#batas").textContent = p.cutoffAt ? `Batas pesan: ${formatTanggal(p.cutoffAt, "waktu")} WIB.` : "";
     const alasan = p.promo && p.promo.reason;
     $("#promoErr").hidden = !alasan;
-    $("#promoErr .msg").textContent = alasan || "";
+    $("#promoErr .msg").textContent = pesanAlasanPromo(alasan);
     return true;
 }
