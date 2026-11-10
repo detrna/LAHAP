@@ -4,12 +4,12 @@ import { pasangLonceng } from "./bell.js";
 const MENU = {
     tamu: [
         ["Paket", "index.html"],
-        ["Member", "tier.html"],
+        ["Tier Pelanggan", "tier.html"],
     ],
     pelanggan: [
         ["Paket", "index.html"],
         ["Langganan Saya", "langganan.html"],
-        ["Member", "tier.html"],
+        ["Tier Pelanggan", "tier.html"],
         ["Notifikasi", "notifikasi.html"],
         ["Profil", "profil.html"],
     ],
@@ -17,6 +17,7 @@ const MENU = {
     dapur: [
         ["To-do Dapur", "dapur.html"],
         ["Stok Bahan", "dapur-stok.html"],
+        ["Hitung Stok AI", "dapur-foto.html"],
         ["Kotak Masuk", "notifikasi.html"],
         ["Akun", "akun.html"],
     ],
