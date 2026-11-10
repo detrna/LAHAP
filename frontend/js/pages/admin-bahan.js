@@ -258,7 +258,7 @@ $("#tambahBaris").onclick = barisBaru;
 $("#formBahan").onsubmit = async event => {
     event.preventDefault();
     showIssues($("#formBahan"), null, {});
-    const rows = [...$("barisBahan").children].map(b => b.dataset.id);
+    const rows = [...$("#barisBahan").children].map(b => b.dataset.id);
     for (const n of rows) {
         const nama = $(`#bn-${n}`),
             foto = $(`#bf-${n}`);
