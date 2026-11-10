@@ -102,6 +102,10 @@ export function refreshSession() {
 // Arahkan ke login dan ingat halaman sekarang supaya bisa kembali setelah masuk.
 export function keLogin() {
     const sekarang = location.pathname.split("/").pop() + location.search;
+    if (!document.body.hasAttribute("data-roles")) {
+        import("../features/auth-modal.js").then(({ bukaMasuk }) => bukaMasuk());
+        return;
+    }
     location.replace(`landing.html?masuk=1&redirect=${encodeURIComponent(sekarang)}`);
 }
 

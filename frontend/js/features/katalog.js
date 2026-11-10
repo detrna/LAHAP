@@ -35,7 +35,17 @@ function bisaPesan() {
 }
 
 export function tombolPesan(paket, label = "Pesan Paket", kelas = "btn btn-primary") {
-    if (bisaPesan()) return tautan(`checkout.html?paket=${encodeURIComponent(paket.id)}`, kelas, label);
+    const tujuan = `checkout.html?paket=${encodeURIComponent(paket.id)}`;
+    if (!currentUser()) {
+        const masuk = el("button", kelas, label);
+        masuk.type = "button";
+        masuk.onclick = async () => {
+            const { bukaMasuk } = await import("./auth-modal.js");
+            bukaMasuk({ redirect: tujuan, pemicu: masuk });
+        };
+        return masuk;
+    }
+    if (bisaPesan()) return tautan(tujuan, kelas, label);
     const tombol = el("button", kelas, "Masuk sebagai pelanggan untuk memesan");
     tombol.type = "button";
     tombol.disabled = true;
