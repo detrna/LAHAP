@@ -1,6 +1,7 @@
 import "../layout/boot.js";
 import { api, fetchAll, upload } from "../core/api.js";
 import { errorMessage, issuesText } from "../core/errors.js";
+import { pilihAlergi } from "../features/alergi.js";
 import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
 import { angka, hariIni, tambahHari } from "../ui/format.js";
 import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
@@ -10,6 +11,8 @@ import { toast } from "../ui/toast.js";
 
 const SATUAN = ["kg", "gram", "liter", "ml", "butir", "ikat"];
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
+const alergenUbah = pilihAlergi($("#ua"));
+const alergenBaris = new WeakMap();
 
 let alergi = [],
     halaman = 1,
@@ -23,23 +26,6 @@ function pratinjauFoto(url) {
     pratinjauLokal = null;
     gantiThumb($("#fotoUbah"), url, sedangUbah ? sedangUbah.name : "");
 }
-
-function chipAlergen(container, prefix, dipilih) {
-    container.replaceChildren(
-        ...alergi.map(a => {
-            const label = el("label", "chip");
-            const input = el("input");
-            input.type = "checkbox";
-            input.value = a.id;
-            input.name = prefix;
-            input.checked = dipilih.includes(a.id);
-            label.append(input, a.name);
-            return label;
-        }),
-    );
-    if (!alergi.length) container.append(el("p", "t-small t-muted", "Belum ada alergen."));
-}
-const alergenTerpilih = container => [...container.querySelectorAll("input:checked")].map(i => i.value);
 
 function barisBahan(b) {
     const row = el("div", "invoice");
@@ -150,11 +136,8 @@ function bukaUbah(b) {
     $("#um").value = b.minimumThreshold;
     kosongkanBerkas($("#uf"));
     pratinjauFoto(b.photoUrl);
-    chipAlergen(
-        $("#ua"),
-        "ua",
-        (b.allergies || []).map(a => a.id),
-    );
+    alergenUbah.tutup();
+    alergenUbah.setNilai((b.allergies || []).map(a => a.id));
     showIssues($("#formUbah"), null, {});
     $("#formUbah").hidden = false;
     $("#formUbah").scrollIntoView();
@@ -188,7 +171,7 @@ $("#formUbah").onsubmit = async event => {
         $("#um").focus();
         return;
     }
-    const body = { name, unit: $("#uu").value, minimumThreshold: min, allergyIds: alergenTerpilih($("#ua")) };
+    const body = { name, unit: $("#uu").value, minimumThreshold: min, allergyIds: alergenUbah.nilai() };
     $("#simpanUbah").disabled = true;
     galat(null);
     try {
@@ -205,6 +188,7 @@ $("#formUbah").onsubmit = async event => {
             unit: "uu",
             minimumThreshold: "um",
             photoKey: "uf",
+            allergyIds: "ua",
         });
         if (sisa === false) galat(error);
         else if (sisa.length) galat(error, issuesText(sisa));
@@ -242,9 +226,11 @@ function barisBaru() {
       <div class="field"><label for="bm-${id}">Batas minimum stok</label><input class="input" id="bm-${id}" type="number" min="0" step="0.1" value="0"></div>
      </div>
      <div class="field"><label for="bf-${id}">Foto bahan</label><input class="file-pick-input" id="bf-${id}" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">Wajib. JPEG, PNG, atau WebP.</p></div>
-     <div class="field"><span class="field-label">Alergen</span><div class="chip-group" id="ba-${id}"></div></div>`;
+     <div class="field"><span class="field-label">Alergen</span><div id="ba-${id}"></div></div>`;
     box.querySelector(`#bu-${id}`).append(...SATUAN.map(s => opsi(s, s)));
-    chipAlergen(box.querySelector(`#ba-${id}`), `ba-${id}`, []);
+    const pemilih = pilihAlergi(box.querySelector(`#ba-${id}`));
+    pemilih.setAlergi(alergi);
+    alergenBaris.set(box, pemilih);
     pilihBerkas(box.querySelector(`#bf-${id}`));
     const hapus = el("button", "btn btn-ghost btn-sm", "Hapus baris");
     hapus.type = "button";
@@ -290,7 +276,8 @@ $("#formBahan").onsubmit = async event => {
                 minimumThreshold: Number($(`#bm-${n}`).value) || 0,
                 photoKey,
             };
-            const ids = alergenTerpilih($(`#ba-${n}`));
+            fields[`items.${i}.allergyIds`] = `ba-${n}`;
+            const ids = alergenBaris.get($(`#ba-${n}`).closest("[data-id]")).nilai();
             if (ids.length) item.allergyIds = ids;
             items.push(item);
         }
@@ -458,7 +445,8 @@ async function muatAlergen() {
     try {
         alergi = await fetchAll("/admin/allergies");
         $("#alergen").replaceChildren(...alergi.map(chipNama));
-        document.querySelectorAll("#barisBahan [id^=ba-]").forEach(c => chipAlergen(c, c.id, alergenTerpilih(c)));
+        alergenUbah.setAlergi(alergi);
+        [...$("#barisBahan").children].forEach(box => alergenBaris.get(box)?.setAlergi(alergi));
     } catch (error) {
         galat(error);
     }

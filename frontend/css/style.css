@@ -152,6 +152,20 @@ a.pkg-photo{text-decoration:none}
 .chip:has(input:focus-visible){outline:2px solid var(--orange-700);outline-offset:2px}
 .chip:has(input:disabled){background:#ECEAE8;color:#6B625B;cursor:not-allowed}
 .chip-static{cursor:default}
+.pilih-banyak{position:relative;min-width:0}
+.pilih-banyak-tombol{display:flex;align-items:center;text-align:left;cursor:pointer}
+.pilih-banyak-tombol:disabled{cursor:not-allowed}
+.pilih-banyak-ringkas{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pilih-banyak-tombol.is-kosong .pilih-banyak-ringkas{color:#7A6F66}
+.pilih-banyak-tombol[aria-expanded=true]{border-color:var(--orange-700)}
+.pilih-banyak-panel{margin-top:var(--sp-2);padding:var(--sp-2);background:var(--white);border:1.5px solid var(--input-border);border-radius:var(--radius-control)}
+.is-error .pilih-banyak-cari{border-color:var(--input-border)}
+.pilih-banyak-daftar{display:flex;flex-direction:column;max-height:260px;margin-top:var(--sp-2);overflow-y:auto;overscroll-behavior:contain}
+.pilih-banyak-opsi{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;padding:0 var(--sp-2);border-radius:var(--radius-control);cursor:pointer}
+.pilih-banyak-opsi:hover{background:var(--orange-50)}
+.pilih-banyak-opsi input{flex:none;width:18px;height:18px;margin:0;accent-color:var(--orange-700);cursor:pointer}
+.pilih-banyak-opsi:has(input:checked){color:var(--orange-900);font-weight:600}
+.pilih-banyak-kosong{padding:var(--sp-2);color:var(--muted)}
 .fakta{display:flex;flex-wrap:wrap;align-items:center;color:var(--ink,inherit);font-weight:500}
 .fakta-item+.fakta-item::before{content:"\00b7";margin:0 var(--sp-2);color:var(--muted)}
 .file-pick{position:relative;display:flex;align-items:center;gap:var(--sp-2);min-width:0}

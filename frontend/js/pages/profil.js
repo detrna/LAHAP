@@ -2,6 +2,7 @@ import "../layout/boot.js";
 import { api, store } from "../core/api.js";
 import { errorMessage } from "../core/errors.js";
 import { pasangGantiPassword } from "../features/akun.js";
+import { pilihAlergi } from "../features/alergi.js";
 import { pasangPeta } from "../features/peta.js";
 import { $ } from "../ui/dom.js";
 import { pesanForm, tampilPesan, tandaiField } from "../ui/forms.js";
@@ -18,6 +19,7 @@ const FIELD_PROFIL = {
 };
 let petaProfil = null;
 let pinProfil = null;
+const alergiProfil = pilihAlergi($("#alergi"));
 
 function isiForm(user) {
     $("#nama").value = user.name || "";
@@ -44,23 +46,10 @@ async function muat() {
             });
         } else petaProfil.setTitik(titik);
         pinProfil = petaProfil.ambilTitik();
-        const dipilih = new Set((profil.data.allergies || []).map(item => item.id));
-        $("#alergi").replaceChildren();
-        alergi.data.forEach(item => {
-            const label = document.createElement("label");
-            label.className = "chip";
-            const input = document.createElement("input");
-            input.type = "checkbox";
-            input.value = item.id;
-            input.checked = dipilih.has(item.id);
-            label.append(input, item.name);
-            $("#alergi").append(label);
-        });
-        $("#alergi").removeAttribute("aria-busy");
+        alergiProfil.setNilai((profil.data.allergies || []).map(item => item.id));
+        alergiProfil.setAlergi(alergi.data);
         $("#simpanProfil").disabled = false;
     } catch (error) {
-        $("#alergi").replaceChildren();
-        $("#alergi").removeAttribute("aria-busy");
         tampilPesan($("#errMuat"), `${errorMessage(error)} Muat ulang halaman untuk mencoba lagi.`);
     }
 }
@@ -87,7 +76,7 @@ $("#fProfil").addEventListener("submit", async event => {
         email: atauNull("#email"),
         address: atauNull("#alamat"),
         allergyNote: atauNull("#catAlergi"),
-        allergyIds: [...document.querySelectorAll("#alergi input:checked")].map(input => input.value),
+        allergyIds: alergiProfil.nilai(),
         latitude: pinProfil ? pinProfil.lat : null,
         longitude: pinProfil ? pinProfil.lng : null,
     };

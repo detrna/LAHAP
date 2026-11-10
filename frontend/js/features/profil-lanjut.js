@@ -1,5 +1,6 @@
 import { ApiError, api, store } from "../core/api.js";
 import { pesanForm, tampilGalat, tandaiField } from "../ui/forms.js";
+import { pilihAlergi } from "./alergi.js";
 import { pasangPeta, pastikanLeaflet } from "./peta.js";
 
 const FIELD_LANJUT = {
@@ -40,7 +41,7 @@ export function buatFormLanjut(prefix = "") {
         </div>
         <div class="field" id="${prefix}fAlergi" hidden>
             <span class="field-label">Alergi</span>
-            <div class="chip-group" id="${prefix}alergi"></div>
+            <div id="${prefix}alergi"></div>
             <p class="hint">Dipakai untuk peringatan menu yang mengandung alergenmu.</p>
         </div>
         <div class="field">
@@ -62,20 +63,11 @@ export async function pasangFormLanjut(form, { prefix = "", selesai }) {
     await pastikanLeaflet();
     const peta = pasangPeta(ambil("peta"), { label: "Peta lokasi rumah. Ketuk untuk menaruh pin." });
 
+    const alergi = pilihAlergi(ambil("alergi"));
     api("/allergies", { auth: false })
         .then(({ data }) => {
             if (!data.length) return;
-            ambil("alergi").replaceChildren(
-                ...data.map(item => {
-                    const label = document.createElement("label");
-                    label.className = "chip";
-                    const input = document.createElement("input");
-                    input.type = "checkbox";
-                    input.value = item.id;
-                    label.append(input, item.name);
-                    return label;
-                }),
-            );
+            alergi.setAlergi(data);
             ambil("fAlergi").hidden = false;
         })
         .catch(() => {});
@@ -100,8 +92,8 @@ export async function pasangFormLanjut(form, { prefix = "", selesai }) {
             body.latitude = titik.lat;
             body.longitude = titik.lng;
         }
-        const alergi = [...ambil("alergi").querySelectorAll("input:checked")].map(input => input.value);
-        if (alergi.length) body.allergyIds = alergi;
+        const alergiDipilih = alergi.nilai();
+        if (alergiDipilih.length) body.allergyIds = alergiDipilih;
         if (ambil("catAlergi").value.trim()) body.allergyNote = ambil("catAlergi").value.trim();
         if (!Object.keys(body).length) return selesai();
 

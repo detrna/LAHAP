@@ -1,5 +1,6 @@
 import "../layout/boot.js";
 import { ApiError, api } from "../core/api.js";
+import { pilihAlergi } from "../features/alergi.js";
 import { pasangPeta, pastikanLeaflet } from "../features/peta.js";
 import { $, el } from "../ui/dom.js";
 import { periksa, pesanForm, showIssues, tampilGalat, tandaiField } from "../ui/forms.js";
@@ -21,6 +22,7 @@ const FIELD = {
 };
 const EMAIL_VALID = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
+const alergiPengguna = pilihAlergi($("#alergi"));
 let sedangUbah = null,
     ke = 0,
     halaman = 1,
@@ -107,16 +109,7 @@ function siapkanProfil() {
         peta = pasangPeta($("#peta"), { label: "Peta titik lokasi pelanggan. Ketuk untuk menaruh pin." });
         try {
             const { data } = await api("/allergies", { auth: false });
-            $("#alergi").replaceChildren(
-                ...data.map(item => {
-                    const label = el("label", "chip");
-                    const input = document.createElement("input");
-                    input.type = "checkbox";
-                    input.value = item.id;
-                    label.append(input, item.name);
-                    return label;
-                }),
-            );
+            alergiPengguna.setAlergi(data);
             $("#fAlergi").hidden = data.length === 0;
         } catch {
             $("#fAlergi").hidden = true;
@@ -131,10 +124,6 @@ async function aturPeran() {
     if (!pelanggan) return;
     await siapkanProfil();
     if (!profilAwal) return;
-    const dipilih = new Set(profilAwal.allergyIds);
-    $("#alergi")
-        .querySelectorAll("input")
-        .forEach(input => (input.checked = dipilih.has(input.value)));
     peta.setTitik(profilAwal.titik);
     profilAwal = null;
 }
@@ -166,8 +155,9 @@ async function bukaForm(id) {
         : "8 sampai 72 karakter.";
     $("#alamat").value = u?.address || "";
     $("#catAlergi").value = u?.allergyNote || "";
+    alergiPengguna.tutup();
+    alergiPengguna.setNilai((u?.allergies || []).map(a => a.id));
     profilAwal = {
-        allergyIds: (u?.allergies || []).map(a => a.id),
         titik:
             u && u.latitude != null && u.longitude != null
                 ? { lat: Number(u.latitude), lng: Number(u.longitude) }
@@ -184,7 +174,7 @@ function isiProfil(body, baru) {
     const alamat = $("#alamat").value.trim();
     const catatan = $("#catAlergi").value.trim();
     const titik = peta ? peta.ambilTitik() : null;
-    const alergi = [...$("#alergi").querySelectorAll("input:checked")].map(input => input.value);
+    const alergi = alergiPengguna.nilai();
     if (baru) {
         if (alamat) body.address = alamat;
         if (catatan) body.allergyNote = catatan;
