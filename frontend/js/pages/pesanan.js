@@ -42,7 +42,7 @@ async function muat() {
         $("#isi").removeAttribute("aria-busy");
         if (error instanceof ApiError && (error.status === 404 || error.status === 400)) {
             const kosong = el("div", "stack");
-            const kembali = el("a", "btn btn-secondary", "Kembali ke Langganan Saya");
+            const kembali = el("a", "btn btn-secondary", "Kembali ke Beranda");
             kembali.href = "langganan.html";
             kosong.append(el("p", "t-muted", "Pesanan tidak ditemukan."), kembali);
             $("#isi").replaceChildren(kosong);

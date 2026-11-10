@@ -8,7 +8,7 @@ const MENU = {
     ],
     pelanggan: [
         ["Paket", "index.html"],
-        ["Langganan Saya", "langganan.html"],
+        ["Beranda", "langganan.html"],
         ["Tier Pelanggan", "tier.html"],
         ["Notifikasi", "notifikasi.html"],
         ["Profil", "profil.html"],

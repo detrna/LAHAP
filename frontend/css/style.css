@@ -258,7 +258,7 @@ a.pkg-photo{text-decoration:none}
 .map-pin-kitchen{display:grid;place-items:center}
 .map-pin-kitchen-badge{width:28px;height:28px;border-radius:50%;background:var(--orange-700);color:var(--white);display:grid;place-items:center;font-size:14px;box-shadow:var(--shadow-pop);border:2px solid var(--white)}
 
-/* Halaman Langganan Saya */
+/* Halaman Beranda */
 .dash{display:grid;gap:var(--sp-5)}
 @media(min-width:900px){.dash{grid-template-columns:2fr 1fr;align-items:start}}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-3)}
