@@ -25,10 +25,18 @@
 <p class="t-muted" id="kosongTugas" hidden>Tidak ada pengantaran pada tanggal ini.</p>
 <div id="tugas"></div>
 </section>
-<section class="card">
+<section class="card stack" id="bagianPapan">
 <div class="section-head"><h2 class="t-h2">Papan pengantaran</h2><span class="t-small t-muted">Pilih kurir per slot, tersimpan otomatis</span></div>
+<div class="grid grid-2">
+ <div class="field"><label for="fKurir">Kurir</label><select class="select input" id="fKurir"><option value="">Semua kurir</option><option value="tanpa">Belum ada kurir</option></select></div>
+ <div class="field"><label for="fJam">Waktu makan</label><select class="select input" id="fJam"><option value="">Semua waktu makan</option></select></div>
+ <div class="field"><label for="fStatus">Status</label><select class="select input" id="fStatus"><option value="">Semua status</option><option>Terjadwal</option><option>Disiapkan</option><option>Diantar</option><option>Selesai</option><option>Dilewati</option></select></div>
+ <div class="field"><label for="fPaket">Paket</label><select class="select input" id="fPaket"><option value="">Semua paket</option></select></div>
+</div>
+<p class="t-small t-muted" id="hasilAntar" role="status"></p>
 <p class="t-muted" id="kosongAntar" hidden>Tidak ada pengantaran pada tanggal ini.</p>
 <div id="papan"></div>
+<div id="pagerAntar" hidden></div>
 </section>
 <section class="card">
 <div class="section-head"><h2 class="t-h2">Ambil sendiri</h2><span class="t-small t-muted">Tandai saat pelanggan mengambil pesanannya</span></div>

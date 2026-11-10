@@ -3,6 +3,7 @@ import { api, fetchAll } from "../core/api.js";
 import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal, hariIni } from "../ui/format.js";
 import { tampilGalat } from "../ui/forms.js";
+import { renderPager } from "../ui/pager.js";
 import { peringatan } from "../ui/peringatan.js";
 import { ALUR_AMBIL, ALUR_ANTAR, badge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
@@ -18,6 +19,14 @@ const jam = o =>
     o.menuSchedule && o.menuSchedule.deliveryTime
         ? `${o.menuSchedule.deliveryTime.range} ${o.menuSchedule.deliveryTime.time}`
         : "";
+
+const urutkan = daftar =>
+    daftar.sort(
+        (a, b) =>
+            (a.menuSchedule ? a.menuSchedule.deliveryTime.time : "").localeCompare(
+                b.menuSchedule ? b.menuSchedule.deliveryTime.time : "",
+            ) || penerima(a).localeCompare(penerima(b)),
+    );
 
 function tujuanSah(o) {
     const alur = o.isDelivery ? ALUR_ANTAR : ALUR_AMBIL;
@@ -144,14 +153,92 @@ async function tugas(t) {
                 }
             };
             kanan.append(pilih, simpan);
+            if (x.unassignedCount) {
+                const lihat = el("button", "btn btn-ghost btn-sm", "Lihat yang tanpa kurir");
+                lihat.type = "button";
+                lihat.setAttribute(
+                    "aria-label",
+                    `Lihat pengantaran tanpa kurir di ${x.deliveryTime.range} ${x.deliveryTime.time}`,
+                );
+                lihat.onclick = () => {
+                    $("#fKurir").value = "tanpa";
+                    $("#fJam").value = x.deliveryTime.time;
+                    $("#fStatus").value = "";
+                    $("#fPaket").value = "";
+                    saringPapan();
+                    $("#bagianPapan").scrollIntoView();
+                };
+                kanan.append(lihat);
+            }
             row.append(kiri, kanan);
             return row;
         }),
     );
+    const jamDipilih = $("#fJam").value;
+    $("#fJam").replaceChildren(
+        opsi("", "Semua waktu makan"),
+        ...data.map(x => opsi(x.deliveryTime.time, `${x.deliveryTime.range} ${x.deliveryTime.time}`)),
+    );
+    if (data.some(x => x.deliveryTime.time === jamDipilih)) $("#fJam").value = jamDipilih;
 }
 
-function papan() {
-    const antar = pesanan.filter(o => o.isDelivery);
+const FILTER_PAPAN = ["#fKurir", "#fJam", "#fStatus", "#fPaket"];
+let halamanAntar = 1,
+    kePapan = 0;
+
+async function muatPapan() {
+    const ini = ++kePapan;
+    const q = new URLSearchParams({
+        date: $("#tgl").value || hariIni(),
+        isDelivery: "true",
+        page: halamanAntar,
+        limit: 20,
+    });
+    const k = $("#fKurir").value;
+    if (k === "tanpa") q.set("unassigned", "true");
+    else if (k) q.set("courierId", k);
+    [
+        ["deliveryTime", "#fJam"],
+        ["status", "#fStatus"],
+        ["packageId", "#fPaket"],
+    ].forEach(([nama, id]) => {
+        if ($(id).value) q.set(nama, $(id).value);
+    });
+    $("#papan").setAttribute("aria-busy", "true");
+    let hasil;
+    try {
+        hasil = await api(`/admin/orders?${q}`);
+    } catch (error) {
+        if (ini !== kePapan) return;
+        $("#papan").removeAttribute("aria-busy");
+        throw error;
+    }
+    if (ini !== kePapan) return;
+    const { data, meta } = hasil;
+    const akhir = Math.max(1, Math.ceil(meta.total / meta.limit));
+    if (!data.length && halamanAntar > akhir) {
+        halamanAntar = akhir;
+        return muatPapan();
+    }
+    $("#papan").removeAttribute("aria-busy");
+    papan(urutkan(data), meta.total);
+    renderPager($("#pagerAntar"), meta, p => {
+        halamanAntar = p;
+        muatPapan().catch(galat);
+    });
+}
+
+function saringPapan() {
+    halamanAntar = 1;
+    muatPapan().then(() => galat(null), galat);
+}
+
+function papan(antar, total) {
+    const adaFilter = FILTER_PAPAN.some(id => $(id).value);
+    $("#hasilAntar").textContent = total ? `${total} pengantaran.` : "";
+    $("#kosongAntar").textContent = adaFilter
+        ? "Tidak ada pengantaran untuk filter ini."
+        : "Tidak ada pengantaran pada tanggal ini.";
     $("#kosongAntar").hidden = antar.length > 0;
     $("#papan").replaceChildren(
         ...antar.map(o => {
@@ -194,6 +281,7 @@ function papan() {
                     });
                     o.courierId = pilih.value || null;
                     toast("Penugasan kurir disimpan.");
+                    if ($("#fKurir").value) muatPapan().catch(galat);
                     tugas($("#tgl").value || hariIni()).catch(galat);
                 } catch (error) {
                     pilih.value = o.courierId || "";
@@ -352,6 +440,24 @@ $("#tutup").onclick = () => {
     $("#detail").hidden = true;
 };
 
+function isiFilterPapan(paket) {
+    const pilihan = (id, awal, isi) => {
+        const sebelum = $(id).value;
+        $(id).replaceChildren(...awal, ...isi);
+        if ([...$(id).options].some(o => o.value === sebelum)) $(id).value = sebelum;
+    };
+    pilihan(
+        "#fKurir",
+        [opsi("", "Semua kurir"), opsi("tanpa", "Belum ada kurir")],
+        kurir.map(k => opsi(k.id, k.name)),
+    );
+    pilihan(
+        "#fPaket",
+        [opsi("", "Semua paket")],
+        paket.map(p => opsi(p.id, p.name)),
+    );
+}
+
 let ke = 0;
 async function muat() {
     const ini = ++ke;
@@ -363,19 +469,16 @@ async function muat() {
             fetchAll("/admin/packages"),
         ]);
         if (ini !== ke) return;
-        pesanan = ord.sort(
-            (a, b) =>
-                (a.menuSchedule ? a.menuSchedule.deliveryTime.time : "").localeCompare(
-                    b.menuSchedule ? b.menuSchedule.deliveryTime.time : "",
-                ) || penerima(a).localeCompare(penerima(b)),
-        );
+        pesanan = urutkan(ord);
         kurir = usr;
         namaPaket = new Map(pak.map(p => [p.id, p.name]));
+        isiFilterPapan(pak);
         rekap();
-        papan();
         ambil();
         isiSlot();
         await tugas(t);
+        halamanAntar = 1;
+        await muatPapan();
         galat(null);
     } catch (error) {
         if (ini !== ke) return;
@@ -387,6 +490,7 @@ async function muat() {
 $("#tgl").value = hariIni();
 $("#tgl").addEventListener("change", muat);
 $("#slot").addEventListener("change", isiTujuan);
+FILTER_PAPAN.forEach(id => $(id).addEventListener("change", saringPapan));
 $("#koreksi").onsubmit = async event => {
     event.preventDefault();
     const alasan = $("#alasan");
