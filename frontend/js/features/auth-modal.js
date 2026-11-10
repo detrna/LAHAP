@@ -43,7 +43,6 @@ const HTML = `
         <div class="field">
             <label for="m-dPw">Password</label>
             <input class="input" id="m-dPw" type="password" autocomplete="new-password" />
-            <p class="hint">8 sampai 72 karakter.</p>
             <p class="error-msg" hidden>Password harus 8 sampai 72 karakter.</p>
         </div>
         <div class="field">
