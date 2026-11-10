@@ -7,8 +7,8 @@ import { fotoTier, tampilTierSaya, teksDiskon, teksSyarat } from "../features/ti
 import { $, el } from "../ui/dom.js";
 
 function kartuTier(tier, punyaSaya) {
-    const card = el("article", punyaSaya ? "card row tier-kartu tier-saya" : "card row tier-kartu");
-    const info = el("div", "stack flex-1");
+    const card = el("article", punyaSaya ? "card stack tier-kartu tier-saya" : "card stack tier-kartu");
+    const info = el("div", "stack");
     const kepala = el("div", "row-between");
     kepala.append(el("h3", "t-h3", tier.name));
     if (punyaSaya) kepala.append(el("span", "badge badge--ready", "Tier kamu"));
