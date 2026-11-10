@@ -16,7 +16,19 @@
 details{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-3) var(--sp-4)}
 summary{cursor:pointer;font-weight:600;min-height:32px}
 details p{margin-top:var(--sp-2);color:var(--muted)}
-@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}}
+main.container{padding-block:var(--sp-6) var(--sp-7)}
+main.stack-lg>*+*{margin-top:var(--sp-7)}
+main .stack>*+*{margin-top:var(--sp-5)}
+main .grid{gap:var(--sp-5)}
+.hero .stack>*+*{margin-top:var(--sp-4)}
+details{padding:var(--sp-4) var(--sp-5)}
+details+details{margin-top:var(--sp-4)!important}
+.card>*+*{margin-top:var(--sp-3)}
+#boxTier.stack>*+*{margin-top:var(--sp-4)}
+#boxTier .grid{gap:var(--sp-4)}
+#boxTier .card>*+*{margin-top:0}
+.footer{margin-top:var(--sp-7)!important}
+@media(min-width:720px){.hero{grid-template-columns:1fr 1fr}main.container{padding-block:var(--sp-7) var(--sp-7)}main.stack-lg>*+*{margin-top:64px}}
 </style></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
