@@ -21,43 +21,7 @@
                 <p class="t-muted">Akunmu sudah jadi. Semua isian di bawah boleh dilewati dan bisa diubah nanti di halaman Profil.</p>
             </div>
 
-            <form class="card stack" id="form" novalidate>
-                <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal menyimpan</span><span class="msg"></span></div>
-                <div class="field">
-                    <label for="nama">Nama</label>
-                    <input class="input" id="nama" autocomplete="name" maxlength="100" />
-                    <p class="hint">Dipakai sebagai nama penerima saat memesan.</p>
-                </div>
-                <div class="field" id="fEmail">
-                    <label for="email">Email</label>
-                    <input class="input" id="email" type="email" autocomplete="email" maxlength="100" />
-                    <p class="error-msg" hidden>Format email tidak valid.</p>
-                    <p class="hint">Bisa dipakai untuk masuk selain nomor HP.</p>
-                </div>
-                <div class="field">
-                    <label for="alamat">Alamat</label>
-                    <textarea class="textarea" id="alamat" autocomplete="street-address"></textarea>
-                </div>
-                <div class="field">
-                    <span class="field-label">Titik lokasi</span>
-                    <div id="peta"></div>
-                    <p class="hint">Alamat dan titik ini hanya mengisi otomatis form pesanan. Tiap pesanan tetap bisa memakai alamat lain.</p>
-                </div>
-                <div class="field" id="fAlergi" hidden>
-                    <span class="field-label">Alergi</span>
-                    <div class="chip-group" id="alergi"></div>
-                    <p class="hint">Dipakai untuk peringatan menu yang mengandung alergenmu.</p>
-                </div>
-                <div class="field">
-                    <label for="catAlergi">Catatan alergi lain</label>
-                    <input class="input" id="catAlergi" maxlength="500" placeholder="Mis. alergi kemiri" />
-                    <p class="hint">Untuk alergi yang tidak ada di daftar. Dapur akan memeriksa pesananmu secara khusus.</p>
-                </div>
-                <div class="row-between">
-                    <button class="btn btn-ghost" type="button" id="lewati">Lewati</button>
-                    <button class="btn btn-primary" type="submit" id="simpan">Simpan dan Lanjut</button>
-                </div>
-            </form>
+            <div id="lanjut"></div>
         </main>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
         <script type="module" src="js/pages/daftar-lanjut.js"></script>

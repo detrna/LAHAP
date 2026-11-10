@@ -3,6 +3,24 @@ const PETA_ZOOM_BAWAAN = 13;
 const PETA_ZOOM_TITIK = 16;
 const PETA_JEDA_CARI_MS = 1100;
 
+const LEAFLET_VERSI = "1.9.4";
+const LEAFLET_URL = `https://cdnjs.cloudflare.com/ajax/libs/leaflet/${LEAFLET_VERSI}/leaflet`;
+
+export function pastikanLeaflet() {
+    if (typeof L !== "undefined") return Promise.resolve();
+    return new Promise(selesai => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = `${LEAFLET_URL}.css`;
+        document.head.append(css);
+        const skrip = document.createElement("script");
+        skrip.src = `${LEAFLET_URL}.js`;
+        skrip.onload = selesai;
+        skrip.onerror = selesai;
+        document.head.append(skrip);
+    });
+}
+
 function koordinatValid(lat, lng) {
     return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }

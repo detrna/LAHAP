@@ -102,7 +102,7 @@ export function refreshSession() {
 // Arahkan ke login dan ingat halaman sekarang supaya bisa kembali setelah masuk.
 export function keLogin() {
     const sekarang = location.pathname.split("/").pop() + location.search;
-    location.replace(`login.html?redirect=${encodeURIComponent(sekarang)}`);
+    location.replace(`landing.html?masuk=1&redirect=${encodeURIComponent(sekarang)}`);
 }
 
 // Memastikan access token tersedia (mis. sebelum membuka EventSource).

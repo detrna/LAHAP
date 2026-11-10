@@ -32,3 +32,7 @@ export function currentUser() {
 export function homeFor(user) {
     return (user && HOME[ROLE_KEY[user.role]]) || "index.html";
 }
+
+export function redirectAman(minta) {
+    return minta && /^[\w-]+\.html(\?[\w%=&.-]*)?$/.test(minta) ? minta : null;
+}

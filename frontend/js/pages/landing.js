@@ -1,6 +1,7 @@
 import "../layout/boot.js";
 import { api } from "../core/api.js";
-import { currentUser, homeFor } from "../core/session.js";
+import { currentUser, homeFor, redirectAman } from "../core/session.js";
+import { bukaMasuk } from "../features/auth-modal.js";
 import { kartuPaket, muatPaket, pasangFooter } from "../features/katalog.js";
 import { fotoTier, teksDiskon } from "../features/tier.js";
 import { $, el } from "../ui/dom.js";
@@ -49,9 +50,18 @@ async function muatTier() {
 }
 
 const user = currentUser();
+const params = new URLSearchParams(location.search);
+const redirect = redirectAman(params.get("redirect"));
 if (user) {
     $("#masuk").href = homeFor(user);
     $("#masuk").textContent = "Buka Dashboard";
+    if (params.has("masuk")) location.replace(redirect || homeFor(user));
+} else {
+    $("#masuk").addEventListener("click", event => {
+        event.preventDefault();
+        bukaMasuk({ redirect, pemicu: $("#masuk") });
+    });
+    if (params.has("masuk")) bukaMasuk({ redirect });
 }
 $("#ulang").onclick = muat;
 pasangFooter($("#footer"));

@@ -21,7 +21,7 @@ export function pasangGantiPassword(form) {
             await api("/me/password", { method: "PUT", body: { currentPassword: $("#pl").value, newPassword: baru } });
             clearSession();
             toast("Password diganti. Silakan masuk lagi.");
-            setTimeout(() => location.replace("login.html"), 1200);
+            setTimeout(() => location.replace("landing.html?masuk=1"), 1200);
         } catch (error) {
             tampilGalat(galat, pesanGantiPassword(form, error));
             tombol.disabled = false;

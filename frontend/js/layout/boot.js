@@ -16,7 +16,7 @@ function bukaHalaman() {
         if (!roles.split(",").includes(key)) {
             const tujuan = HOME[key];
             const sekarang = location.pathname.split("/").pop() || "index.html";
-            location.replace(tujuan && tujuan !== sekarang ? tujuan : "login.html");
+            location.replace(tujuan && tujuan !== sekarang ? tujuan : "landing.html");
             return false;
         }
     }
