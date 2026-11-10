@@ -92,9 +92,9 @@ export function computeMidtransSignature(
     orderId: string,
     statusCode: string,
     grossAmount: string,
-    serverKey: string,
+    signatureKey: string,
 ): string {
-    return createHash("sha512").update(`${orderId}${statusCode}${grossAmount}${serverKey}`).digest("hex");
+    return createHash("sha512").update(`${orderId}${statusCode}${grossAmount}${signatureKey}`).digest("hex");
 }
 
 function isDuplicateOrderId(status: number, messages: readonly string[]): boolean {
@@ -137,7 +137,7 @@ function normalizeInput(input: CreatePaymentTransactionInput): {
 }
 
 export class MidtransPaymentGateway implements PaymentGateway {
-    private readonly serverKey: string;
+    private readonly signatureKey: string;
     private readonly endpoint: string;
     private readonly authHeader: string;
     private readonly timeoutMs: number;
@@ -155,7 +155,7 @@ export class MidtransPaymentGateway implements PaymentGateway {
             throw new Error("MIDTRANS_BASE_URL is not set");
         }
 
-        this.serverKey = serverKey;
+        this.signatureKey = config.SIGNATURE_KEY.trim() || serverKey;
         this.endpoint = `${baseUrl}/snap/v1/transactions`;
         this.authHeader = `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`;
         this.timeoutMs = config.TIMEOUT_MS;
@@ -267,7 +267,7 @@ export class MidtransPaymentGateway implements PaymentGateway {
             payment_type,
         } = parsed.data;
 
-        const expectedSignature = computeMidtransSignature(order_id, status_code, gross_amount, this.serverKey);
+        const expectedSignature = computeMidtransSignature(order_id, status_code, gross_amount, this.signatureKey);
 
         const actualBuf = Buffer.from(signature_key.toLowerCase(), "utf8");
         const expectedBuf = Buffer.from(expectedSignature.toLowerCase(), "utf8");

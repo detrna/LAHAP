@@ -29,7 +29,7 @@ const objectStorage = {
 
 const SERVER_KEY = "SB-Mid-server-e2e-key";
 const verifier = new MidtransPaymentGateway(
-    { SERVER_KEY, BASE_URL: "https://app.sandbox.midtrans.com", TIMEOUT_MS: 1000, MAX_RETRIES: 0 },
+    { SERVER_KEY, SIGNATURE_KEY: "", BASE_URL: "https://app.sandbox.midtrans.com", TIMEOUT_MS: 1000, MAX_RETRIES: 0 },
     { IS_PRODUCTION: false, PORT: 4000 },
 );
 const midtransNotification = (orderId: string, amount: number, transactionStatus = "settlement") => {

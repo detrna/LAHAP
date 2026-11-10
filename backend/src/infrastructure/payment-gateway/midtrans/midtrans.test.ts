@@ -18,6 +18,7 @@ import {
 
 const dummyConfig: PaymentGatewayConfig = {
     SERVER_KEY: "SB-Mid-server-dummy-key",
+    SIGNATURE_KEY: "",
     BASE_URL: "https://app.sandbox.midtrans.com",
     TIMEOUT_MS: 15_000,
     MAX_RETRIES: 1,
@@ -419,6 +420,25 @@ describe("MidtransPaymentGateway (unit)", () => {
             expect(() => gateway.verifyNotification(buildValidNotification({ gross_amount: "not-a-number" }))).toThrow(
                 InvalidPaymentNotificationError,
             );
+        });
+
+        describe("with a signature secret key", () => {
+            const signatureKey = "dummy-signature-secret-key";
+            const signedGateway = new MidtransPaymentGateway({ ...dummyConfig, SIGNATURE_KEY: `  ${signatureKey}  ` });
+
+            it("verifies notifications signed with the signature secret key", () => {
+                const notification = buildValidNotification({
+                    signature_key: computeMidtransSignature("order-123", "200", "50000.00", signatureKey),
+                });
+
+                expect(signedGateway.verifyNotification(notification).status).toBe("PAID");
+            });
+
+            it("rejects notifications signed with the server key", () => {
+                expect(() => signedGateway.verifyNotification(buildValidNotification())).toThrow(
+                    InvalidPaymentSignatureError,
+                );
+            });
         });
     });
 });

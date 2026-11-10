@@ -14930,7 +14930,7 @@
       "MidtransNotification": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Midtrans HTTP notification (only the fields the backend reads are listed). Verified with `signature_key = SHA512(order_id + status_code + gross_amount + serverKey)`, and `gross_amount` must equal the payment's amount. Mapping of `transaction_status` to stored statuses: `settlement`/`capture` (accept) → `Success`, `pending` and `capture` with `fraud_status = challenge` → unchanged `Pending`, `deny`/`failure`/`cancel`/`expire` → `Expire`, `refund` → `Refund`.",
+        "description": "Midtrans HTTP notification (only the fields the backend reads are listed). Verified with `signature_key = SHA512(order_id + status_code + gross_amount + key)`, where `key` is the dashboard's Signature Secret Key (`MIDTRANS_SIGNATURE_KEY`) or, when that isn't set, the server key, and `gross_amount` must equal the payment's amount. Mapping of `transaction_status` to stored statuses: `settlement`/`capture` (accept) → `Success`, `pending` and `capture` with `fraud_status = challenge` → unchanged `Pending`, `deny`/`failure`/`cancel`/`expire` → `Expire`, `refund` → `Refund`.",
         "required": [
           "order_id",
           "status_code",
