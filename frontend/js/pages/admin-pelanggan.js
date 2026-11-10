@@ -217,10 +217,27 @@ $("#formTpl").onsubmit = async event => {
     }
 };
 
+let keChurn = 0,
+    halamanChurn = 1;
 async function muatChurn() {
+    const ini = ++keChurn;
+    const kata = $("#cariChurn").value.trim();
     try {
-        const [c] = await Promise.all([api("/admin/retention/churn?limit=30"), muatTemplate()]);
+        const c = await api(
+            `/admin/retention/churn?page=${halamanChurn}&limit=20${kata ? `&search=${encodeURIComponent(kata)}` : ""}`,
+        );
+        if (ini !== keChurn) return;
         $("#kosongChurn").hidden = c.data.length > 0;
+        $("#kosongChurn").textContent = kata
+            ? "Tidak ada pelanggan berhenti yang cocok dengan pencarian."
+            : "Tidak ada pelanggan berhenti.";
+        $("#hasilChurn").textContent = kata
+            ? `${c.meta.total} pelanggan berhenti ditemukan.`
+            : `${c.meta.total} pelanggan berhenti.`;
+        renderPager($("#pagerChurn"), c.meta, p => {
+            halamanChurn = p;
+            muatChurn();
+        });
         $("#churn").replaceChildren(
             ...c.data.map(x => {
                 const box = el("div", "alert alert--error row-between");
@@ -255,9 +272,19 @@ async function muatChurn() {
             }),
         );
     } catch (error) {
+        if (ini !== keChurn) return;
         galat(error);
     }
 }
+let tundaChurn;
+$("#cariChurn").addEventListener("input", () => {
+    clearTimeout(tundaChurn);
+    tundaChurn = setTimeout(() => {
+        halamanChurn = 1;
+        muatChurn();
+    }, 350);
+});
 $("#tpl").addEventListener("change", tampilTpl);
 muatPelanggan();
+muatTemplate().catch(galat);
 muatChurn();
