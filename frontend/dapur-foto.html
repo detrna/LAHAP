@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hitung Stok AI · LAHAP</title><link rel="stylesheet" href="css/style.css"></head><body data-roles="dapur,admin">
+<header class="app-header"><div class="container"><a class="brand" href="dapur.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div><h1 class="t-h1">Hitung Stok AI</h1><p class="t-muted">Foto wadah bahan, AI menghitung jumlah wadahnya, lalu simpan hasilnya sebagai stok.</p></div>
+<div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal</span><span class="msg"></span></div>
+<form class="card stack" id="form" novalidate>
+<div class="field"><label for="bahan">Bahan</label><select class="select input" id="bahan" disabled><option value="">Memuat bahan...</option></select></div>
+<div class="row" id="infoBahan" hidden></div>
+<div class="field"><label for="foto">Foto wadah bahan</label><input class="input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">JPEG, PNG, atau WebP. Pastikan semua wadah terlihat.</p></div>
+<div class="pratinjau-foto" id="pratinjau" hidden><img id="gambarPratinjau" alt="Pratinjau foto wadah bahan"></div>
+<div class="field"><label for="isi" id="labelIsi">Isi per wadah</label><input class="input w-num" id="isi" type="number" min="0" step="any" inputmode="decimal" placeholder="1000"><div class="row" id="tambahIsi"><button class="btn btn-secondary btn-sm" type="button" data-tambah="10">+10</button><button class="btn btn-secondary btn-sm" type="button" data-tambah="100">+100</button><button class="btn btn-secondary btn-sm" type="button" data-tambah="1000">+1000</button><button class="btn btn-ghost btn-sm" type="button" id="hapusIsi">Kosongkan</button></div><p class="hint" id="hintIsi">AI menghitung jumlah wadah, bukan beratnya. Contoh: botol 1,5 liter diisi 1,5, kemasan 1 kg gula diisi 1000 kalau satuannya gram.</p></div>
+<div><button class="btn btn-secondary" id="perkirakan" type="submit">Perkirakan</button></div>
+</form>
+<section class="card stack" id="hasil" hidden aria-live="polite">
+<h2 class="t-h3">Hasil perkiraan</h2>
+<p id="rincian"></p>
+<div class="field"><label for="stokBaru" id="labelStok">Stok baru</label><input class="input w-num" id="stokBaru" type="number" min="0" step="any" inputmode="decimal"><p class="hint" id="selisih"></p></div>
+<div><button class="btn btn-primary" id="simpan" type="button">Simpan stok</button></div>
+</section>
+</main><script type="module" src="js/pages/dapur-foto.js"></script></body></html>

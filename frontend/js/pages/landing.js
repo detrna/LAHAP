@@ -1,43 +1,33 @@
 import "../layout/boot.js";
 import { api } from "../core/api.js";
 import { currentUser, homeFor } from "../core/session.js";
-import {
-    alergiSaya,
-    kartuPaket,
-    menuUtama,
-    muatMenu,
-    muatPaket,
-    pasangFooter,
-    pasangMenu,
-} from "../features/katalog.js";
+import { kartuPaket, muatPaket, pasangFooter } from "../features/katalog.js";
 import { fotoTier, teksDiskon } from "../features/tier.js";
-import { $, el, isiFoto } from "../ui/dom.js";
+import { $, el } from "../ui/dom.js";
+
+const BATAS_PAKET = 3;
 
 async function muat() {
     $("#galatMuat").hidden = true;
     $("#kosongPaket").hidden = true;
     $("#boxPaket").hidden = false;
     $("#paket").setAttribute("aria-busy", "true");
-    let tersedia;
+    let hasil;
     try {
-        tersedia = await muatPaket();
+        hasil = await muatPaket(BATAS_PAKET);
     } catch {
         $("#paket").replaceChildren();
         $("#paket").removeAttribute("aria-busy");
         $("#boxPaket").hidden = true;
-        $("#boxMenu").hidden = true;
         $("#galatMuat").hidden = false;
         return;
     }
+    const { daftar, total } = hasil;
     $("#paket").removeAttribute("aria-busy");
-    $("#paket").replaceChildren(...tersedia.map(kartuPaket));
-    $("#boxPaket").hidden = tersedia.length === 0;
-    $("#kosongPaket").hidden = tersedia.length > 0;
-    const { daftar, gagal } = await muatMenu(tersedia);
-    if (gagal) $("#galatMuat").hidden = false;
-    const berfoto = daftar.map(item => menuUtama(item.jadwal)).find(menu => menu.photoUrl);
-    if (berfoto) isiFoto($("#heroFoto"), berfoto.photoUrl, berfoto.name, "Foto menu");
-    pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya());
+    $("#paket").replaceChildren(...daftar.map(kartuPaket));
+    $("#semuaPaket").hidden = total <= daftar.length;
+    $("#boxPaket").hidden = daftar.length === 0;
+    $("#kosongPaket").hidden = daftar.length > 0;
 }
 
 function kartuTier(tier) {

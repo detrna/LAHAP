@@ -44,93 +44,6 @@ async function riwayat(b, page = 1) {
     }
 }
 
-function panelFoto(b, inputStok, tombolSimpan) {
-    const panel = el("div", "alert alert--info stack");
-    panel.style.flexBasis = "100%";
-    panel.hidden = true;
-    const idFoto = `foto-${b.id}`;
-    const idIsi = `isi-${b.id}`;
-    panel.append(el("span", "alert-title", `Perkirakan ${b.name} dari foto`));
-    const fieldFoto = el("div", "field");
-    const labelFoto = el("label", "", "Foto wadah bahan");
-    labelFoto.htmlFor = idFoto;
-    const foto = el("input", "input");
-    Object.assign(foto, { id: idFoto, type: "file", accept: "image/jpeg,image/png,image/webp" });
-    fieldFoto.append(labelFoto, foto, el("p", "hint", "JPEG, PNG, atau WebP. Pastikan semua wadah terlihat."));
-    const fieldIsi = el("div", "field");
-    const labelIsi = el("label", "", `Isi per wadah (${b.unit})`);
-    labelIsi.htmlFor = idIsi;
-    const isi = el("input", "input w-num");
-    Object.assign(isi, { id: idIsi, type: "number", min: "0", step: "any", value: "1" });
-    isi.inputMode = "decimal";
-    fieldIsi.append(
-        labelIsi,
-        isi,
-        el("p", "hint", `Foto menghitung jumlah wadah, bukan ${b.unit}. Contoh: botol 1,5 liter diisi 1,5.`),
-    );
-    const hasil = el("p", "", "");
-    hasil.hidden = true;
-    const aksi = el("div", "row");
-    const perkirakan = el("button", "btn btn-secondary btn-sm", "Perkirakan");
-    perkirakan.type = "button";
-    const pakai = el("button", "btn btn-primary btn-sm", "Pakai angka ini");
-    pakai.type = "button";
-    pakai.hidden = true;
-    aksi.append(perkirakan, pakai);
-    panel.append(fieldFoto, fieldIsi, hasil, aksi);
-
-    let jumlahWadah = null;
-    const perkiraan = () => {
-        const per = parseFloat(isi.value);
-        return Number.isFinite(per) && per > 0 ? Math.round(jumlahWadah * per * 100) / 100 : null;
-    };
-    const tulisHasil = () => {
-        if (jumlahWadah === null) return;
-        const total = perkiraan();
-        hasil.textContent =
-            total === null
-                ? `Terlihat ${angka(jumlahWadah)} wadah. Isi per wadah dulu untuk menghitung stok.`
-                : `Terlihat ${angka(jumlahWadah)} wadah × ${angka(isi.value)} ${b.unit} = ${angka(total)} ${b.unit}.`;
-        hasil.hidden = false;
-        pakai.hidden = total === null;
-    };
-    isi.addEventListener("input", tulisHasil);
-    perkirakan.onclick = async () => {
-        const file = foto.files[0];
-        if (!file) {
-            foto.focus();
-            return toast("Pilih foto dulu.", "error");
-        }
-        perkirakan.disabled = true;
-        perkirakan.textContent = "Memperkirakan...";
-        galat(null);
-        try {
-            const body = new FormData();
-            body.append("image", file);
-            const { data } = await api(`/kitchen/ingredients/${b.id}/photo-estimate`, {
-                method: "POST",
-                body,
-                timeout: 60000,
-            });
-            jumlahWadah = data.estimatedQuantity;
-            tulisHasil();
-        } catch (error) {
-            galat(error);
-        } finally {
-            perkirakan.disabled = false;
-            perkirakan.textContent = "Perkirakan";
-        }
-    };
-    pakai.onclick = () => {
-        const total = perkiraan();
-        if (total === null) return isi.focus();
-        inputStok.value = total;
-        tombolSimpan.focus();
-        toast("Angka dimasukkan. Tekan Simpan untuk menyimpan.");
-    };
-    return panel;
-}
-
 function baris(b) {
     const row = el("div", "invoice");
     const kiri = el("div", "row");
@@ -181,16 +94,8 @@ function baris(b) {
     const lihat = el("button", "btn btn-ghost btn-sm", "Riwayat");
     lihat.type = "button";
     lihat.onclick = () => riwayat(b);
-    const tombolFoto = el("button", "btn btn-ghost btn-sm", "Dari Foto");
-    tombolFoto.type = "button";
-    tombolFoto.setAttribute("aria-expanded", "false");
-    const panel = panelFoto(b, input, simpan);
-    tombolFoto.onclick = () => {
-        panel.hidden = !panel.hidden;
-        tombolFoto.setAttribute("aria-expanded", String(!panel.hidden));
-    };
-    kanan.append(badge, input, simpan, lihat, tombolFoto);
-    row.append(kiri, kanan, panel);
+    kanan.append(badge, input, simpan, lihat);
+    row.append(kiri, kanan);
     return row;
 }
 

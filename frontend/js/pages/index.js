@@ -8,16 +8,13 @@ import { renderPager } from "../ui/pager.js";
 const BATAS = 12;
 let halaman = 1;
 let urutan = 0;
-let jeda = null;
 
 async function muat() {
     const nomor = ++urutan;
-    const cari = $("#cari").value.trim();
     $("#err").hidden = true;
     $("#kosongPaket").hidden = true;
     $("#paket").setAttribute("aria-busy", "true");
     const query = new URLSearchParams({ page: String(halaman), limit: String(BATAS) });
-    if (cari) query.set("search", cari);
     let hasil;
     try {
         hasil = await api(`/packages?${query}`, { auth: false });
@@ -34,9 +31,6 @@ async function muat() {
     const { data: daftar, meta } = hasil;
     $("#paket").removeAttribute("aria-busy");
     $("#paket").replaceChildren(...daftar.map(kartuPaket));
-    $("#kosongPaket").textContent = cari
-        ? "Tidak ada paket yang cocok dengan pencarian."
-        : "Belum ada paket yang tersedia. Silakan cek lagi nanti.";
     $("#kosongPaket").hidden = daftar.length > 0;
     renderPager($("#pager"), meta, ke => {
         halaman = ke;
@@ -45,13 +39,6 @@ async function muat() {
     });
 }
 
-$("#cari").addEventListener("input", () => {
-    clearTimeout(jeda);
-    jeda = setTimeout(() => {
-        halaman = 1;
-        muat();
-    }, 300);
-});
 $("#ulang").onclick = muat;
 pasangFooter($("#footer"));
 muat();

@@ -5,12 +5,9 @@
 <link rel="stylesheet" href="css/style.css"></head><body>
 <header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
 <main class="container stack-lg">
-<div class="stack">
- <h1 class="t-h1">Pilih paket langgananmu</h1>
- <div class="field"><label for="cari">Cari paket</label><input class="input" id="cari" type="search" placeholder="Nama paket" autocomplete="off"></div>
-</div>
+<h1 class="t-h1">Pilih paket langgananmu</h1>
 <div class="alert alert--error" id="err" role="alert" hidden><span class="alert-title">Gagal memuat</span><span class="msg"></span> <button class="btn btn-secondary btn-sm" id="ulang" type="button">Coba lagi</button></div>
-<p class="empty" id="kosongPaket" hidden></p>
+<p class="empty" id="kosongPaket" hidden>Belum ada paket yang tersedia. Silakan cek lagi nanti.</p>
 <section class="grid grid-3" id="paket" aria-label="Daftar paket" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
 <div id="pager" hidden></div>
 <footer class="footer t-small" id="footer"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM.</p></footer>

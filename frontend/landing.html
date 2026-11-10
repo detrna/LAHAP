@@ -22,7 +22,7 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
 <main class="container stack-lg">
 
 <section class="hero">
- <div class="hero-foto" id="heroFoto">Foto menu</div>
+ <div class="hero-foto"><img src="img/hero.webp" alt="Nasi pecel dengan sayur dan lauk" width="800" height="450"></div>
  <div class="stack">
   <span class="pill">Pesan sampai 23.59 untuk hari layanan berikutnya</span>
   <h1 class="t-display">Katering langganan, makan teratur tanpa repot</h1>
@@ -32,18 +32,13 @@ details p{margin-top:var(--sp-2);color:var(--muted)}
  </div>
 </section>
 
-<div class="alert alert--warning row-between" id="galatMuat" role="status" hidden><span>Paket dan menu belum bisa dimuat. Periksa koneksi lalu coba lagi.</span><button class="btn btn-secondary btn-sm" type="button" id="ulang">Coba lagi</button></div>
+<div class="alert alert--warning row-between" id="galatMuat" role="status" hidden><span>Paket belum bisa dimuat. Periksa koneksi lalu coba lagi.</span><button class="btn btn-secondary btn-sm" type="button" id="ulang">Coba lagi</button></div>
 <p class="empty" id="kosongPaket" hidden>Belum ada paket yang tersedia. Silakan cek lagi nanti.</p>
 
 <section class="stack" id="boxPaket">
  <div><p class="label">Paket</p><h2 class="t-h2">Paket fleksibel sesuai rutinitasmu</h2></div>
  <div class="grid grid-3" id="paket" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-</section>
-
-<section class="stack" id="boxMenu" hidden>
- <div><p class="label">Menu</p><h2 class="t-h2">Jelajahi menu harian</h2></div>
- <div class="tabs" id="tabs" role="group" aria-label="Pilih tanggal"></div>
- <div class="stack" id="isiMenu" aria-live="polite"></div>
+ <p id="semuaPaket" hidden><a class="btn btn-secondary" href="index.html">Lihat semua paket</a></p>
 </section>
 
 <section class="stack">

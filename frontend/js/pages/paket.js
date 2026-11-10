@@ -58,11 +58,7 @@ async function muat() {
     tampilAlamat();
     const { daftar, gagal } = await muatMenu([paket], RENTANG_DETAIL);
     $("#galatMenu").hidden = !gagal;
-    const jumlah = pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya(), {
-        tampilPaket: false,
-        tampilAksi: false,
-        ringkas: true,
-    });
+    const jumlah = pasangMenu({ box: $("#boxMenu"), tabs: $("#tabs"), isi: $("#isiMenu") }, daftar, alergiSaya());
     $("#kosongMenu").hidden = gagal || jumlah > 0;
 }
 
