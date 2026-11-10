@@ -12,13 +12,13 @@
  <div class="field"><label for="em">Email (opsional)</label><input class="input" id="em" type="email" autocomplete="off" maxlength="100"><p class="error-msg" hidden>Format email tidak valid.</p><p class="hint">Bisa dipakai untuk masuk selain nomor HP.</p></div>
  <div class="field"><label for="r">Peran</label><select class="select input" id="r"><option value="ADMIN">Admin</option><option value="KITCHEN">Dapur</option><option value="COURIER">Kurir</option><option value="CUSTOMER">Pelanggan</option></select></div>
  <div class="field"><label for="p">Password awal</label><input class="input" id="p" type="password" minlength="8" maxlength="72" autocomplete="new-password"><p class="hint" id="hintPw">8 sampai 72 karakter.</p><p class="error-msg" hidden>Password harus 8 sampai 72 karakter.</p></div>
- <fieldset class="stack" id="profilPelanggan" hidden>
-  <legend class="t-h3">Profil pelanggan</legend>
+ <div class="stack" id="profilPelanggan" role="group" aria-labelledby="judulProfil" hidden>
+  <h3 class="t-h3" id="judulProfil">Profil pelanggan</h3>
   <div class="field"><label for="alamat">Alamat</label><textarea class="textarea" id="alamat"></textarea><p class="hint">Hanya mengisi otomatis form pesanan. Tiap pesanan tetap bisa memakai alamat lain.</p></div>
   <div class="field"><span class="field-label">Titik lokasi</span><div id="peta"></div><div><button class="btn btn-ghost btn-sm" type="button" id="hapusTitik">Hapus titik</button></div></div>
   <div class="field" id="fAlergi" hidden><span class="field-label">Alergi</span><div class="chip-group" id="alergi"></div><p class="hint">Dipakai untuk peringatan menu dan kategori khusus di dapur.</p></div>
   <div class="field"><label for="catAlergi">Catatan alergi lain</label><input class="input" id="catAlergi" maxlength="500" placeholder="Mis. alergi kemiri"><p class="hint">Untuk alergi di luar daftar. Dapur memeriksa semua pesanan pelanggan ini secara khusus.</p></div>
- </fieldset>
+ </div>
  <div class="row"><button class="btn btn-primary" type="submit" id="simpan">Simpan</button><button class="btn btn-ghost" type="button" id="batal">Batal</button></div>
 </form>
 <div class="field"><label for="cari">Cari nama atau nomor HP</label><input class="input" id="cari" type="search" autocomplete="off"></div>

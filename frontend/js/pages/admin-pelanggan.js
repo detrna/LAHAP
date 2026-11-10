@@ -98,6 +98,7 @@ async function bukaDetail(id) {
         ];
         $("#dMeta").replaceChildren(...meta.flatMap(([k, v]) => [el("dt", "", k), el("dd", "", v)]));
         $("#dPesanan").href = `admin-langganan.html?userId=${u.id}`;
+        $("#dUbah").href = `admin-pengguna.html?ubah=${u.id}`;
         $("#detail").hidden = false;
         $("#detail").scrollIntoView();
         $("#tutup").focus();

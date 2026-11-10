@@ -248,8 +248,8 @@ Tabel berikut mendefinisikan seluruh node arsitektur, jenis node, jalur perutean
 | `sm_nm_grossrev` | `sm-section` | Gross Revenue Analytics | `/admin/dashboard` | Admin | `u26` | Grafik pendapatan kotor harian, mingguan, dan bulanan. |
 | `sm_nm_stockalerts` | `sm-section` | Stock Alerts Widget | `/admin/dashboard` | Admin | `u26` | Indikator peringatan bahan baku yang berada di bawah ambang batas minimal. |
 | `sm_nm_trendingmenus`| `sm-section` | Trending Menus Widget | `/admin/dashboard` | Admin | `u26` | Statistik 5 menu favorit dengan pemesanan dan rating tertinggi. |
-| `sm_mvrsz4387oznpk` | `sm-page` | **User Management** | `/admin/users` | Admin | `u25` | Halaman manajemen akun pengguna internal (Admin, Kitchen, Courier). |
-| `sm_mvrt3lbz83pe5k` | `sm-section` | CRUD User Component | `/admin/users` | Admin | `u25` | Formulir tambah staf, ubah peran (*role*), dan reset kredensial akun. |
+| `sm_mvrsz4387oznpk` | `sm-page` | **User Management** | `/admin/users` | Admin | `u25` | Halaman manajemen akun pengguna internal (Admin, Kitchen, Courier) dan pelanggan. |
+| `sm_mvrt3lbz83pe5k` | `sm-section` | CRUD User Component | `/admin/users` | Admin | `u25` | Formulir tambah dan ubah akun staf atau pelanggan: peran (*role*), email, reset kredensial, serta alamat, titik lokasi, dan alergi khusus pelanggan. |
 | `sm_nm_custmgmt` | `sm-page` | **Customer Management** | `/admin/customers` | Admin | `u25` | Direktori database pelanggan katering dan deteksi resiko churn. |
 | `sm_nm_custdir` | `sm-section` | Customer Directory Table | `/admin/customers` | Admin | `u25` | Tabel pencarian pelanggan, filter status tier, dan riwayat pesanan. |
 | `sm_uc04churn` | `sm-section` | Churn Follow-up Trigger | `/admin/customers` | Admin | `u25` | Indikator pelanggan tidak aktif (>2 minggu) dengan tombol aksi WhatsApp. |
