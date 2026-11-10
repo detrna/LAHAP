@@ -10,6 +10,7 @@ import {
     pasangFooter,
     pasangMenu,
 } from "../features/katalog.js";
+import { fotoTier, teksDiskon } from "../features/tier.js";
 import { $, el, isiFoto } from "../ui/dom.js";
 
 async function muat() {
@@ -41,29 +42,17 @@ async function muat() {
 
 function kartuTier(tier) {
     const card = el("article", "card row");
-    const foto = el("div", "tier-foto");
-    isiFoto(foto, tier.photoUrl, tier.name, tier.name);
-    const info = el("div", "stack flex-1");
-    info.append(
-        el("h3", "t-h3", tier.name),
-        el("p", "", `Diskon ${tier.discountPercent.toLocaleString("id-ID")}% dari harga makanan`),
-        el(
-            "p",
-            "t-small t-muted",
-            `Dapat setelah ${tier.requiredSubscriptionDays} hari langganan, berlaku ${tier.durationDays} hari sejak pesanan terakhir dibayar.`,
-        ),
-    );
-    if (tier.description) info.append(el("p", "t-small t-muted", tier.description));
-    card.append(foto, info);
+    const info = el("div", "flex-1");
+    info.append(el("h3", "t-h3", tier.name), el("p", "t-muted", teksDiskon(tier)));
+    card.append(fotoTier(tier, "tier-foto tier-foto--kecil"), info);
     return card;
 }
 
 async function muatTier() {
     try {
         const { data } = await api("/tiers", { auth: false });
-        const berdiskon = data.filter(tier => tier.discountPercent > 0);
-        $("#tier").replaceChildren(...berdiskon.map(kartuTier));
-        $("#boxTier").hidden = berdiskon.length === 0;
+        $("#tier").replaceChildren(...data.map(kartuTier));
+        $("#boxTier").hidden = data.length === 0;
     } catch {
         $("#boxTier").hidden = true;
     }

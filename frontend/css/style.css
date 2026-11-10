@@ -236,4 +236,7 @@ a.pkg-photo{text-decoration:none}
 
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
-}
+}.tier-foto{width:72px;height:72px;border-radius:50%;background:var(--orange-100);color:var(--orange-900);display:grid;place-items:center;overflow:hidden;font:600 12px/1 'Poppins',sans-serif;text-align:center;flex:none}
+.tier-foto img{width:100%;height:100%;object-fit:cover}
+.tier-foto--kecil{width:48px;height:48px;font-size:10px}
+.tier-saya{border-color:var(--orange-500)}

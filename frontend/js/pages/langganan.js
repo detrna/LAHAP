@@ -3,6 +3,7 @@ import { api } from "../core/api.js";
 import { onRealtime, onRealtimeReconnect } from "../core/realtime.js";
 import { currentUser } from "../core/session.js";
 import { bisaSkip, langkahSlot } from "../features/pelanggan.js";
+import { tampilTierSaya } from "../features/tier.js";
 import { panelKonfirmasi } from "../ui/confirm.js";
 import { $, el } from "../ui/dom.js";
 import { formatTanggal, hariIni, jam, rp } from "../ui/format.js";
@@ -109,27 +110,6 @@ function kartuHariIni(o) {
     return card;
 }
 
-function tampilTier(m) {
-    const box = $("#tier");
-    const tier = m.membership && m.membership.tier;
-    const kepala = el("div", "row-between");
-    kepala.append(el("span", "t-h3", tier ? `Tier ${tier.name}` : "Belum punya tier"));
-    if (tier) kepala.append(el("span", "badge badge--ready", `Diskon ${tier.discountPercent}%`));
-    const info = el("p", "t-small t-muted", `${m.subscriptionDays} hari langganan terbayar.`);
-    box.replaceChildren(kepala, info);
-    if (m.nextTier && m.daysToNextTier != null) {
-        const total = m.subscriptionDays + m.daysToNextTier;
-        const bar = el("div", "progress");
-        bar.style.margin = "8px 0";
-        const isi = el("span");
-        isi.style.width = `${total ? Math.min(100, (m.subscriptionDays / total) * 100) : 0}%`;
-        bar.append(isi);
-        box.append(bar, el("p", "t-small t-muted", `${m.daysToNextTier} hari lagi menuju ${m.nextTier.name}.`));
-    }
-    if (m.membership && m.membership.expiresAt)
-        box.append(el("p", "t-small t-muted", `Tier berlaku sampai ${formatTanggal(m.membership.expiresAt)}.`));
-}
-
 function baris(p) {
     const row = el("div", "invoice");
     const kiri = el("div");
@@ -201,7 +181,7 @@ async function muat() {
             halamanBayar = p;
             muat();
         });
-        tampilTier(member.data);
+        tampilTierSaya($("#tier"), member.data);
     } catch (error) {
         if (ke !== muatKe) return;
         $("#pesanan").removeAttribute("aria-busy");

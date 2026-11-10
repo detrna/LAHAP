@@ -2,10 +2,14 @@ import { logout } from "../core/session.js";
 import { pasangLonceng } from "./bell.js";
 
 const MENU = {
-    tamu: [["Paket", "index.html"]],
+    tamu: [
+        ["Paket", "index.html"],
+        ["Member", "tier.html"],
+    ],
     pelanggan: [
         ["Paket", "index.html"],
         ["Langganan Saya", "langganan.html"],
+        ["Member", "tier.html"],
         ["Notifikasi", "notifikasi.html"],
         ["Profil", "profil.html"],
     ],

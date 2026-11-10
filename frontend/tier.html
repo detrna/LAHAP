@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tier member · LAHAP</title>
+<meta name="description" content="Tier member LAHAP: makin sering langganan, makin besar diskon harga makananmu.">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.tier-kartu{align-items:flex-start}
+.cara{padding-left:var(--sp-4)}
+.cara li+li{margin-top:var(--sp-2)}
+</style></head><body>
+<header class="app-header"><div class="container"><a class="brand" href="landing.html">LAHAP</a><nav class="nav"></nav></div></header>
+<main class="container stack-lg">
+<div class="stack">
+ <div><p class="label">Member</p><h1 class="t-h1">Makin sering langganan, makin hemat</h1></div>
+ <p class="t-muted">Tier naik otomatis dari jumlah hari langganan yang sudah dibayar. Makin tinggi tiernya, makin besar diskon harga makananmu.</p>
+</div>
+
+<div class="alert alert--error row-between" id="err" role="alert" hidden><span class="msg"></span><button class="btn btn-secondary btn-sm" type="button" id="ulang">Coba lagi</button></div>
+
+<section class="card stack" id="boxSaya" hidden>
+ <h2 class="t-h2">Tier kamu</h2>
+ <div id="tierSaya"></div>
+</section>
+
+<section class="stack" id="boxTier">
+ <h2 class="t-h2">Semua tier</h2>
+ <div class="grid grid-3" id="tier" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+ <p class="empty" id="kosong" hidden>Belum ada tier. Silakan cek lagi nanti.</p>
+</section>
+
+<section class="card stack">
+ <h2 class="t-h2">Cara kerja</h2>
+ <ul class="cara">
+  <li>Hari langganan dihitung dari tanggal layanan pesanan yang sudah dibayar. Slot yang kamu skip tetap dihitung, sedangkan pesanan yang dibatalkan atau belum dibayar tidak.</li>
+  <li>Setiap pesanan yang dibayar memulai ulang masa berlaku tiermu. Kalau masa berlakunya habis, tiermu turun satu level, lalu naik lagi sesuai jumlah harimu saat pesanan berikutnya dibayar.</li>
+  <li>Diskon tier hanya memotong harga makanan, tidak termasuk ongkir.</li>
+  <li>Ada kode promo yang tidak bisa digabung dengan diskon tier. Kalau begitu, kamu mendapat diskon yang lebih besar di antara keduanya.</li>
+ </ul>
+</section>
+
+<footer class="footer t-small" id="footer"><p><strong>LAHAP</strong> · Katering langganan untuk UMKM.</p></footer>
+</main>
+<script type="module" src="js/pages/tier.js"></script></body></html>
