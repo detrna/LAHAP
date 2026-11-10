@@ -8,7 +8,7 @@
 <form class="card stack" id="form" novalidate>
 <div class="field"><label for="bahan">Bahan</label><select class="select input" id="bahan" disabled><option value="">Memuat bahan...</option></select></div>
 <div class="row" id="infoBahan" hidden></div>
-<div class="field"><label for="foto">Foto wadah bahan</label><input class="input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">JPEG, PNG, atau WebP. Pastikan semua wadah terlihat.</p></div>
+<div class="field"><label for="foto">Foto wadah bahan</label><input class="file-pick-input" id="foto" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">JPEG, PNG, atau WebP. Pastikan semua wadah terlihat.</p></div>
 <div class="pratinjau-foto" id="pratinjau" hidden><img id="gambarPratinjau" alt="Pratinjau foto wadah bahan"></div>
 <div class="field"><label for="isi" id="labelIsi">Isi per wadah</label><input class="input w-num" id="isi" type="number" min="0" step="any" inputmode="decimal" placeholder="1000"><div class="row" id="tambahIsi"><button class="btn btn-secondary btn-sm" type="button" data-tambah="10">+10</button><button class="btn btn-secondary btn-sm" type="button" data-tambah="100">+100</button><button class="btn btn-secondary btn-sm" type="button" data-tambah="1000">+1000</button><button class="btn btn-ghost btn-sm" type="button" id="hapusIsi">Kosongkan</button></div><p class="hint" id="hintIsi">AI menghitung jumlah wadah, bukan beratnya. Contoh: botol 1,5 liter diisi 1,5, kemasan 1 kg gula diisi 1000 kalau satuannya gram.</p></div>
 <div><button class="btn btn-secondary" id="perkirakan" type="submit">Perkirakan</button></div>

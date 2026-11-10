@@ -2,6 +2,7 @@ import "../layout/boot.js";
 import { api, fetchAll, upload } from "../core/api.js";
 import { errorMessage, issuesText } from "../core/errors.js";
 import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
+import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { askChangeReason, needsChangeReason, periksa, showIssues, tampilGalat, tampilPesan } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
 import { toast } from "../ui/toast.js";
@@ -159,7 +160,7 @@ function bukaForm(m) {
     $("#d").value = m ? m.description : "";
     $("#tg").value = m ? m.tags.join(", ") : "";
     $("#alt").checked = m ? m.isAlternative : false;
-    $("#foto").value = "";
+    kosongkanBerkas($("#foto"));
     fotoTerunggah = null;
     $("#hintFoto").textContent = m
         ? "Kosongkan jika foto tidak diganti."
@@ -230,6 +231,7 @@ async function kirim(changeReason) {
     }
 }
 let fotoTerunggah = null;
+pilihBerkas($("#foto"));
 $("#foto").addEventListener("change", () => {
     fotoTerunggah = null;
 });

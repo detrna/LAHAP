@@ -1,5 +1,6 @@
 import "../layout/boot.js";
 import { api, ApiError, upload } from "../core/api.js";
+import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { $, el } from "../ui/dom.js";
 import { rp } from "../ui/format.js";
 import { pesanForm, tampilGalat, tampilPesan, tandaiField } from "../ui/forms.js";
@@ -45,7 +46,7 @@ function bukaForm(tier) {
     $("#durasi").value = tier ? tier.durationDays : 30;
     $("#diskon").value = tier ? tier.discountPercent : 0;
     fotoKey = tier ? tier.photoKey : null;
-    $("#berkas").value = "";
+    kosongkanBerkas($("#berkas"));
     pratinjau(tier ? tier.photoUrl : null);
     tampilPesan($("#errForm"), "");
     $("#form").hidden = false;
@@ -116,12 +117,14 @@ $("#batal").onclick = () => {
 };
 $("#hapusFoto").onclick = () => {
     fotoKey = null;
-    $("#berkas").value = "";
+    kosongkanBerkas($("#berkas"));
     pratinjau(null);
 };
+pilihBerkas($("#berkas"));
 $("#berkas").addEventListener("change", event => {
     const berkas = event.target.files[0];
     if (berkas) pratinjau(URL.createObjectURL(berkas));
+    else pratinjau(dipilih && fotoKey && fotoKey === dipilih.photoKey ? dipilih.photoUrl : null);
 });
 
 $("#form").addEventListener("submit", async event => {

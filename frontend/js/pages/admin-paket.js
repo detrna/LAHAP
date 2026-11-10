@@ -2,6 +2,7 @@ import "../layout/boot.js";
 import { api, fetchAll, upload } from "../core/api.js";
 import { $, el } from "../ui/dom.js";
 import { formatTanggal, rp, tanggalInput } from "../ui/format.js";
+import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { askChangeReason, needsChangeReason, periksa, tampilGalat } from "../ui/forms.js";
 import { setBadge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
@@ -92,7 +93,7 @@ function bukaForm(p) {
     $("#r2").value = p && p.deliveryMaxDistance != null ? p.deliveryMaxDistance : "";
     $("#r3").value = p && p.deliveryPricePerKm != null ? p.deliveryPricePerKm : "";
     document.querySelectorAll("#periode input").forEach(c => (c.checked = p ? p.periods.includes(c.value) : false));
-    $("#foto").value = "";
+    kosongkanBerkas($("#foto"));
     fotoTerunggah = null;
     $("#alasan").hidden = true;
     $("#hintJam").hidden = !p;
@@ -107,6 +108,7 @@ const iso = (tgl, akhir) => `${tgl}T${akhir ? "23:59:59" : "00:00:00"}+07:00`;
 const angkaAtauNull = id => ($(`#${id}`).value === "" ? null : Number($(`#${id}`).value));
 let fotoTerunggah = null,
     bodyTerakhir = null;
+pilihBerkas($("#foto"));
 $("#foto").addEventListener("change", () => {
     fotoTerunggah = null;
 });

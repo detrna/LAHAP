@@ -3,6 +3,7 @@ import { api, fetchAll, upload } from "../core/api.js";
 import { errorMessage, issuesText } from "../core/errors.js";
 import { $, el, gantiThumb, opsi, thumb } from "../ui/dom.js";
 import { angka, hariIni, tambahHari } from "../ui/format.js";
+import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { showIssues, tampilGalat } from "../ui/forms.js";
 import { renderPager } from "../ui/pager.js";
 import { toast } from "../ui/toast.js";
@@ -147,7 +148,7 @@ function bukaUbah(b) {
     $("#un").value = b.name;
     $("#uu").value = b.unit;
     $("#um").value = b.minimumThreshold;
-    $("#uf").value = "";
+    kosongkanBerkas($("#uf"));
     pratinjauFoto(b.photoUrl);
     chipAlergen(
         $("#ua"),
@@ -159,6 +160,8 @@ function bukaUbah(b) {
     $("#formUbah").scrollIntoView();
     $("#un").focus();
 }
+pilihBerkas($("#struk"), { teks: "Pilih foto struk", ringkas: true });
+pilihBerkas($("#uf"));
 $("#uf").addEventListener("change", () => {
     const file = $("#uf").files[0];
     pratinjauFoto(file ? null : sedangUbah && sedangUbah.photoUrl);
@@ -238,10 +241,11 @@ function barisBaru() {
       <div class="field"><label for="bs-${id}">Stok awal</label><input class="input" id="bs-${id}" type="number" min="0" step="0.1" value="0"></div>
       <div class="field"><label for="bm-${id}">Batas minimum stok</label><input class="input" id="bm-${id}" type="number" min="0" step="0.1" value="0"></div>
      </div>
-     <div class="field"><label for="bf-${id}">Foto bahan</label><input class="input" id="bf-${id}" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">Wajib. JPEG, PNG, atau WebP.</p></div>
+     <div class="field"><label for="bf-${id}">Foto bahan</label><input class="file-pick-input" id="bf-${id}" type="file" accept="image/jpeg,image/png,image/webp"><p class="hint">Wajib. JPEG, PNG, atau WebP.</p></div>
      <div class="field"><span class="field-label">Alergen</span><div class="chip-group" id="ba-${id}"></div></div>`;
     box.querySelector(`#bu-${id}`).append(...SATUAN.map(s => opsi(s, s)));
     chipAlergen(box.querySelector(`#ba-${id}`), `ba-${id}`, []);
+    pilihBerkas(box.querySelector(`#bf-${id}`));
     const hapus = el("button", "btn btn-ghost btn-sm", "Hapus baris");
     hapus.type = "button";
     hapus.onclick = () => {
@@ -364,7 +368,7 @@ $("#formStruk").onsubmit = async event => {
 };
 $("#batalStruk").onclick = () => {
     $("#tinjau").hidden = true;
-    $("#struk").value = "";
+    kosongkanBerkas($("#struk"));
 };
 $("#simpanStruk").onclick = async () => {
     const items = [];
@@ -385,7 +389,7 @@ $("#simpanStruk").onclick = async () => {
         const { data } = await api("/admin/ingredients", { method: "PATCH", body: { items } });
         toast(`Stok ${data.length} bahan diperbarui.`);
         $("#tinjau").hidden = true;
-        $("#struk").value = "";
+        kosongkanBerkas($("#struk"));
         muatBahan();
         muatBelanja();
     } catch (error) {

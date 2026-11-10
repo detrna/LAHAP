@@ -4,6 +4,7 @@ import { errorMessage } from "../core/errors.js";
 import { onRealtime, onRealtimeReconnect } from "../core/realtime.js";
 import { $, el } from "../ui/dom.js";
 import { hariIni } from "../ui/format.js";
+import { pilihBerkas } from "../ui/berkas.js";
 import { pesanForm, tampilGalat } from "../ui/forms.js";
 import { badge } from "../ui/status.js";
 import { toast } from "../ui/toast.js";
@@ -70,7 +71,7 @@ function kartu(item) {
     area.maxLength = 1000;
     area.id = `kendala-${item.orderId}`;
     area.setAttribute("aria-label", "Catatan kendala");
-    const foto = el("input", "input");
+    const foto = el("input", "file-pick-input");
     foto.type = "file";
     foto.accept = "image/jpeg,image/png,image/webp";
     foto.id = `foto-${item.orderId}`;
@@ -80,6 +81,7 @@ function kartu(item) {
         sisa.textContent = `${1000 - area.value.length} karakter tersisa.`;
     });
     field.append(area, sisa, foto, el("p", "hint", "Foto opsional: JPEG, PNG, atau WebP."));
+    pilihBerkas(foto, { teks: "Pilih foto kendala" });
     const kirim = el("button", "btn btn-primary", "Kirim Kendala");
     kirim.type = "submit";
     form.append(field, kirim);

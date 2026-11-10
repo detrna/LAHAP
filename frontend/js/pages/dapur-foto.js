@@ -2,6 +2,7 @@ import "../layout/boot.js";
 import { api } from "../core/api.js";
 import { $, el, opsi, thumb } from "../ui/dom.js";
 import { angka } from "../ui/format.js";
+import { kosongkanBerkas, pilihBerkas } from "../ui/berkas.js";
 import { tampilGalat } from "../ui/forms.js";
 import { toast } from "../ui/toast.js";
 
@@ -110,6 +111,7 @@ $("#hapusIsi").addEventListener("click", () => {
     $("#isi").focus();
     tulisHasil();
 });
+pilihBerkas($("#foto"), { teks: "Pilih atau ambil foto" });
 $("#foto").addEventListener("change", () => {
     hapusHasil();
     tampilPratinjau($("#foto").files[0]);
@@ -178,7 +180,7 @@ $("#simpan").addEventListener("click", async () => {
         const { data } = await api(`/kitchen/ingredients/${b.id}/stock`, { method: "PUT", body: { stock: nilai } });
         Object.assign(b, data);
         toast(`Stok ${b.name.toLowerCase()} disimpan.`);
-        $("#foto").value = "";
+        kosongkanBerkas($("#foto"));
         tampilPratinjau(null);
         hapusHasil();
         tampilBahan();
