@@ -33,6 +33,7 @@ export function pasangPeta(wadah, opsi = {}) {
     const {
         titik = null,
         pusat = PETA_PUSAT_BAWAAN,
+        titikTetap = null,
         label = "Peta lokasi",
         petunjuk = "Ketuk peta untuk menaruh pin, lalu geser bila perlu.",
         masukan = null,
@@ -50,9 +51,12 @@ export function pasangPeta(wadah, opsi = {}) {
     let pin = null;
     let peta = null;
     let marker = null;
+    let markerTetap = null;
     let lingkaran = [];
     let daftarLingkaran = [];
+    let pusatLingkaran = null;
     let terakhirCari = 0;
+    let sesuaikanNanti = false;
 
     const kanvas = buat("div", "map-box map-canvas");
     kanvas.setAttribute("aria-label", label);
@@ -77,16 +81,48 @@ export function pasangPeta(wadah, opsi = {}) {
 
     const teksPin = () => (pin ? `Pin: ${bulatkanKoordinat(pin.lat)}, ${bulatkanKoordinat(pin.lng)}` : petunjuk);
 
+    function pasangMarkerTetap(info) {
+        if (markerTetap) {
+            markerTetap.remove();
+            markerTetap = null;
+        }
+        if (!peta || !info || !koordinatValid(info.lat, info.lng)) return;
+        const ikon =
+            typeof L !== "undefined" && L.divIcon
+                ? L.divIcon({
+                      className: "map-pin-kitchen",
+                      html: `<div class="map-pin-kitchen-badge" aria-label="${info.judul || "Dapur LAHAP"}">${info.ikon || "🏠"}</div>`,
+                      iconSize: [28, 28],
+                      iconAnchor: [14, 14],
+                  })
+                : undefined;
+        markerTetap = L.marker([info.lat, info.lng], {
+            icon: ikon,
+            interactive: true,
+            keyboard: false,
+            zIndexOffset: 100,
+            title: info.judul || "Dapur LAHAP",
+        }).addTo(peta);
+        if (info.judul) {
+            markerTetap.bindTooltip(info.judul, { direction: "top", offset: [0, -14] });
+        }
+    }
+
     function gambarLingkaran() {
         lingkaran.forEach(c => c.remove());
         lingkaran = [];
-        if (!peta || !pin) return;
-        lingkaran = daftarLingkaran.map(c =>
-            L.circle([pin.lat, pin.lng], {
+        if (!peta) return;
+        const titikPusat = pusatLingkaran || pin;
+        if (!titikPusat) return;
+        const urut = [...daftarLingkaran].sort((a, b) => b.km - a.km);
+        lingkaran = urut.map(c =>
+            L.circle([titikPusat.lat, titikPusat.lng], {
                 radius: c.km * 1000,
                 color: c.warna,
-                weight: 2,
-                fillOpacity: 0.06,
+                dashArray: c.dashArray || null,
+                weight: c.weight || 2,
+                fillColor: c.fillColor || c.warna,
+                fillOpacity: c.fillOpacity ?? 0.06,
                 interactive: false,
             }).addTo(peta),
         );
@@ -108,7 +144,7 @@ export function pasangPeta(wadah, opsi = {}) {
                 });
             }
             if (geser) peta.setView([pin.lat, pin.lng], zoom ?? Math.max(peta.getZoom(), PETA_ZOOM_TITIK));
-            gambarLingkaran();
+            if (!pusatLingkaran) gambarLingkaran();
         }
         if (tulis && masukan) {
             masukan.lat.value = pin.lat;
@@ -122,8 +158,12 @@ export function pasangPeta(wadah, opsi = {}) {
         pin = null;
         if (marker) marker.remove();
         marker = null;
-        gambarLingkaran();
-        if (peta) peta.setView([pusat.lat, pusat.lng], PETA_ZOOM_BAWAAN);
+        if (!pusatLingkaran) gambarLingkaran();
+        if (peta)
+            peta.setView(
+                pusatLingkaran ? [pusatLingkaran.lat, pusatLingkaran.lng] : [pusat.lat, pusat.lng],
+                PETA_ZOOM_BAWAAN,
+            );
         status.textContent = petunjuk;
     }
 
@@ -237,14 +277,51 @@ export function pasangPeta(wadah, opsi = {}) {
             lebar = kanvas.clientWidth;
             if (!lebar) return;
             peta.invalidateSize();
-            if (!sebelumnya)
+            if (!sebelumnya && sesuaikanNanti) {
+                sesuaikanNanti = false;
+                tampilkanSemua();
+            } else if (!sebelumnya)
                 peta.setView(
-                    pin ? [pin.lat, pin.lng] : [pusat.lat, pusat.lng],
+                    pin
+                        ? [pin.lat, pin.lng]
+                        : pusatLingkaran
+                          ? [pusatLingkaran.lat, pusatLingkaran.lng]
+                          : titikTetap && koordinatValid(titikTetap.lat, titikTetap.lng)
+                            ? [titikTetap.lat, titikTetap.lng]
+                            : [pusat.lat, pusat.lng],
                     pin ? PETA_ZOOM_TITIK : PETA_ZOOM_BAWAAN,
                 );
         }).observe(kanvas);
+        if (titikTetap) pasangMarkerTetap(titikTetap);
     }
-    if (titik && koordinatValid(titik.lat, titik.lng)) taruh(titik, { geser: true, kabari: false, tulis: false });
+    if (titik && koordinatValid(titik.lat, titik.lng)) {
+        taruh(titik, { geser: true, kabari: false, tulis: false });
+    } else if (titikTetap && koordinatValid(titikTetap.lat, titikTetap.lng) && peta) {
+        peta.setView([titikTetap.lat, titikTetap.lng], PETA_ZOOM_BAWAAN);
+    }
+
+    function tampilkanSemua() {
+        if (!peta) return;
+        if (!peta.getSize().x) {
+            sesuaikanNanti = true;
+            return;
+        }
+        const bounds = typeof L !== "undefined" && L.latLngBounds ? L.latLngBounds([]) : null;
+        if (bounds) {
+            lingkaran.forEach(c => bounds.extend(c.getBounds()));
+            if (markerTetap) bounds.extend(markerTetap.getLatLng());
+            if (pin) bounds.extend([pin.lat, pin.lng]);
+        }
+        if (bounds && bounds.isValid()) {
+            peta.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 });
+        } else if (pin) {
+            peta.setView([pin.lat, pin.lng], PETA_ZOOM_TITIK);
+        } else if (titikTetap && koordinatValid(titikTetap.lat, titikTetap.lng)) {
+            peta.setView([titikTetap.lat, titikTetap.lng], PETA_ZOOM_BAWAAN);
+        } else if (pusat) {
+            peta.setView([pusat.lat, pusat.lng], PETA_ZOOM_BAWAAN);
+        }
+    }
 
     return {
         ambilTitik: () => (pin ? { ...pin } : null),
@@ -253,15 +330,17 @@ export function pasangPeta(wadah, opsi = {}) {
             else hapus();
             hasil.hidden = true;
         },
-        aturLingkaran(daftar) {
+        setTitikTetap(info) {
+            pasangMarkerTetap(info);
+        },
+        aturLingkaran(daftar, titikPusat = null) {
             daftarLingkaran = daftar.filter(c => c.km > 0);
+            pusatLingkaran =
+                titikPusat && koordinatValid(titikPusat.lat, titikPusat.lng)
+                    ? { lat: Number(titikPusat.lat), lng: Number(titikPusat.lng) }
+                    : null;
             gambarLingkaran();
         },
-        tampilkanSemua() {
-            if (!peta || !pin) return;
-            const terbesar = lingkaran.reduce((a, c) => (!a || c.getRadius() > a.getRadius() ? c : a), null);
-            if (terbesar && peta.getSize().x) peta.fitBounds(terbesar.getBounds(), { padding: [16, 16] });
-            else peta.setView([pin.lat, pin.lng], PETA_ZOOM_TITIK);
-        },
+        tampilkanSemua,
     };
 }

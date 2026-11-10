@@ -1,6 +1,7 @@
 import "../layout/boot.js";
 import { api } from "../core/api.js";
 import { issuesText } from "../core/errors.js";
+import { gambarJangkauan } from "../features/jangkauan.js";
 import { pasangPeta } from "../features/peta.js";
 import { $ } from "../ui/dom.js";
 import { formatTanggal } from "../ui/format.js";
@@ -8,7 +9,6 @@ import { periksa, showIssues, tampilGalat } from "../ui/forms.js";
 import { toast } from "../ui/toast.js";
 
 const galat = (isi, teks) => tampilGalat($("#err"), isi, teks);
-const warna = nama => getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
 const peta = pasangPeta($("#peta"), {
     label: "Peta lokasi dapur. Ketuk untuk memindahkan pin.",
     petunjuk: "Ketuk peta, cari alamat, atau pakai lokasi Anda untuk menaruh pin dapur.",
@@ -17,25 +17,12 @@ const peta = pasangPeta($("#peta"), {
 
 function aturRadius() {
     const km = id => (ada(id) && Number($(`#${id}`).value) >= 0 ? Math.floor(Number($(`#${id}`).value)) : 0);
-    const daftar = [
-        { km: km("r2"), warna: warna("--orange-700"), teks: "batas antar" },
-        { km: km("r1"), warna: warna("--success-text"), teks: "gratis ongkir" },
-    ].filter(c => c.km > 0);
-    peta.aturLingkaran(daftar);
-    $("#legenda").hidden = !daftar.length;
-    $("#legenda").replaceChildren(
-        ...daftar.map(c => {
-            const li = document.createElement("li");
-            const swatch = document.createElement("span");
-            swatch.className = "swatch";
-            swatch.style.color = c.warna;
-            li.append(swatch, `${c.teks[0].toUpperCase()}${c.teks.slice(1)} sampai ${c.km} km`);
-            return li;
-        }),
-        Object.assign(document.createElement("li"), {
-            textContent: "Jarak garis lurus, dibulatkan ke atas per km seperti saat checkout.",
-        }),
-    );
+    gambarJangkauan(peta, {
+        bebasKm: km("r1"),
+        maksKm: km("r2"),
+        legenda: $("#legenda"),
+        catatan: "Jarak garis lurus, dibulatkan ke atas per km seperti saat checkout.",
+    });
 }
 ["r1", "r2"].forEach(id => $(`#${id}`).addEventListener("input", aturRadius));
 

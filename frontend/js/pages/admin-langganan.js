@@ -1,6 +1,8 @@
 import "../layout/boot.js";
 import { api, fetchAll } from "../core/api.js";
 import { pasangPeta } from "../features/peta.js";
+import { muatBisnis } from "../features/bisnis.js";
+import { gambarJangkauan, penandaDapur, radiusJangkauan, titikDapur } from "../features/jangkauan.js";
 import { $, el, opsi } from "../ui/dom.js";
 import { formatTanggal, hariIni, rp, tambahHari } from "../ui/format.js";
 import { periksa, tampilGalat } from "../ui/forms.js";
@@ -187,6 +189,19 @@ async function bukaDetail(id) {
 
 let petaUbah = null;
 
+function aturLingkaranAdmin(peta, bisnis, paket, maksOverride = null) {
+    const dapur = titikDapur(bisnis);
+    if (!peta || !dapur) return;
+    const radius = radiusJangkauan(bisnis, paket);
+    gambarJangkauan(peta, {
+        pusat: dapur,
+        bebasKm: radius.bebasKm,
+        maksKm: maksOverride ?? radius.maksKm,
+        legenda: $("#uLegenda"),
+        sesuaikan: true,
+    });
+}
+
 function siapkanUbah(s) {
     const bisa = s.status === "Success" && s.displayStatus !== "Selesai";
     $("#ubah").hidden = !bisa;
@@ -198,18 +213,24 @@ function siapkanUbah(s) {
     $("#uLat").value = s.deliveryLatitude ?? "";
     $("#uLng").value = s.deliveryLongitude ?? "";
     if (keAntar) {
-        petaUbah ??= pasangPeta($("#uPeta"), {
-            label: "Peta titik pengantaran. Ketuk untuk memindahkan pin.",
-            masukan: { lat: $("#uLat"), lng: $("#uLng") },
-            onPilih: () => {
-                $("#uKonfirmasi").hidden = true;
-            },
+        muatBisnis().then(bisnis => {
+            const dapur = titikDapur(bisnis);
+            petaUbah ??= pasangPeta($("#uPeta"), {
+                pusat: dapur || undefined,
+                titikTetap: penandaDapur(bisnis),
+                label: "Peta titik pengantaran. Ketuk untuk memindahkan pin.",
+                masukan: { lat: $("#uLat"), lng: $("#uLng") },
+                onPilih: () => {
+                    $("#uKonfirmasi").hidden = true;
+                },
+            });
+            petaUbah.setTitik(
+                s.deliveryLatitude != null && s.deliveryLongitude != null
+                    ? { lat: Number(s.deliveryLatitude), lng: Number(s.deliveryLongitude) }
+                    : null,
+            );
+            aturLingkaranAdmin(petaUbah, bisnis, s.package);
         });
-        petaUbah.setTitik(
-            s.deliveryLatitude != null && s.deliveryLongitude != null
-                ? { lat: Number(s.deliveryLatitude), lng: Number(s.deliveryLongitude) }
-                : null,
-        );
     }
     $("#uMulai").value = "";
     $("#uMulai").min = tambahHari(hariIni(), 1);
@@ -254,6 +275,11 @@ $("#ubah").onsubmit = async event => {
             method: "POST",
             body: bodyUbah(),
         });
+        if (data.delivery && data.delivery.maxDistanceKm != null && petaUbah) {
+            muatBisnis().then(bisnis =>
+                aturLingkaranAdmin(petaUbah, bisnis, aktif.package, data.delivery.maxDistanceKm),
+            );
+        }
         const teks = [`${data.slotCount} slot mulai ${formatTanggal(data.effectiveFrom)}.`];
         if (data.delivery && !data.delivery.available)
             teks.push(

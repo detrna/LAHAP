@@ -4,6 +4,8 @@ import { errorMessage } from "../core/errors.js";
 import { currentUser } from "../core/session.js";
 import { bayarSnap } from "../features/pelanggan.js";
 import { pasangPeta } from "../features/peta.js";
+import { muatBisnis } from "../features/bisnis.js";
+import { gambarJangkauan, penandaDapur, radiusJangkauan, titikDapur } from "../features/jangkauan.js";
 import { $ } from "../ui/dom.js";
 import { awalMinggu, hariIni, tambahHari } from "../ui/format.js";
 import { pesanForm, showIssues, tampilGalat } from "../ui/forms.js";
@@ -19,6 +21,8 @@ let paket = null;
 let pin = null;
 let timer = null;
 let nomor = 0;
+let kendaliPeta = null;
+let infoBisnis = null;
 
 const galat = isi => tampilGalat($("#err"), isi);
 
@@ -144,6 +148,9 @@ async function hitung() {
         if (ini !== nomor) return;
         galat("");
         showIssues($("#form"), null, FIELD_CHECKOUT);
+        if (data.delivery && data.delivery.maxDistanceKm != null) {
+            aturLingkaranPeta(data.delivery.maxDistanceKm);
+        }
         $("#kirim").disabled = !tampilHarga(data, body.isDelivery);
     } catch (error) {
         if (ini !== nomor) return;
@@ -165,16 +172,34 @@ const tunda = () => {
     timer = setTimeout(hitung, 350);
 };
 
+function aturLingkaranPeta(maksOverride = null) {
+    const dapur = titikDapur(infoBisnis);
+    if (!kendaliPeta || !dapur) return;
+    const radius = radiusJangkauan(infoBisnis, paket);
+    gambarJangkauan(kendaliPeta, {
+        pusat: dapur,
+        bebasKm: radius.bebasKm,
+        maksKm: maksOverride ?? radius.maksKm,
+        legenda: $("#legendaPeta"),
+        teksMaks: "batas jangkauan antar",
+        sesuaikan: true,
+    });
+}
+
 function mulaiPeta(titik) {
-    const kendali = pasangPeta($("#peta"), {
+    const dapur = titikDapur(infoBisnis);
+    kendaliPeta = pasangPeta($("#peta"), {
         titik,
+        pusat: dapur || undefined,
+        titikTetap: penandaDapur(infoBisnis),
         label: "Peta titik pengantaran. Ketuk untuk menaruh pin.",
         onPilih: baru => {
             pin = baru;
             tunda();
         },
     });
-    pin = kendali.ambilTitik();
+    pin = kendaliPeta.ambilTitik();
+    aturLingkaranPeta();
 }
 
 async function muatHari() {
@@ -208,7 +233,8 @@ async function muat() {
         $("#mulai").min = tambahHari(hariIni(), 1);
         $("#mulai").value = tambahHari(awalMinggu(hariIni()), 7);
         $("#penerima").value = (currentUser() && currentUser().name) || "";
-        const [, profil] = await Promise.all([muatHari(), api("/me").catch(() => null)]);
+        const [, profil, bisnis] = await Promise.all([muatHari(), api("/me").catch(() => null), muatBisnis()]);
+        infoBisnis = bisnis;
         let titik = null;
         if (profil) {
             if (profil.data.address) $("#alamat").value = profil.data.address;

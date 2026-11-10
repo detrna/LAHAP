@@ -1,6 +1,8 @@
 import { api } from "../../core/api.js";
 import { bayarSnap } from "../../features/pelanggan.js";
 import { pasangPeta } from "../../features/peta.js";
+import { muatBisnis } from "../../features/bisnis.js";
+import { gambarJangkauan, penandaDapur, radiusJangkauan, titikDapur } from "../../features/jangkauan.js";
 import { $, el } from "../../ui/dom.js";
 import { formatTanggal, hariIni, rp, tambahHari } from "../../ui/format.js";
 import { pesanForm, showIssues } from "../../ui/forms.js";
@@ -10,9 +12,24 @@ import { galat, muatUlang } from "./halaman.js";
 
 let petaUbah = null;
 let pinUbah = null;
+let infoBisnis = null;
 let nomorPratinjau = 0;
 let timerPratinjau = null;
 let formUbahTerbuka = false;
+
+function aturLingkaranUbah(peta, form, bisnis, paket, maksOverride = null) {
+    const dapur = titikDapur(bisnis);
+    if (!peta || !dapur) return;
+    const radius = radiusJangkauan(bisnis, paket);
+    gambarJangkauan(peta, {
+        pusat: dapur,
+        bebasKm: radius.bebasKm,
+        maksKm: maksOverride ?? radius.maksKm,
+        legenda: form ? form.querySelector("#uLegenda") : null,
+        teksMaks: "batas jangkauan antar",
+        sesuaikan: true,
+    });
+}
 
 export const ubahSedangDiisi = () => formUbahTerbuka && petaUbah !== null;
 
@@ -60,6 +77,9 @@ async function pratinjauUbah(s) {
             `${data.slotCount} slot mulai ${formatTanggal(data.effectiveFrom)} berubah ke ${data.toDelivery ? "Diantar" : "Ambil sendiri"}.`,
         ];
         const luar = Boolean(data.delivery && !data.delivery.available);
+        if (data.delivery && data.delivery.maxDistanceKm != null && petaUbah) {
+            aturLingkaranUbah(petaUbah, $("#fUbah"), infoBisnis, s.package, data.delivery.maxDistanceKm);
+        }
         if (data.toDelivery) {
             if (luar)
                 teks.push(
@@ -112,6 +132,7 @@ export async function kartuUbah(s) {
       <div class="stack" id="uAntar" hidden>
         <div class="field"><label for="uAlamat">Alamat pengantaran</label><textarea class="textarea" id="uAlamat"></textarea></div>
         <div class="field"><span class="field-label">Titik lokasi</span><div id="uPeta"></div></div>
+        <ul class="map-legend" id="uLegenda" hidden></ul>
         <div class="field" id="uBox" hidden><span class="field-label">Metode bayar ongkir</span><div class="chip-group">
           <label class="chip"><input type="radio" name="uBayar" value="MIDTRANS" checked>Non-tunai</label><label class="chip"><input type="radio" name="uBayar" value="CASH">Tunai</label></div></div>
       </div>
@@ -146,8 +167,14 @@ export async function kartuUbah(s) {
                 } catch {}
             }
             form.querySelector("#uAlamat").value = alamat;
+            if (!infoBisnis) {
+                infoBisnis = await muatBisnis();
+            }
+            const dapur = titikDapur(infoBisnis);
             petaUbah = pasangPeta(form.querySelector("#uPeta"), {
                 titik,
+                pusat: dapur || undefined,
+                titikTetap: penandaDapur(infoBisnis),
                 label: "Peta titik pengantaran. Ketuk untuk menaruh pin.",
                 onPilih: baru => {
                     pinUbah = baru;
@@ -155,6 +182,7 @@ export async function kartuUbah(s) {
                 },
             });
             pinUbah = petaUbah.ambilTitik();
+            aturLingkaranUbah(petaUbah, form, infoBisnis, s.package);
         }
         pratinjauUbah(s);
     };
