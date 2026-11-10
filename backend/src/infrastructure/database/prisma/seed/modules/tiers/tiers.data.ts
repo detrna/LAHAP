@@ -12,7 +12,7 @@ export const TIERS = {
     silver: {
         id: seedId("tier", 2),
         name: "Silver",
-        description: "Diskon 5% setelah 30 hari layanan.",
+        description: "Untuk pelanggan yang rutin berlangganan.",
         requiredSubscriptionDays: 30,
         durationDays: 30,
         discountPercent: "5.00",
@@ -20,7 +20,7 @@ export const TIERS = {
     gold: {
         id: seedId("tier", 3),
         name: "Gold",
-        description: "Diskon 10% setelah 60 hari layanan.",
+        description: "Untuk pelanggan setia LAHAP.",
         requiredSubscriptionDays: 60,
         durationDays: 30,
         discountPercent: "10.00",
