@@ -4,7 +4,7 @@ import { setupSettingsService } from "../test-utils/setup/settings.setup.js";
 import { BusinessNotConfiguredError } from "./interfaces/settings.repository.js";
 
 describe("SettingsService.getBusinessInfo (unit)", () => {
-    it("exposes only the name, address, location and contact", async () => {
+    it("exposes only the name, address, location, contact and delivery radii", async () => {
         const { repository, service } = setupSettingsService();
         repository.find.mockResolvedValue(buildSettingsRecord());
 
@@ -14,6 +14,8 @@ describe("SettingsService.getBusinessInfo (unit)", () => {
             latitude: -7.9406,
             longitude: 112.6219,
             whatsappNumber: "6281200000000",
+            deliveryFreeRadius: 1,
+            deliveryMaxDistance: 10,
         });
     });
 

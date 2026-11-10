@@ -17,4 +17,6 @@ export interface BusinessInfo {
     readonly latitude: number;
     readonly longitude: number;
     readonly whatsappNumber: string;
+    readonly deliveryFreeRadius: number;
+    readonly deliveryMaxDistance: number;
 }

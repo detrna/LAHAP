@@ -56,12 +56,20 @@ describe("settings routes (e2e)", () => {
         await db?.close();
     });
 
-    it("serves the public business profile without a token and without delivery or timeout fields", async () => {
+    it("serves the public business profile without a token and without the price or timeout fields", async () => {
         const response = await request(app).get("/api/business");
 
         expect(response.status).toBe(200);
         expect(Object.keys(response.body.data).sort()).toEqual(
-            ["address", "latitude", "longitude", "name", "whatsappNumber"].sort(),
+            [
+                "address",
+                "deliveryFreeRadius",
+                "deliveryMaxDistance",
+                "latitude",
+                "longitude",
+                "name",
+                "whatsappNumber",
+            ].sort(),
         );
         expect(response.body.data).toMatchObject({ name: original.name, whatsappNumber: original.whatsappNumber });
     });
@@ -82,6 +90,8 @@ describe("settings routes (e2e)", () => {
             latitude: expected.latitude,
             longitude: expected.longitude,
             whatsappNumber: expected.whatsappNumber,
+            deliveryFreeRadius: expected.deliveryFreeRadius,
+            deliveryMaxDistance: expected.deliveryMaxDistance,
         });
     });
 

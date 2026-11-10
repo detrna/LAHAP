@@ -23,6 +23,8 @@ export function buildBusinessInfo(overrides: Partial<BusinessInfo> = {}): Busine
         latitude: -90,
         longitude: -180,
         whatsappNumber: "6281200000000",
+        deliveryFreeRadius: 1,
+        deliveryMaxDistance: 10,
         ...overrides,
     };
 }
