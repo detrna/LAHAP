@@ -2,6 +2,7 @@ import { api } from "../core/api.js";
 import { currentUser } from "../core/session.js";
 import { el, isiFoto, tautan, tautanLuar } from "../ui/dom.js";
 import { formatTanggal, hariIni, labelWaktu, rp, tambahHari } from "../ui/format.js";
+import { pasangGeser } from "../ui/geser.js";
 import { muatBisnis } from "./bisnis.js";
 
 function menuUtama(jadwal) {
@@ -122,7 +123,7 @@ function kartuMenu(item, alergiUser) {
     isiFoto(foto, utama.photoUrl, utama.name, "Foto menu");
     const info = el("div", "pkg-body stack");
     const waktu = labelWaktu(item.jadwal.deliveryTime);
-    if (waktu) info.append(el("p", "label", waktu));
+    info.append(el("p", "label", [formatTanggal(item.jadwal.date, "hari"), waktu].filter(Boolean).join(" · ")));
     info.append(el("h3", "t-h3", utama.name));
     if (utama.description) info.append(el("p", "t-muted clamp-3", utama.description));
     if ((utama.tags || []).length) {
@@ -143,16 +144,30 @@ function kartuMenu(item, alergiUser) {
 
 export function pasangMenu({ box, tabs, isi }, daftar, alergiUser) {
     const semuaTanggal = [...new Set(daftar.map(item => item.jadwal.date))].sort();
-    const tampil = tanggal => {
-        isi.replaceChildren(
-            ...daftar.filter(item => item.jadwal.date === tanggal).map(item => kartuMenu(item, alergiUser)),
-        );
-        isi.scrollLeft = 0;
-        isi.setAttribute("aria-label", `Menu ${formatTanggal(tanggal, "hari")}`);
-        tabs.querySelectorAll(".tab").forEach(tab =>
-            tab.setAttribute("aria-pressed", String(tab.dataset.tanggal === tanggal)),
-        );
+    const kartuPertama = new Map();
+    const kartu = daftar.map(item => {
+        const card = kartuMenu(item, alergiUser);
+        card.dataset.tanggal = item.jadwal.date;
+        if (!kartuPertama.has(item.jadwal.date)) kartuPertama.set(item.jadwal.date, card);
+        return card;
+    });
+    const tandai = tanggal => {
+        tabs.querySelectorAll(".tab").forEach(tab => {
+            const aktif = tab.dataset.tanggal === tanggal;
+            tab.setAttribute("aria-pressed", String(aktif));
+            if (aktif) {
+                const kiri = tab.offsetLeft - (tabs.clientWidth - tab.offsetWidth) / 2;
+                tabs.scrollTo({ left: Math.max(0, kiri), behavior: "auto" });
+            }
+        });
     };
+    const ikutiGeser = () => {
+        const batas = isi.getBoundingClientRect().left + 1;
+        const terlihat = kartu.find(card => card.getBoundingClientRect().right > batas);
+        if (terlihat) tandai(terlihat.dataset.tanggal);
+    };
+    isi.replaceChildren(...kartu);
+    isi.setAttribute("aria-label", "Menu per hari");
     tabs.replaceChildren(
         ...semuaTanggal.map(tanggal => {
             const tab = el("button", "tab");
@@ -163,11 +178,52 @@ export function pasangMenu({ box, tabs, isi }, daftar, alergiUser) {
                 el("span", "t-small", formatTanggal(tanggal, { weekday: "short" })),
                 el("strong", "t-h3", formatTanggal(tanggal, { day: "numeric" })),
             );
-            tab.onclick = () => tampil(tanggal);
+            tab.onclick = () => {
+                const target = kartuPertama.get(tanggal);
+                const selisih = target.getBoundingClientRect().left - isi.getBoundingClientRect().left;
+                isi.scrollBy({ left: selisih, behavior: "smooth" });
+                tandai(tanggal);
+            };
             return tab;
         }),
     );
-    if (semuaTanggal.length) tampil(semuaTanggal[0]);
+    isi.addEventListener("scroll", ikutiGeser, { passive: true });
+    if (semuaTanggal.length) tandai(semuaTanggal[0]);
     box.hidden = semuaTanggal.length === 0;
     return semuaTanggal.length;
+}
+
+export function barisPaket(paket, daftarMenu, alergiUser) {
+    const baris = el("section", "card pkg-row stack");
+    baris.setAttribute("aria-label", paket.name);
+    const kepala = el("div", "pkg-row-head");
+    const judul = el("div", "stack");
+    const nama = el("h2", "t-h2");
+    nama.append(tautan(hrefPaket(paket), "", paket.name));
+    const harga = el("p");
+    harga.append(el("span", "price-big", rp(paket.basePrice)), el("span", "t-small t-muted", " per porsi"));
+    judul.append(nama, harga);
+    const aksi = el("div", "row pkg-aksi");
+    aksi.append(tombolPesan(paket), tautan(hrefPaket(paket), "btn btn-secondary", "Lihat Paket"));
+    kepala.append(judul, aksi);
+    baris.append(kepala);
+    if (!daftarMenu.length) {
+        baris.append(el("p", "t-muted", "Menu dua minggu ke depan belum diterbitkan."));
+        return baris;
+    }
+    const wadah = el("div", "menu-geser");
+    const kiri = el("button", "geser-btn geser-kiri", "‹");
+    const kanan = el("button", "geser-btn geser-kanan", "›");
+    kiri.type = kanan.type = "button";
+    kiri.setAttribute("aria-label", "Menu sebelumnya");
+    kanan.setAttribute("aria-label", "Menu berikutnya");
+    const rel = el("div", "menu-rail");
+    rel.tabIndex = 0;
+    rel.setAttribute("role", "region");
+    rel.setAttribute("aria-label", `Menu ${paket.name} per hari`);
+    rel.append(...daftarMenu.map(item => kartuMenu(item, alergiUser)));
+    wadah.append(kiri, rel, kanan);
+    baris.append(wadah);
+    pasangGeser(wadah, rel, kiri, kanan);
+    return baris;
 }
